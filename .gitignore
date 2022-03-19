@@ -1,0 +1,12 @@
+*.exe
+*.db
+*.log
+*.7z
+*.zip
+*.py
+*.sh
+*.syso
+*.ico
+*.bmp
+build/Output
+tacticalagent-v*
