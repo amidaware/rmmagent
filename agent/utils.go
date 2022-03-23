@@ -298,3 +298,7 @@ func randRange(min, max int) int {
 func randomCheckDelay() {
 	time.Sleep(time.Duration(randRange(300, 950)) * time.Millisecond)
 }
+
+func removeWinNewLines(s string) string {
+	return strings.ReplaceAll(s, "\r\n", "\n")
+}

@@ -133,6 +133,7 @@ func NewAgentConfig() *rmm.AgentConfig {
 }
 
 func (a *Agent) RunScript(code string, shell string, args []string, timeout int) (stdout, stderr string, exitcode int, e error) {
+	code = removeWinNewLines(code)
 	content := []byte(code)
 
 	f, err := os.CreateTemp("", "trmm")
