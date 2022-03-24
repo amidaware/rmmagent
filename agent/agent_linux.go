@@ -136,9 +136,9 @@ func (a *Agent) RunScript(code string, shell string, args []string, timeout int)
 	code = removeWinNewLines(code)
 	content := []byte(code)
 
-	f, err := os.CreateTemp("", "trmm")
+	f, err := createTmpFile()
 	if err != nil {
-		a.Logger.Errorln(err)
+		a.Logger.Errorln("RunScript createTmpFile()", err)
 		return "", err.Error(), 85, err
 	}
 	defer os.Remove(f.Name())
@@ -187,9 +187,9 @@ func (a *Agent) AgentUpdate(url, inno, version string) {
 		return
 	}
 
-	f, err := os.CreateTemp("", "")
+	f, err := createTmpFile()
 	if err != nil {
-		a.Logger.Errorln("AgentUpdate()", err)
+		a.Logger.Errorln("AgentUpdate createTmpFile()", err)
 		return
 	}
 	defer os.Remove(f.Name())
@@ -232,9 +232,9 @@ func (a *Agent) AgentUpdate(url, inno, version string) {
 }
 
 func (a *Agent) AgentUninstall(code string) {
-	f, err := os.CreateTemp("", "trmm")
+	f, err := createTmpFile()
 	if err != nil {
-		a.Logger.Errorln("AgentUninstall CreateTemp:", err)
+		a.Logger.Errorln("AgentUninstall createTmpFile():", err)
 		return
 	}
 
