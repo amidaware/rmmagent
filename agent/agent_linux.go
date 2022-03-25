@@ -262,11 +262,12 @@ func (a *Agent) NixMeshNodeID() string {
 	for !meshSuccess {
 		out := a.CmdV2(opts)
 		meshNodeID = out.Stdout
+		a.Logger.Debugln("Stdout:", out.Stdout)
+		a.Logger.Debugln("Stderr:", out.Stderr)
 		if meshNodeID == "" {
 			time.Sleep(1 * time.Second)
 			continue
 		} else if strings.Contains(strings.ToLower(meshNodeID), "graphical version") || strings.Contains(strings.ToLower(meshNodeID), "zenity") {
-			a.Logger.Debugln(out.Stdout)
 			time.Sleep(1 * time.Second)
 			continue
 		}
