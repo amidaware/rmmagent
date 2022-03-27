@@ -49,7 +49,7 @@ func (a *Agent) AgentSvc() {
 		time.Sleep(time.Duration(randRange(100, 400)) * time.Millisecond)
 	}
 
-	a.SyncMeshNodeID()
+	go a.SyncMeshNodeID()
 
 	time.Sleep(time.Duration(randRange(1, 3)) * time.Second)
 	a.AgentStartup()

@@ -254,6 +254,12 @@ func (a *Agent) NixMeshNodeID() string {
 	var meshNodeID string
 	meshSuccess := false
 	a.Logger.Debugln("Getting mesh node id")
+
+	if !trmm.FileExists(a.MeshSystemEXE) {
+		a.Logger.Debugln(a.MeshSystemEXE, "does not exist. Skipping.")
+		return ""
+	}
+
 	opts := a.NewCMDOpts()
 	opts.IsExecutable = true
 	opts.Shell = a.MeshSystemEXE
