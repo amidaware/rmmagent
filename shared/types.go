@@ -69,9 +69,10 @@ type AgentInfo struct {
 }
 
 type PingCheckResponse struct {
-	ID     int    `json:"id"`
-	Status string `json:"status"`
-	Output string `json:"output"`
+	ID      int    `json:"id"`
+	AgentID string `json:"agent_id"`
+	Status  string `json:"status"`
+	Output  string `json:"output"`
 }
 
 type WinUpdateResult struct {
