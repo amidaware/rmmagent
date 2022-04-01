@@ -393,6 +393,9 @@ func (a *Agent) GetWMIInfo() map[string]interface{} {
 	if makeModel != "" && (wmiInfo["make_model"] == "" || wmiInfo["make_model"] == "unknown unknown") {
 		wmiInfo["make_model"] = makeModel
 	}
+	if len(gpus) == 1 && gpus[0] == "unknown unknown" {
+		wmiInfo["gpus"] = ""
+	}
 
 	return wmiInfo
 }
