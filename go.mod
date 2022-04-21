@@ -11,7 +11,7 @@ require (
 	github.com/gonutz/w32/v2 v2.4.0
 	github.com/iamacarpet/go-win64api v0.0.0-20211130162011-82e31fe23f80
 	github.com/nats-io/nats-server/v2 v2.4.0 // indirect
-	github.com/nats-io/nats.go v1.13.0
+	github.com/nats-io/nats.go v1.14.0
 	github.com/rickb777/date v1.15.3
 	github.com/shirou/gopsutil/v3 v3.22.2
 	github.com/sirupsen/logrus v1.8.1
