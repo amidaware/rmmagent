@@ -59,7 +59,7 @@ func (a *Agent) InstallChoco() {
 }
 
 func (a *Agent) InstallWithChoco(name string) (string, error) {
-	out, err := CMD("choco.exe", []string{"install", name, "--yes", "--force", "--force-dependencies"}, 1200, false)
+	out, err := CMD("choco.exe", []string{"install", name, "--yes", "--force", "--force-dependencies", "--no-progress"}, 1200, false)
 	if err != nil {
 		a.Logger.Errorln(err)
 		return err.Error(), err

@@ -70,10 +70,33 @@ func (a *Agent) GetDisks() []trmm.Disk {
 }
 
 func (a *Agent) SystemRebootRequired() (bool, error) {
-	paths := [2]string{"/var/run/reboot-required", "/usr/bin/needs-restarting"}
+	// deb
+	paths := [2]string{"/var/run/reboot-required", "/run/reboot-required"}
 	for _, p := range paths {
 		if trmm.FileExists(p) {
 			return true, nil
+		}
+	}
+	// rhel
+	bins := [2]string{"/usr/bin/needs-restarting", "/bin/needs-restarting"}
+	for _, bin := range bins {
+		if trmm.FileExists(bin) {
+			opts := a.NewCMDOpts()
+			// https://man7.org/linux/man-pages/man1/needs-restarting.1.html
+			// -r Only report whether a full reboot is required (exit code 1) or not (exit code 0).
+			opts.Command = fmt.Sprintf("%s -r", bin)
+			out := a.CmdV2(opts)
+
+			if out.Status.Error != nil {
+				a.Logger.Debugln("SystemRebootRequired(): ", out.Status.Error.Error())
+				continue
+			}
+
+			if out.Status.Exit == 1 {
+				return true, nil
+			}
+
+			return false, nil
 		}
 	}
 	return false, nil
