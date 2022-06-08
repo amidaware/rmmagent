@@ -125,6 +125,10 @@ func New(logger *logrus.Logger, version string) *Agent {
 		MeshSysExe = "/opt/tacticalmesh/meshagent"
 	}
 
+	if runtime.GOOS == "darwin" {
+		MeshSysExe = "/opt/tacticalmesh/meshagent"
+	}
+
 	svcConf := &service.Config{
 		Executable:  exe,
 		Name:        winSvcName,

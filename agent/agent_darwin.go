@@ -159,9 +159,41 @@ func (a *Agent) AgentUpdate(url, inno, version string) {}
 
 func (a *Agent) AgentUninstall(code string) {}
 
-func (a *Agent) NixMeshNodeID() string { return "" }
+func (a *Agent) NixMeshNodeID() string {
+	var meshNodeID string
+	meshSuccess := false
+	a.Logger.Debugln("Getting mesh node id")
 
-func (a *Agent) getMeshNodeID() (string, error) { return "", nil }
+	if !trmm.FileExists(a.MeshSystemEXE) {
+		a.Logger.Debugln(a.MeshSystemEXE, "does not exist. Skipping.")
+		return ""
+	}
+
+	opts := a.NewCMDOpts()
+	opts.IsExecutable = true
+	opts.Shell = a.MeshSystemEXE
+	opts.Command = "-nodeid"
+
+	for !meshSuccess {
+		out := a.CmdV2(opts)
+		meshNodeID = out.Stdout
+		a.Logger.Debugln("Stdout:", out.Stdout)
+		a.Logger.Debugln("Stderr:", out.Stderr)
+		if meshNodeID == "" {
+			time.Sleep(1 * time.Second)
+			continue
+		} else if strings.Contains(strings.ToLower(meshNodeID), "graphical version") || strings.Contains(strings.ToLower(meshNodeID), "zenity") {
+			time.Sleep(1 * time.Second)
+			continue
+		}
+		meshSuccess = true
+	}
+	return meshNodeID
+}
+
+func (a *Agent) getMeshNodeID() (string, error) {
+	return a.NixMeshNodeID(), nil
+}
 
 func (a *Agent) RecoverMesh() {}
 
