@@ -52,7 +52,7 @@ type Agent struct {
 	EXE           string
 	SystemDrive   string
 	MeshInstaller string
-	MeshSystemEXE string
+	MeshSystemBin string
 	MeshSVC       string
 	PyBin         string
 	Headers       map[string]string
@@ -114,15 +114,15 @@ func New(logger *logrus.Logger, version string) *Agent {
 		restyC.SetRootCertificate(ac.Cert)
 	}
 
-	var MeshSysExe string
+	var MeshSysBin string
 	if len(ac.CustomMeshDir) > 0 {
-		MeshSysExe = filepath.Join(ac.CustomMeshDir, "MeshAgent.exe")
+		MeshSysBin = filepath.Join(ac.CustomMeshDir, "MeshAgent.exe")
 	} else {
-		MeshSysExe = filepath.Join(os.Getenv("ProgramFiles"), "Mesh Agent", "MeshAgent.exe")
+		MeshSysBin = filepath.Join(os.Getenv("ProgramFiles"), "Mesh Agent", "MeshAgent.exe")
 	}
 
 	if runtime.GOOS == "linux" {
-		MeshSysExe = "/opt/tacticalmesh/meshagent"
+		MeshSysBin = "/opt/tacticalmesh/meshagent"
 	}
 
 	svcConf := &service.Config{
@@ -152,7 +152,7 @@ func New(logger *logrus.Logger, version string) *Agent {
 		EXE:           exe,
 		SystemDrive:   sd,
 		MeshInstaller: "meshagent.exe",
-		MeshSystemEXE: MeshSysExe,
+		MeshSystemBin: MeshSysBin,
 		MeshSVC:       meshSvcName,
 		PyBin:         pybin,
 		Headers:       headers,
