@@ -10,7 +10,7 @@
             "request": "launch",
             "mode": "debug",
             "env": {},
-            "args": ["-m", "svc", "-logto", "stdout"],
+            "args": ["-m", "svc", "-log", "DEBUG", "-logto", "stdout"],
             "buildFlags": "-tags=DEBUG",
             "program": "${workspaceRoot}"
         }

@@ -50,7 +50,7 @@ var (
 
 func (a *Agent) RunRPC() {
 	if rmm.DEBUG {
-		a.Logger.Infoln("DEBUG MODE")
+		a.Logger.Infoln("DEBUG BUILD STARTED")
 	}
 
 	a.Logger.Infoln("Agent service started")

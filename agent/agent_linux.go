@@ -132,6 +132,10 @@ func NewAgentConfig() *rmm.AgentConfig {
 	viper.SetConfigType("json")
 	viper.AddConfigPath("/etc/")
 	viper.AddConfigPath(".")
+	if strings.HasSuffix(os.Args[0], ".test") {
+		viper.AddConfigPath("../")
+	}
+
 	err := viper.ReadInConfig()
 
 	if err != nil {
