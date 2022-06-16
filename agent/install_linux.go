@@ -13,12 +13,8 @@ package agent
 
 import (
 	"log"
-
+	"github.com/amidaware/rmmagent/shared"
 	"github.com/spf13/viper"
-)
-
-const (
-	etcConfig = "/etc/tacticalagent"
 )
 
 func (a *Agent) checkExistingAndRemove(silent bool) {}
@@ -42,7 +38,13 @@ func createAgentConfig(baseurl, agentid, apiurl, token, agentpk, cert, proxy, me
 	viper.Set("proxy", proxy)
 	viper.Set("meshdir", meshdir)
 	viper.SetConfigPermissions(0660)
-	err := viper.SafeWriteConfigAs(etcConfig)
+	configLocation := "/etc/tacticalagent"
+	if shared.TEST {
+		configLocation = "tacticalagent"
+	}
+
+	err := viper.SafeWriteConfigAs(configLocation)
+
 	if err != nil {
 		log.Fatalln("createAgentConfig", err)
 	}

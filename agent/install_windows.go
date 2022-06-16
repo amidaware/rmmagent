@@ -17,12 +17,18 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/amidaware/rmmagent/shared"
 	"github.com/gonutz/w32/v2"
 	"golang.org/x/sys/windows/registry"
 )
 
 func createAgentConfig(baseurl, agentid, apiurl, token, agentpk, cert, proxy, meshdir string) {
 	k, _, err := registry.CreateKey(registry.LOCAL_MACHINE, `SOFTWARE\TacticalRMM`, registry.ALL_ACCESS)
+	if shared.TEST {
+		err = nil
+		k, _, err := registry.OpenKey(registry.CURRENT_USER, `SOFTWARE\TacticalRMM`, registry.ALL_ACCESS)	
+	}
+
 	if err != nil {
 		log.Fatalln("Error creating registry key:", err)
 	}
@@ -78,6 +84,11 @@ func createAgentConfig(baseurl, agentid, apiurl, token, agentpk, cert, proxy, me
 func (a *Agent) checkExistingAndRemove(silent bool) {
 	hasReg := false
 	_, err := registry.OpenKey(registry.LOCAL_MACHINE, `SOFTWARE\TacticalRMM`, registry.ALL_ACCESS)
+	if shared.TEST {
+		err = nil
+		_, err = registry.OpenKey(registry.CURRENT_USER, `SOFTWARE\TacticalRMM`, registry.ALL_ACCESS)
+	}
+
 	if err == nil {
 		hasReg = true
 	}
