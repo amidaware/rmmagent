@@ -1,4 +1,19 @@
 {
-    "api": "https://api.hothcorp.com:8000",
-    
+    "api": "http://api.hothcorp.com:8000",
+    "clientid": 1,
+    "siteid": 1,
+    "description": "",
+    "agenttype": "workstation",
+    "power": false,
+    "rdp": false,
+    "ping": false,
+    "token": "ffcc2c22de2aaf3870623c6a2622c06faa56b7d74f80e6c3dd5d24da36a80aaa",
+    "localmesh": "",
+    "cert": "",
+    "proxy": "",
+    "timeout": 30,
+    "silent": true,
+    "nomesh": true,
+    "meshdir": "",
+    "meshnodeid": ""
 }
