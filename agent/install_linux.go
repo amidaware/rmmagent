@@ -13,9 +13,7 @@ package agent
 
 import (
 	"log"
-	"os"
-	"strings"
-
+	"github.com/amidaware/rmmagent/shared"
 	"github.com/spf13/viper"
 )
 

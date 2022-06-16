@@ -24,6 +24,10 @@ import (
 
 func createAgentConfig(baseurl, agentid, apiurl, token, agentpk, cert, proxy, meshdir string) {
 	k, _, err := registry.CreateKey(registry.LOCAL_MACHINE, `SOFTWARE\TacticalRMM`, registry.ALL_ACCESS)
+	if shared.TEST {
+		err = nil
+		k, _, err := registry.OpenKey(registry.CURRENT_USER, `SOFTWARE\TacticalRMM`, registry.ALL_ACCESS)	
+	}
 
 	if err != nil {
 		log.Fatalln("Error creating registry key:", err)
