@@ -797,7 +797,7 @@ func (a *Agent) RecoverMesh() {
 }
 
 func (a *Agent) getMeshNodeID() (string, error) {
-	out, err := CMD(a.MeshSystemEXE, []string{"-nodeid"}, 10, false)
+	out, err := CMD(a.MeshSystemBin, []string{"-nodeid"}, 10, false)
 	if err != nil {
 		a.Logger.Debugln(err)
 		return "", err

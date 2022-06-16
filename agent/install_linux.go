@@ -41,7 +41,7 @@ func createAgentConfig(baseurl, agentid, apiurl, token, agentpk, cert, proxy, me
 	viper.Set("meshdir", meshdir)
 	viper.SetConfigPermissions(0660)
 	configLocation := "/etc/tacticalagent"
-	if strings.HasSuffix(os.Args[0], ".test") {
+	if shared.TEST {
 		configLocation = "tacticalagent"
 	}
 

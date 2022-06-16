@@ -23,6 +23,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/amidaware/rmmagent/shared"
 	"github.com/go-resty/resty/v2"
 	trmm "github.com/wh1te909/trmm-shared"
 )
@@ -251,10 +252,16 @@ func (a *Agent) Install(i *Installer) {
 		time.Sleep(1 * time.Second)
 		a.Logger.Infoln("Starting service...")
 		out := a.ControlService(winSvcName, "start")
+
+		if shared.TEST {
+			goto SKIPSTART;
+		}
+
 		if !out.Success {
 			a.installerMsg(out.ErrorMsg, "error", i.Silent)
 		}
 
+		SKIPSTART: a.Logger.Infoln("Skipping service start in test.")
 		a.Logger.Infoln("Adding windows defender exclusions")
 		a.addDefenderExlusions()
 
