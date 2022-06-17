@@ -1,9 +1,14 @@
 ### Tactical RMM Agent
 https://github.com/amidaware/tacticalrmm
 
-#### building the agent
+#### building the agent - linux
 ```
 env CGO_ENABLED=0 GOOS=<GOOS> GOARCH=<GOARCH> go build -ldflags "-s -w"
+```
+
+#### building the agent - windows
+```
+$env:CGO_ENABLED="0";$env:GOOS="windows";$env:GOARCH="amd64"; go build -ldflags "-s -w"
 ```
 
 ### tests
