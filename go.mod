@@ -59,6 +59,7 @@ require (
 	github.com/rickb777/plural v1.4.1 // indirect
 	github.com/rogpeppe/go-internal v1.8.1 // indirect
 	github.com/scjalliance/comshim v0.0.0-20190308082608-cf06d2532c4e // indirect
+	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
 	github.com/spf13/afero v1.8.2 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect

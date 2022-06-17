@@ -14,8 +14,13 @@ go test -vet=off
 
 Add to settings.json
 ```
-"go.testFlags": [
+"gopls": {
+    "build.buildFlags": [
+      "-tags=DEBUG"
+    ]
+  },
+  "go.testFlags": [
     "-vet=off"
-],
-"go.testTags": "TEST"
+  ],
+  "go.testTags": "TEST",
 ```

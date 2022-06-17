@@ -172,36 +172,6 @@ func IsValidIP(ip string) bool {
 	return net.ParseIP(ip) != nil
 }
 
-// StripAll strips all whitespace and newline chars
-func StripAll(s string) string {
-	s = strings.TrimSpace(s)
-	s = strings.Trim(s, "\n")
-	s = strings.Trim(s, "\r")
-	return s
-}
-
-// KillProc kills a process and its children
-func KillProc(pid int32) error {
-	p, err := process.NewProcess(pid)
-	if err != nil {
-		return err
-	}
-
-	children, err := p.Children()
-	if err == nil {
-		for _, child := range children {
-			if err := child.Kill(); err != nil {
-				continue
-			}
-		}
-	}
-
-	if err := p.Kill(); err != nil {
-		return err
-	}
-	return nil
-}
-
 // DjangoStringResp removes double quotes from django rest api resp
 func DjangoStringResp(resp string) string {
 	return strings.Trim(resp, `"`)
@@ -214,13 +184,6 @@ func TestTCP(addr string) error {
 	}
 	defer conn.Close()
 	return nil
-}
-
-// CleanString removes invalid utf-8 byte sequences
-func CleanString(s string) string {
-	r := strings.NewReplacer("\x00", "")
-	s = r.Replace(s)
-	return strings.ToValidUTF8(s, "")
 }
 
 // https://golangcode.com/unzip-files-in-go/
@@ -299,22 +262,6 @@ func randomCheckDelay() {
 	time.Sleep(time.Duration(randRange(300, 950)) * time.Millisecond)
 }
 
-func removeWinNewLines(s string) string {
-	return strings.ReplaceAll(s, "\r\n", "\n")
-}
 
-func createTmpFile() (*os.File, error) {
-	var f *os.File
-	f, err := os.CreateTemp("", "trmm")
-	if err != nil {
-		cwd, err := os.Getwd()
-		if err != nil {
-			return f, err
-		}
-		f, err = os.CreateTemp(cwd, "trmm")
-		if err != nil {
-			return f, err
-		}
-	}
-	return f, nil
-}
+
+

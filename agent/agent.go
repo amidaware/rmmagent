@@ -29,7 +29,6 @@ import (
 
 	rmm "github.com/amidaware/rmmagent/shared"
 	ps "github.com/elastic/go-sysinfo"
-	gocmd "github.com/go-cmd/cmd"
 	"github.com/go-resty/resty/v2"
 	"github.com/kardianos/service"
 	nats "github.com/nats-io/nats.go"
@@ -37,36 +36,6 @@ import (
 	"github.com/sirupsen/logrus"
 	trmm "github.com/wh1te909/trmm-shared"
 )
-
-// Agent struct
-type Agent struct {
-	Hostname      string
-	Arch          string
-	AgentID       string
-	BaseURL       string
-	ApiURL        string
-	Token         string
-	AgentPK       int
-	Cert          string
-	ProgramDir    string
-	EXE           string
-	SystemDrive   string
-	MeshInstaller string
-	MeshSystemBin string
-	MeshSVC       string
-	PyBin         string
-	Headers       map[string]string
-	Logger        *logrus.Logger
-	Version       string
-	Debug         bool
-	rClient       *resty.Client
-	Proxy         string
-	LogTo         string
-	LogFile       *os.File
-	Platform      string
-	GoArch        string
-	ServiceConfig *service.Config
-}
 
 const (
 	progFilesName = "TacticalAgent"
@@ -167,114 +136,6 @@ func New(logger *logrus.Logger, version string) *Agent {
 	}
 }
 
-type CmdStatus struct {
-	Status gocmd.Status
-	Stdout string
-	Stderr string
-}
-
-type CmdOptions struct {
-	Shell        string
-	Command      string
-	Args         []string
-	Timeout      time.Duration
-	IsScript     bool
-	IsExecutable bool
-	Detached     bool
-}
-
-func (a *Agent) NewCMDOpts() *CmdOptions {
-	return &CmdOptions{
-		Shell:   "/bin/bash",
-		Timeout: 30,
-	}
-}
-
-func (a *Agent) CmdV2(c *CmdOptions) CmdStatus {
-
-	ctx, cancel := context.WithTimeout(context.Background(), c.Timeout*time.Second)
-	defer cancel()
-
-	// Disable output buffering, enable streaming
-	cmdOptions := gocmd.Options{
-		Buffered:  false,
-		Streaming: true,
-	}
-
-	// have a child process that is in a different process group so that
-	// parent terminating doesn't kill child
-	if c.Detached {
-		cmdOptions.BeforeExec = []func(cmd *exec.Cmd){
-			func(cmd *exec.Cmd) {
-				cmd.SysProcAttr = SetDetached()
-			},
-		}
-	}
-
-	var envCmd *gocmd.Cmd
-	if c.IsScript {
-		envCmd = gocmd.NewCmdOptions(cmdOptions, c.Shell, c.Args...) // call script directly
-	} else if c.IsExecutable {
-		envCmd = gocmd.NewCmdOptions(cmdOptions, c.Shell, c.Command) // c.Shell: bin + c.Command: args as one string
-	} else {
-		envCmd = gocmd.NewCmdOptions(cmdOptions, c.Shell, "-c", c.Command) // /bin/bash -c 'ls -l /var/log/...'
-	}
-
-	var stdoutBuf bytes.Buffer
-	var stderrBuf bytes.Buffer
-	// Print STDOUT and STDERR lines streaming from Cmd
-	doneChan := make(chan struct{})
-	go func() {
-		defer close(doneChan)
-		// Done when both channels have been closed
-		// https://dave.cheney.net/2013/04/30/curious-channels
-		for envCmd.Stdout != nil || envCmd.Stderr != nil {
-			select {
-			case line, open := <-envCmd.Stdout:
-				if !open {
-					envCmd.Stdout = nil
-					continue
-				}
-				fmt.Fprintln(&stdoutBuf, line)
-				a.Logger.Debugln(line)
-
-			case line, open := <-envCmd.Stderr:
-				if !open {
-					envCmd.Stderr = nil
-					continue
-				}
-				fmt.Fprintln(&stderrBuf, line)
-				a.Logger.Debugln(line)
-			}
-		}
-	}()
-
-	// Run and wait for Cmd to return, discard Status
-	envCmd.Start()
-
-	go func() {
-		select {
-		case <-doneChan:
-			return
-		case <-ctx.Done():
-			a.Logger.Debugf("Command timed out after %d seconds\n", c.Timeout)
-			pid := envCmd.Status().PID
-			a.Logger.Debugln("Killing process with PID", pid)
-			KillProc(int32(pid))
-		}
-	}()
-
-	// Wait for goroutine to print everything
-	<-doneChan
-	ret := CmdStatus{
-		Status: envCmd.Status(),
-		Stdout: CleanString(stdoutBuf.String()),
-		Stderr: CleanString(stderrBuf.String()),
-	}
-	a.Logger.Debugf("%+v\n", ret)
-	return ret
-}
-
 func (a *Agent) GetCPULoadAvg() int {
 	fallback := false
 	pyCode := `
@@ -326,7 +187,7 @@ func (a *Agent) ForceKillMesh() {
 
 	for _, pid := range pids {
 		a.Logger.Debugln("Killing mesh process with pid %d", pid)
-		if err := KillProc(int32(pid)); err != nil {
+		if err := utils.KillProc(int32(pid)); err != nil {
 			a.Logger.Debugln(err)
 		}
 	}
@@ -467,4 +328,8 @@ func (a *Agent) CreateTRMMTempDir() {
 			a.Logger.Errorln(err)
 		}
 	}
+}
+
+func (a *Agent) GetDisks() []trmm.Disk {
+	return disk.GetDisks()
 }

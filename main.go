@@ -18,7 +18,6 @@ import (
 	"os/user"
 	"path/filepath"
 	"runtime"
-
 	"github.com/amidaware/rmmagent/agent"
 	"github.com/kardianos/service"
 	"github.com/sirupsen/logrus"
