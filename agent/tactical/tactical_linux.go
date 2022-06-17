@@ -172,3 +172,13 @@ func RecoverMesh(agentID string) {
 func UninstallCleanup() {}
 
 func RunMigrations() {}
+
+func GetPython(force bool) {}
+
+func ChecksRunning() bool { return false }
+
+func RunTask(id int) error { return nil }
+
+func installMesh(meshbin, exe, proxy string) (string, error) {
+	return "not implemented", nil
+}

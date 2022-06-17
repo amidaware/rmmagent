@@ -1,3 +1,0 @@
-package software
-
-func SendSoftware() {}

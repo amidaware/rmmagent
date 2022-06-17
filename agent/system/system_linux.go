@@ -15,7 +15,8 @@ import (
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/process"
 	psHost "github.com/shirou/gopsutil/v3/host"
-	"github.com/wh1te909/trmm-shared"
+	rmm "github.com/amidaware/rmmagent/shared"
+	trmm "github.com/wh1te909/trmm-shared"
 )
 
 func NewCMDOpts() *CmdOptions {
@@ -268,3 +269,21 @@ func GetWMIInfo() map[string]interface{} {
 func PlatVer() (string, error) { return "", nil }
 
 func GetServiceStatus(name string) (string, error) { return "", nil }
+
+func CreateSchedTask(st SchedTask) (bool, error) { return false, nil }
+
+func DeleteSchedTask(name string) error { return nil }
+
+func ListSchedTasks() []string { return []string{} }
+
+func GetEventLog(logName string, searchLastDays int) []rmm.EventLogMsg {
+	return []rmm.EventLogMsg{}
+}
+
+func CMDShell(shell string, cmdArgs []string, command string, timeout int, detached bool) (output [2]string, e error) {
+	return [2]string{"", ""}, nil
+}
+
+func CMD(exe string, args []string, timeout int, detached bool) (output [2]string, e error) {
+	return [2]string{"", ""}, nil
+}

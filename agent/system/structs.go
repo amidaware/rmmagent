@@ -11,3 +11,5 @@ type CmdOptions struct {
 	IsExecutable bool
 	Detached     bool
 }
+
+type SchedTask struct{ Name string }
