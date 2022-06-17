@@ -23,7 +23,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/amidaware/rmmagent/shared"
 	"github.com/go-resty/resty/v2"
 	trmm "github.com/wh1te909/trmm-shared"
 )
@@ -147,11 +146,11 @@ func (a *Agent) Install(i *Installer) {
 		arch = "32"
 	}
 
-	var installerMeshSystemBin string
+	var installerMeshSystemEXE string
 	if len(i.MeshDir) > 0 {
-		installerMeshSystemBin = filepath.Join(i.MeshDir, "MeshAgent.exe")
+		installerMeshSystemEXE = filepath.Join(i.MeshDir, "MeshAgent.exe")
 	} else {
-		installerMeshSystemBin = a.MeshSystemBin
+		installerMeshSystemEXE = a.MeshSystemEXE
 	}
 
 	var meshNodeID string
@@ -179,7 +178,7 @@ func (a *Agent) Install(i *Installer) {
 		a.Logger.Debugln("Mesh agent:", mesh)
 		time.Sleep(1 * time.Second)
 
-		meshNodeID, err = a.installMesh(mesh, installerMeshSystemBin, i.Proxy)
+		meshNodeID, err = a.installMesh(mesh, installerMeshSystemEXE, i.Proxy)
 		if err != nil {
 			a.installerMsg(fmt.Sprintf("Failed to install mesh agent: %s", err.Error()), "error", i.Silent)
 		}
@@ -252,16 +251,10 @@ func (a *Agent) Install(i *Installer) {
 		time.Sleep(1 * time.Second)
 		a.Logger.Infoln("Starting service...")
 		out := a.ControlService(winSvcName, "start")
-
-		if shared.TEST {
-			goto SKIPSTART;
-		}
-
 		if !out.Success {
 			a.installerMsg(out.ErrorMsg, "error", i.Silent)
 		}
 
-		SKIPSTART: a.Logger.Infoln("Skipping service start in test.")
 		a.Logger.Infoln("Adding windows defender exclusions")
 		a.addDefenderExlusions()
 

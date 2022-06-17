@@ -48,11 +48,6 @@ var (
 
 func NewAgentConfig() *rmm.AgentConfig {
 	k, err := registry.OpenKey(registry.LOCAL_MACHINE, `SOFTWARE\TacticalRMM`, registry.ALL_ACCESS)
-	if shared.TEST {
-		err = nil
-		k, _, err := registry.OpenKey(registry.CURRENT_USER, `SOFTWARE\TacticalRMM`, registry.ALL_ACCESS)
-	}
-
 	if err != nil {
 		return &rmm.AgentConfig{}
 	}
@@ -802,7 +797,7 @@ func (a *Agent) RecoverMesh() {
 }
 
 func (a *Agent) getMeshNodeID() (string, error) {
-	out, err := CMD(a.MeshSystemBin, []string{"-nodeid"}, 10, false)
+	out, err := CMD(a.MeshSystemEXE, []string{"-nodeid"}, 10, false)
 	if err != nil {
 		a.Logger.Debugln(err)
 		return "", err
@@ -840,11 +835,6 @@ func (a *Agent) InstallService() error {
 
 	// skip on first call of inno setup if this is a new install
 	_, err := registry.OpenKey(registry.LOCAL_MACHINE, `SOFTWARE\TacticalRMM`, registry.ALL_ACCESS)
-	if shared.TEST {
-		err = nil
-		k, _, err := registry.OpenKey(registry.CURRENT_USER, `SOFTWARE\TacticalRMM`, registry.ALL_ACCESS)
-	}
-
 	if err != nil {
 		return nil
 	}

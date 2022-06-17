@@ -132,7 +132,6 @@ func NewAgentConfig() *rmm.AgentConfig {
 	viper.SetConfigType("json")
 	viper.AddConfigPath("/etc/")
 	viper.AddConfigPath(".")
-
 	err := viper.ReadInConfig()
 
 	if err != nil {
@@ -279,14 +278,14 @@ func (a *Agent) NixMeshNodeID() string {
 	meshSuccess := false
 	a.Logger.Debugln("Getting mesh node id")
 
-	if !trmm.FileExists(a.MeshSystemBin) {
-		a.Logger.Debugln(a.MeshSystemBin, "does not exist. Skipping.")
+	if !trmm.FileExists(a.MeshSystemEXE) {
+		a.Logger.Debugln(a.MeshSystemEXE, "does not exist. Skipping.")
 		return ""
 	}
 
 	opts := a.NewCMDOpts()
 	opts.IsExecutable = true
-	opts.Shell = a.MeshSystemBin
+	opts.Shell = a.MeshSystemEXE
 	opts.Command = "-nodeid"
 
 	for !meshSuccess {
