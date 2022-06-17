@@ -48,10 +48,6 @@ var (
 
 func NewAgentConfig() *rmm.AgentConfig {
 	k, err := registry.OpenKey(registry.LOCAL_MACHINE, `SOFTWARE\TacticalRMM`, registry.ALL_ACCESS)
-	if shared.TEST {
-		err = nil
-		k, _, err := registry.OpenKey(registry.CURRENT_USER, `SOFTWARE\TacticalRMM`, registry.ALL_ACCESS)
-	}
 
 	if err != nil {
 		return &rmm.AgentConfig{}
@@ -840,11 +836,6 @@ func (a *Agent) InstallService() error {
 
 	// skip on first call of inno setup if this is a new install
 	_, err := registry.OpenKey(registry.LOCAL_MACHINE, `SOFTWARE\TacticalRMM`, registry.ALL_ACCESS)
-	if shared.TEST {
-		err = nil
-		k, _, err := registry.OpenKey(registry.CURRENT_USER, `SOFTWARE\TacticalRMM`, registry.ALL_ACCESS)
-	}
-
 	if err != nil {
 		return nil
 	}

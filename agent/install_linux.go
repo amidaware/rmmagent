@@ -13,7 +13,6 @@ package agent
 
 import (
 	"log"
-	"github.com/amidaware/rmmagent/shared"
 	"github.com/spf13/viper"
 )
 
@@ -39,9 +38,6 @@ func createAgentConfig(baseurl, agentid, apiurl, token, agentpk, cert, proxy, me
 	viper.Set("meshdir", meshdir)
 	viper.SetConfigPermissions(0660)
 	configLocation := "/etc/tacticalagent"
-	if shared.TEST {
-		configLocation = "tacticalagent"
-	}
 
 	err := viper.SafeWriteConfigAs(configLocation)
 
