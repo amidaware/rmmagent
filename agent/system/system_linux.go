@@ -19,13 +19,6 @@ import (
 	trmm "github.com/wh1te909/trmm-shared"
 )
 
-func NewCMDOpts() *CmdOptions {
-	return &CmdOptions{
-		Shell:   "/bin/bash",
-		Timeout: 30,
-	}
-}
-
 func SetDetached() *syscall.SysProcAttr {
 	return &syscall.SysProcAttr{Setpgid: true}
 }

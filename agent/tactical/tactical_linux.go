@@ -182,3 +182,5 @@ func RunTask(id int) error { return nil }
 func installMesh(meshbin, exe, proxy string) (string, error) {
 	return "not implemented", nil
 }
+
+func SendSoftware() {}

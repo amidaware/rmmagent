@@ -20,26 +20,7 @@ import (
 	"golang.org/x/sys/windows/svc/mgr"
 )
 
-func GetServiceStatus(name string) (string, error) {
-	conn, err := mgr.Connect()
-	if err != nil {
-		return "n/a", err
-	}
-	defer conn.Disconnect()
 
-	srv, err := conn.OpenService(name)
-	if err != nil {
-		return "n/a", err
-	}
-	defer srv.Close()
-
-	q, err := srv.Query()
-	if err != nil {
-		return "n/a", err
-	}
-
-	return serviceStatusText(uint32(q.State)), nil
-}
 
 func (a *Agent) ControlService(name, action string) rmm.WinSvcResp {
 	conn, err := mgr.Connect()
@@ -266,27 +247,7 @@ func serviceExists(name string) bool {
 	return true
 }
 
-// https://docs.microsoft.com/en-us/dotnet/api/system.serviceprocess.servicecontrollerstatus?view=dotnet-plat-ext-3.1
-func serviceStatusText(num uint32) string {
-	switch num {
-	case 1:
-		return "stopped"
-	case 2:
-		return "start_pending"
-	case 3:
-		return "stop_pending"
-	case 4:
-		return "running"
-	case 5:
-		return "continue_pending"
-	case 6:
-		return "pause_pending"
-	case 7:
-		return "paused"
-	default:
-		return "unknown"
-	}
-}
+
 
 // https://docs.microsoft.com/en-us/dotnet/api/system.serviceprocess.servicestartmode?view=dotnet-plat-ext-3.1
 func serviceStartType(num uint32) string {
