@@ -168,3 +168,7 @@ func RecoverMesh(agentID string) {
 	system.CmdV2(opts)
 	SyncMeshNodeID()
 }
+
+func UninstallCleanup() {}
+
+func RunMigrations() {}
