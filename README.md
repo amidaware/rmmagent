@@ -7,9 +7,9 @@ env CGO_ENABLED=0 GOOS=<GOOS> GOARCH=<GOARCH> go build -ldflags "-s -w"
 ```
 
 ### tests
-Navigate to agent directory
+Navigate to repo directory
 ```
-go test -vet=off
+go test ./... -vet=off
 ```
 
 Add to settings.json
