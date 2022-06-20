@@ -5,20 +5,18 @@ import (
 
 	"github.com/amidaware/rmmagent/agent/utils"
 	wapi "github.com/iamacarpet/go-win64api"
-	trmm "github.com/wh1te909/trmm-shared"
 )
 
-func GetInstalledSoftware() []trmm.WinSoftwareList {
-	ret := make([]trmm.WinSoftwareList, 0)
-
+func GetInstalledSoftware() ([]SoftwareList, error) {
+	ret := make([]SoftwareList, 0)
 	sw, err := wapi.InstalledSoftwareList()
 	if err != nil {
-		return ret
+		return ret, err
 	}
 
 	for _, s := range sw {
 		t := s.InstallDate
-		ret = append(ret, trmm.WinSoftwareList{
+		ret = append(ret, SoftwareList{
 			Name:        utils.CleanString(s.Name()),
 			Version:     utils.CleanString(s.Version()),
 			Publisher:   utils.CleanString(s.Publisher),
@@ -29,5 +27,6 @@ func GetInstalledSoftware() []trmm.WinSoftwareList {
 			Uninstall:   utils.CleanString(s.UninstallString),
 		})
 	}
-	return ret
+
+	return ret, nil
 }

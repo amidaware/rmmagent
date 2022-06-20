@@ -1,6 +1,9 @@
 package patching
 
-import "golang.org/x/sys/windows/registry"
+import (
+	"github.com/amidaware/rmmagent/agent/patching/wua"
+	"golang.org/x/sys/windows/registry"
+)
 
 // PatchMgmnt enables/disables automatic update
 // 0 - Enable Automatic Updates (Default)
@@ -25,4 +28,34 @@ func PatchMgmnt(enable bool) error {
 	}
 
 	return nil
+}
+
+type PackageList []Package
+
+func GetUpdates() (PackageList, error) {
+	wuaupdates, err := wua.WUAUpdates("IsInstalled=1 or IsInstalled=0 and Type='Software' and IsHidden=0")
+	packages := []Package{}
+	for _, p := range wuaupdates {
+		packages = append(packages, Package(p))
+	}
+
+	return packages, err
+	// if err != nil {
+	// 	a.Logger.Errorln(err)
+	// 	return
+	// }
+
+	// for _, update := range updates {
+	// 	a.Logger.Debugln("GUID:", update.UpdateID)
+	// 	a.Logger.Debugln("Downloaded:", update.Downloaded)
+	// 	a.Logger.Debugln("Installed:", update.Installed)
+	// 	a.Logger.Debugln("KB:", update.KBArticleIDs)
+	// 	a.Logger.Debugln("--------------------------------")
+	// }
+
+	// payload := rmm.WinUpdateResult{AgentID: a.AgentID, Updates: updates}
+	// _, err = a.rClient.R().SetBody(payload).Post("/api/v3/winupdates/")
+	// if err != nil {
+	// 	a.Logger.Debugln(err)
+	// }
 }

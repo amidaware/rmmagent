@@ -6,48 +6,40 @@ import (
 	"unsafe"
 
 	"github.com/amidaware/rmmagent/agent/syscall"
-	rmm "github.com/amidaware/rmmagent/shared"
 	"github.com/gonutz/w32/v2"
 	"golang.org/x/sys/windows"
 )
 
-func GetEventLog(logName string, searchLastDays int) []rmm.EventLogMsg {
+func GetEventLog(logName string, searchLastDays int) ([]EventLogMsg, error) {
 	var (
 		oldestLog uint32
 		nextSize  uint32
 		readBytes uint32
 	)
+
 	buf := []byte{0}
 	size := uint32(1)
-
-	ret := make([]rmm.EventLogMsg, 0)
+	ret := make([]EventLogMsg, 0)
 	startTime := time.Now().Add(time.Duration(-(time.Duration(searchLastDays)) * (24 * time.Hour)))
-
 	h := w32.OpenEventLog("", logName)
 	defer w32.CloseEventLog(h)
-
 	numRecords, _ := w32.GetNumberOfEventLogRecords(h)
-	syscall.GetOldestEventLogRecord(h, &oldestLog)
-
+	err := syscall.GetOldestEventLogRecord(h, &oldestLog)
 	startNum := numRecords + oldestLog - 1
 	uid := 0
 	for i := startNum; i >= oldestLog; i-- {
 		flags := syscall.EVENTLOG_BACKWARDS_READ | syscall.EVENTLOG_SEEK_READ
-
 		err := syscall.ReadEventLog(h, flags, i, &buf[0], size, &readBytes, &nextSize)
 		if err != nil {
 			if err != windows.ERROR_INSUFFICIENT_BUFFER {
-				//a.Logger.Debugln(err)
 				break
 			}
 			buf = make([]byte, nextSize)
 			size = nextSize
 			err = syscall.ReadEventLog(h, flags, i, &buf[0], size, &readBytes, &nextSize)
 			if err != nil {
-				//a.Logger.Debugln(err)
 				break
 			}
-
 		}
 
 		r := *(*syscall.EVENTLOGRECORD)(unsafe.Pointer(&buf[0]))
@@ -75,10 +67,11 @@ func GetEventLog(logName string, searchLastDays int) []rmm.EventLogMsg {
 		if r.NumStrings > 0 {
 			argsptr = uintptr(unsafe.Pointer(&args[0]))
 		}
+
 		message, _ := syscall.GetResourceMessage(logName, sourceName, r.EventID, argsptr)
 
 		uid++
-		eventLogMsg := rmm.EventLogMsg{
+		eventLogMsg := EventLogMsg{
 			Source:    sourceName,
 			EventType: eventType,
 			EventID:   eventID,
@@ -86,9 +79,11 @@ func GetEventLog(logName string, searchLastDays int) []rmm.EventLogMsg {
 			Time:      timeWritten.String(),
 			UID:       uid,
 		}
+
 		ret = append(ret, eventLogMsg)
 	}
-	return ret
+
+	return ret, err
 }
 
 // https://github.com/mackerelio/go-check-plugins/blob/ad7910fdc45ccb892b5e5fda65ba0956c2b2885d/check-windows-eventlog/lib/check-windows-eventlog.go#L219
@@ -102,6 +97,7 @@ func bytesToString(b []byte) (string, uint32) {
 			break
 		}
 	}
+
 	return string(utf16.Decode(s)), uint32(i * 2)
 }
 

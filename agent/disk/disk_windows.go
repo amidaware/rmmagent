@@ -5,7 +5,6 @@ import (
 
 	"github.com/amidaware/rmmagent/agent/utils"
 	"github.com/shirou/gopsutil/disk"
-	trmm "github.com/wh1te909/trmm-shared"
 	"golang.org/x/sys/windows"
 )
 
@@ -14,12 +13,11 @@ var (
 )
 
 // GetDisks returns a list of fixed disks
-func GetDisks() []trmm.Disk {
-	ret := make([]trmm.Disk, 0)
+func GetDisks() ([]Disk, error) {
+	ret := make([]Disk, 0)
 	partitions, err := disk.Partitions(false)
 	if err != nil {
-		//a.Logger.Debugln(err)
-		return ret
+		return ret, err
 	}
 
 	for _, p := range partitions {
@@ -36,7 +34,7 @@ func GetDisks() []trmm.Disk {
 			continue
 		}
 
-		d := trmm.Disk{
+		d := Disk{
 			Device:  p.Device,
 			Fstype:  p.Fstype,
 			Total:   utils.ByteCountSI(usage.Total),
@@ -44,7 +42,9 @@ func GetDisks() []trmm.Disk {
 			Free:    utils.ByteCountSI(usage.Free),
 			Percent: int(usage.UsedPercent),
 		}
+
 		ret = append(ret, d)
 	}
-	return ret
+
+	return ret, err
 }

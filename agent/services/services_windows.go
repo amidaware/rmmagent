@@ -5,7 +5,6 @@ import (
 
 	"github.com/amidaware/rmmagent/agent/utils"
 	"github.com/gonutz/w32/v2"
-	trmm "github.com/wh1te909/trmm-shared"
 	"golang.org/x/sys/windows/svc/mgr"
 )
 
@@ -51,14 +50,14 @@ func GetServiceStatus(name string) (string, error) {
 	if err != nil {
 		return "n/a", err
 	}
-	defer conn.Disconnect()
 
+	defer conn.Disconnect()
 	srv, err := conn.OpenService(name)
 	if err != nil {
 		return "n/a", err
 	}
-	defer srv.Close()
 
+	defer srv.Close()
 	q, err := srv.Query()
 	if err != nil {
 		return "n/a", err
@@ -90,28 +89,28 @@ func serviceStatusText(num uint32) string {
 }
 
 // GetServices returns a list of windows services
-func GetServices() []trmm.WindowsService {
-	ret := make([]trmm.WindowsService, 0)
+func GetServices() ([]Service, []error, error) {
+	ret := make([]Service, 0)
 
 	conn, err := mgr.Connect()
 	if err != nil {
-		//a.Logger.Debugln(err)
-		return ret
+		return ret, nil, err
 	}
+
 	defer conn.Disconnect()
-
 	svcs, err := conn.ListServices()
-
 	if err != nil {
-		//a.Logger.Debugln(err)
-		return ret
+		return ret, nil, err
 	}
+
+	errors := []error{}
 
 	for _, s := range svcs {
 		srv, err := conn.OpenService(s)
 		if err != nil {
 			if err.Error() != "Access is denied." {
 				//a.Logger.Debugln("Open Service", s, err)
+				errors = append(errors, err)
 			}
 
 			continue
@@ -120,17 +119,17 @@ func GetServices() []trmm.WindowsService {
 		defer srv.Close()
 		q, err := srv.Query()
 		if err != nil {
-			//a.Logger.Debugln(err)
+			errors = append(errors, err)
 			continue
 		}
 
 		conf, err := srv.Config()
 		if err != nil {
-			//a.Logger.Debugln(err)
+			errors = append(errors, err)
 			continue
 		}
 
-		ret = append(ret, trmm.WindowsService{
+		ret = append(ret, Service{
 			Name:             s,
 			Status:           serviceStatusText(uint32(q.State)),
 			DisplayName:      utils.CleanString(conf.DisplayName),
@@ -142,7 +141,8 @@ func GetServices() []trmm.WindowsService {
 			DelayedAutoStart: conf.DelayedAutoStart,
 		})
 	}
-	return ret
+
+	return ret, errors, nil
 }
 
 // https://docs.microsoft.com/en-us/dotnet/api/system.serviceprocess.servicestartmode?view=dotnet-plat-ext-3.1
