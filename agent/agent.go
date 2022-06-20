@@ -141,7 +141,6 @@ func New(logger *logrus.Logger, version string) *Agent {
 
 	return &Agent{
 		Hostname:      info.Hostname,
-		Arch:          info.Architecture,
 		BaseURL:       ac.BaseURL,
 		AgentID:       ac.AgentID,
 		ApiURL:        ac.APIURL,
