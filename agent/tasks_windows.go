@@ -311,7 +311,26 @@ func DeleteSchedTask(name string) error {
 	return nil
 }
 
+// CleanupSchedTasks removes all tacticalrmm sched tasks during uninstall
+func CleanupSchedTasks() {
+	conn, err := taskmaster.Connect()
+	if err != nil {
+		return
+	}
+	defer conn.Disconnect()
 
+	tasks, err := conn.GetRegisteredTasks()
+	if err != nil {
+		return
+	}
+
+	for _, task := range tasks {
+		if strings.HasPrefix(task.Name, "TacticalRMM_") {
+			conn.DeleteTask(fmt.Sprintf("\\%s", task.Name))
+		}
+	}
+	tasks.Release()
+}
 
 func ListSchedTasks() []string {
 	ret := make([]string, 0)

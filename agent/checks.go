@@ -159,7 +159,6 @@ func (a *Agent) RunChecks(force bool) error {
 
 type ScriptCheckResult struct {
 	ID      int     `json:"id"`
-	AgentID string  `json:"agent_id"`
 	Stdout  string  `json:"stdout"`
 	Stderr  string  `json:"stderr"`
 	Retcode int     `json:"retcode"`
@@ -173,7 +172,6 @@ func (a *Agent) ScriptCheck(data rmm.Check, r *resty.Client) {
 
 	payload := ScriptCheckResult{
 		ID:      data.CheckPK,
-		AgentID: a.AgentID,
 		Stdout:  stdout,
 		Stderr:  stderr,
 		Retcode: retcode,
@@ -195,7 +193,6 @@ func (a *Agent) SendDiskCheckResult(payload DiskCheckResult, r *resty.Client) {
 
 type DiskCheckResult struct {
 	ID          int     `json:"id"`
-	AgentID     string  `json:"agent_id"`
 	MoreInfo    string  `json:"more_info"`
 	PercentUsed float64 `json:"percent_used"`
 	Exists      bool    `json:"exists"`
@@ -204,7 +201,6 @@ type DiskCheckResult struct {
 // DiskCheck checks disk usage
 func (a *Agent) DiskCheck(data rmm.Check) (payload DiskCheckResult) {
 	payload.ID = data.CheckPK
-	payload.AgentID = a.AgentID
 
 	usage, err := disk.Usage(data.Disk)
 	if err != nil {
@@ -221,14 +217,13 @@ func (a *Agent) DiskCheck(data rmm.Check) (payload DiskCheckResult) {
 }
 
 type CPUMemResult struct {
-	ID      int    `json:"id"`
-	AgentID string `json:"agent_id"`
-	Percent int    `json:"percent"`
+	ID      int `json:"id"`
+	Percent int `json:"percent"`
 }
 
 // CPULoadCheck checks avg cpu load
 func (a *Agent) CPULoadCheck(data rmm.Check, r *resty.Client) {
-	payload := CPUMemResult{ID: data.CheckPK, AgentID: a.AgentID, Percent: a.GetCPULoadAvg()}
+	payload := CPUMemResult{ID: data.CheckPK, Percent: a.GetCPULoadAvg()}
 	_, err := r.R().SetBody(payload).Patch("/api/v3/checkrunner/")
 	if err != nil {
 		a.Logger.Debugln(err)
@@ -241,7 +236,7 @@ func (a *Agent) MemCheck(data rmm.Check, r *resty.Client) {
 	mem, _ := host.Memory()
 	percent := (float64(mem.Used) / float64(mem.Total)) * 100
 
-	payload := CPUMemResult{ID: data.CheckPK, AgentID: a.AgentID, Percent: int(math.Round(percent))}
+	payload := CPUMemResult{ID: data.CheckPK, Percent: int(math.Round(percent))}
 	_, err := r.R().SetBody(payload).Patch("/api/v3/checkrunner/")
 	if err != nil {
 		a.Logger.Debugln(err)
@@ -249,9 +244,8 @@ func (a *Agent) MemCheck(data rmm.Check, r *resty.Client) {
 }
 
 type EventLogCheckResult struct {
-	ID      int               `json:"id"`
-	AgentID string            `json:"agent_id"`
-	Log     []rmm.EventLogMsg `json:"log"`
+	ID  int               `json:"id"`
+	Log []rmm.EventLogMsg `json:"log"`
 }
 
 func (a *Agent) EventLogCheck(data rmm.Check, r *resty.Client) {
@@ -305,7 +299,7 @@ func (a *Agent) EventLogCheck(data rmm.Check, r *resty.Client) {
 		}
 	}
 
-	payload := EventLogCheckResult{ID: data.CheckPK, AgentID: a.AgentID, Log: log}
+	payload := EventLogCheckResult{ID: data.CheckPK, Log: log}
 	_, err := r.R().SetBody(payload).Patch("/api/v3/checkrunner/")
 	if err != nil {
 		a.Logger.Debugln(err)
@@ -321,7 +315,6 @@ func (a *Agent) SendPingCheckResult(payload rmm.PingCheckResponse, r *resty.Clie
 
 func (a *Agent) PingCheck(data rmm.Check) (payload rmm.PingCheckResponse) {
 	payload.ID = data.CheckPK
-	payload.AgentID = a.AgentID
 
 	out, err := DoPing(data.IP)
 	if err != nil {
@@ -338,7 +331,6 @@ func (a *Agent) PingCheck(data rmm.Check) (payload rmm.PingCheckResponse) {
 
 type WinSvcCheckResult struct {
 	ID       int    `json:"id"`
-	AgentID  string `json:"agent_id"`
 	MoreInfo string `json:"more_info"`
 	Status   string `json:"status"`
 }
@@ -352,7 +344,6 @@ func (a *Agent) SendWinSvcCheckResult(payload WinSvcCheckResult, r *resty.Client
 
 func (a *Agent) WinSvcCheck(data rmm.Check) (payload WinSvcCheckResult) {
 	payload.ID = data.CheckPK
-	payload.AgentID = a.AgentID
 
 	status, err := GetServiceStatus(data.ServiceName)
 	if err != nil {

@@ -16,7 +16,10 @@ import (
 	"github.com/amidaware/rmmagent/agent/services"
 	"github.com/amidaware/rmmagent/agent/software"
 	"github.com/amidaware/rmmagent/agent/system"
+	"github.com/amidaware/rmmagent/agent/tactical/rpc"
+	"github.com/amidaware/rmmagent/agent/tasks"
 	"github.com/amidaware/rmmagent/agent/utils"
+	rmm "github.com/amidaware/rmmagent/shared"
 	"github.com/go-resty/resty/v2"
 	"github.com/kardianos/service"
 	trmm "github.com/wh1te909/trmm-shared"
@@ -109,7 +112,7 @@ func UninstallCleanup() {
 	registry.DeleteKey(registry.LOCAL_MACHINE, `SOFTWARE\TacticalRMM`)
 	patching.PatchMgmnt(false)
 	CleanupAgentUpdates()
-	system.CleanupSchedTasks()
+	tasks.CleanupSchedTasks()
 }
 
 func AgentUpdate(url, inno, version string) {
@@ -278,7 +281,7 @@ func installMesh(meshbin, exe, proxy string) (string, error) {
 }
 
 func Start(_ service.Service) error {
-	go rpc.RunRPC()
+	go rpc.RunRPC(NewAgentConfig())
 	return nil
 }
 

@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/amidaware/rmmagent/agent/utils"
-	"github.com/amidaware/taskmaster"
 	ps "github.com/elastic/go-sysinfo"
 	"github.com/go-ole/go-ole"
 	"github.com/go-ole/go-ole/oleutil"
@@ -431,28 +430,6 @@ func SystemRebootRequired() (bool, error) {
 	}
 
 	return false, nil
-}
-
-// CleanupSchedTasks removes all tacticalrmm sched tasks during uninstall
-func CleanupSchedTasks() {
-	conn, err := taskmaster.Connect()
-	if err != nil {
-		return
-	}
-	defer conn.Disconnect()
-
-	tasks, err := conn.GetRegisteredTasks()
-	if err != nil {
-		return
-	}
-
-	for _, task := range tasks {
-		if strings.HasPrefix(task.Name, "TacticalRMM_") {
-			conn.DeleteTask(fmt.Sprintf("\\%s", task.Name))
-		}
-	}
-
-	tasks.Release()
 }
 
 func KillHungUpdates() {

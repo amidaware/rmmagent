@@ -9,21 +9,25 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/amidaware/rmmagent/agent/events"
+	"github.com/amidaware/rmmagent/agent/patching"
+	"github.com/amidaware/rmmagent/agent/tactical/service"
+	"github.com/amidaware/rmmagent/agent/tasks"
 	rmm "github.com/amidaware/rmmagent/shared"
 	nats "github.com/nats-io/nats.go"
 	"github.com/ugorji/go/codec"
 )
 
-func RunRPC(version string) {
+func RunRPC(a *rmm.AgentConfig) {
 	//a.Logger.Infoln("Agent service started")
 	go service.RunAsService()
 	var wg sync.WaitGroup
 	wg.Add(1)
-	opts := a.setupNatsOptions()
-	server := fmt.Sprintf("tls://%s:4222", a.ApiURL)
+	opts := service.SetupNatsOptions()
+	server := fmt.Sprintf("tls://%s:4222", a.APIURL)
 	nc, err := nats.Connect(server, opts...)
 	if err != nil {
-		a.Logger.Fatalln("RunRPC() nats.Connect()", err)
+		//a.Logger.Fatalln("RunRPC() nats.Connect()", err)
 	}
 
 	nc.Subscribe(a.AgentID, func(msg *nats.Msg) {
@@ -33,7 +37,7 @@ func RunRPC(version string) {
 
 		dec := codec.NewDecoderBytes(msg.Data, &mh)
 		if err := dec.Decode(&payload); err != nil {
-			a.Logger.Errorln(err)
+			//a.Logger.Errorln(err)
 			return
 		}
 
@@ -42,7 +46,7 @@ func RunRPC(version string) {
 			go func() {
 				var resp []byte
 				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
-				a.Logger.Debugln("pong")
+				//a.Logger.Debugln("pong")
 				ret.Encode("pong")
 				msg.Respond(resp)
 			}()
@@ -51,9 +55,9 @@ func RunRPC(version string) {
 			go func(p *NatsMsg) {
 				var resp []byte
 				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
-				err := a.PatchMgmnt(p.PatchMgmt)
+				err := patching.PatchMgmnt(p.PatchMgmt)
 				if err != nil {
-					a.Logger.Errorln("PatchMgmnt:", err.Error())
+					//a.Logger.Errorln("PatchMgmnt:", err.Error())
 					ret.Encode(err.Error())
 				} else {
 					ret.Encode("ok")
@@ -65,9 +69,9 @@ func RunRPC(version string) {
 			go func(p *NatsMsg) {
 				var resp []byte
 				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
-				success, err := a.CreateSchedTask(p.ScheduledTask)
+				success, err := tasks.CreateSchedTask(p.ScheduledTask)
 				if err != nil {
-					a.Logger.Errorln(err.Error())
+					//a.Logger.Errorln(err.Error())
 					ret.Encode(err.Error())
 				} else if !success {
 					ret.Encode("Something went wrong")
@@ -81,9 +85,9 @@ func RunRPC(version string) {
 			go func(p *NatsMsg) {
 				var resp []byte
 				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
-				err := DeleteSchedTask(p.ScheduledTask.Name)
+				err := tasks.DeleteSchedTask(p.ScheduledTask.Name)
 				if err != nil {
-					a.Logger.Errorln(err.Error())
+					//a.Logger.Errorln(err.Error())
 					ret.Encode(err.Error())
 				} else {
 					ret.Encode("ok")
@@ -95,8 +99,8 @@ func RunRPC(version string) {
 			go func() {
 				var resp []byte
 				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
-				tasks := ListSchedTasks()
-				a.Logger.Debugln(tasks)
+				tasks := tasks.ListSchedTasks()
+				//a.Logger.Debugln(tasks)
 				ret.Encode(tasks)
 				msg.Respond(resp)
 			}()
@@ -106,8 +110,8 @@ func RunRPC(version string) {
 				var resp []byte
 				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
 				days, _ := strconv.Atoi(p.Data["days"])
-				evtLog := a.GetEventLog(p.Data["logname"], days)
-				a.Logger.Debugln(evtLog)
+				evtLog := events.GetEventLog(p.Data["logname"], days)
+				//a.Logger.Debugln(evtLog)
 				ret.Encode(evtLog)
 				msg.Respond(resp)
 			}(payload)
@@ -117,7 +121,7 @@ func RunRPC(version string) {
 				var resp []byte
 				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
 				procs := a.GetProcsRPC()
-				a.Logger.Debugln(procs)
+				//a.Logger.Debugln(procs)
 				ret.Encode(procs)
 				msg.Respond(resp)
 			}()
@@ -129,7 +133,7 @@ func RunRPC(version string) {
 				err := KillProc(p.ProcPID)
 				if err != nil {
 					ret.Encode(err.Error())
-					a.Logger.Debugln(err.Error())
+					//a.Logger.Debugln(err.Error())
 				} else {
 					ret.Encode("ok")
 				}
@@ -145,7 +149,7 @@ func RunRPC(version string) {
 				switch runtime.GOOS {
 				case "windows":
 					out, _ := CMDShell(p.Data["shell"], []string{}, p.Data["command"], p.Timeout, false)
-					a.Logger.Debugln(out)
+					//a.Logger.Debugln(out)
 					if out[1] != "" {
 						ret.Encode(out[1])
 						resultData.Results = out[1]
@@ -182,7 +186,7 @@ func RunRPC(version string) {
 				var resp []byte
 				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
 				svcs := a.GetServices()
-				a.Logger.Debugln(svcs)
+				//a.Logger.Debugln(svcs)
 				ret.Encode(svcs)
 				msg.Respond(resp)
 			}()
@@ -192,7 +196,7 @@ func RunRPC(version string) {
 				var resp []byte
 				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
 				svc := a.GetServiceDetail(p.Data["name"])
-				a.Logger.Debugln(svc)
+				//a.Logger.Debugln(svc)
 				ret.Encode(svc)
 				msg.Respond(resp)
 			}(payload)
@@ -202,7 +206,7 @@ func RunRPC(version string) {
 				var resp []byte
 				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
 				retData := a.ControlService(p.Data["name"], p.Data["action"])
-				a.Logger.Debugln(retData)
+				//a.Logger.Debugln(retData)
 				ret.Encode(retData)
 				msg.Respond(resp)
 			}(payload)
@@ -212,7 +216,7 @@ func RunRPC(version string) {
 				var resp []byte
 				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
 				retData := a.EditService(p.Data["name"], p.Data["startType"])
-				a.Logger.Debugln(retData)
+				//a.Logger.Debugln(retData)
 				ret.Encode(retData)
 				msg.Respond(resp)
 			}(payload)
@@ -229,7 +233,7 @@ func RunRPC(version string) {
 				resultData.ID = p.ID
 
 				if err != nil {
-					a.Logger.Debugln(err)
+					//a.Logger.Debugln(err)
 					retData = err.Error()
 					resultData.Retcode = 1
 					resultData.Stderr = err.Error()
@@ -239,7 +243,7 @@ func RunRPC(version string) {
 					resultData.Stdout = stdout
 					resultData.Stderr = stderr
 				}
-				a.Logger.Debugln(retData)
+				//a.Logger.Debugln(retData)
 				ret.Encode(retData)
 				msg.Respond(resp)
 				if p.ID != 0 {
@@ -266,7 +270,7 @@ func RunRPC(version string) {
 					retData.Retcode = retcode
 				}
 				retData.ID = p.ID
-				a.Logger.Debugln(retData)
+				//a.Logger.Debugln(retData)
 				ret.Encode(retData)
 				msg.Respond(resp)
 				if p.ID != 0 {
@@ -282,7 +286,7 @@ func RunRPC(version string) {
 
 				switch p.Data["mode"] {
 				case "mesh":
-					a.Logger.Debugln("Recovering mesh")
+					//a.Logger.Debugln("Recovering mesh")
 					a.RecoverMesh()
 				}
 
@@ -294,14 +298,14 @@ func RunRPC(version string) {
 				var resp []byte
 				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
 				sw := a.GetInstalledSoftware()
-				a.Logger.Debugln(sw)
+				//a.Logger.Debugln(sw)
 				ret.Encode(sw)
 				msg.Respond(resp)
 			}()
 
 		case "rebootnow":
 			go func() {
-				a.Logger.Debugln("Scheduling immediate reboot")
+				//a.Logger.Debugln("Scheduling immediate reboot")
 				var resp []byte
 				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
 				ret.Encode("ok")
@@ -316,15 +320,15 @@ func RunRPC(version string) {
 			}()
 		case "needsreboot":
 			go func() {
-				a.Logger.Debugln("Checking if reboot needed")
+				//a.Logger.Debugln("Checking if reboot needed")
 				var resp []byte
 				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
 				out, err := a.SystemRebootRequired()
 				if err == nil {
-					a.Logger.Debugln("Reboot needed:", out)
+					//a.Logger.Debugln("Reboot needed:", out)
 					ret.Encode(out)
 				} else {
-					a.Logger.Debugln("Error checking if reboot needed:", err)
+					//a.Logger.Debugln("Error checking if reboot needed:", err)
 					ret.Encode(false)
 				}
 				msg.Respond(resp)
@@ -333,7 +337,7 @@ func RunRPC(version string) {
 			go func() {
 				var resp []byte
 				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
-				a.Logger.Debugln("Getting sysinfo with WMI")
+				//a.Logger.Debugln("Getting sysinfo with WMI")
 				modes := []string{"agent-agentinfo", "agent-disks", "agent-wmi", "agent-publicip"}
 				for _, m := range modes {
 					a.NatsMessage(nc, m)
@@ -343,16 +347,16 @@ func RunRPC(version string) {
 			}()
 		case "wmi":
 			go func() {
-				a.Logger.Debugln("Sending WMI")
+				//a.Logger.Debugln("Sending WMI")
 				a.NatsMessage(nc, "agent-wmi")
 			}()
 		case "cpuloadavg":
 			go func() {
 				var resp []byte
 				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
-				a.Logger.Debugln("Getting CPU Load Avg")
+				//a.Logger.Debugln("Getting CPU Load Avg")
 				loadAvg := a.GetCPULoadAvg()
-				a.Logger.Debugln("CPU Load Avg:", loadAvg)
+				//a.Logger.Debugln("CPU Load Avg:", loadAvg)
 				ret.Encode(loadAvg)
 				msg.Respond(resp)
 			}()
@@ -364,27 +368,27 @@ func RunRPC(version string) {
 					if a.ChecksRunning() {
 						ret.Encode("busy")
 						msg.Respond(resp)
-						a.Logger.Debugln("Checks are already running, please wait")
+						//a.Logger.Debugln("Checks are already running, please wait")
 					} else {
 						ret.Encode("ok")
 						msg.Respond(resp)
-						a.Logger.Debugln("Running checks")
+						//a.Logger.Debugln("Running checks")
 						_, checkerr := CMD(a.EXE, []string{"-m", "runchecks"}, 600, false)
 						if checkerr != nil {
-							a.Logger.Errorln("RPC RunChecks", checkerr)
+							//a.Logger.Errorln("RPC RunChecks", checkerr)
 						}
 					}
 				} else {
 					ret.Encode("ok")
 					msg.Respond(resp)
-					a.Logger.Debugln("Running checks")
+					//a.Logger.Debugln("Running checks")
 					a.RunChecks(true)
 				}
 
 			}()
 		case "runtask":
 			go func(p *NatsMsg) {
-				a.Logger.Debugln("Running task")
+				//a.Logger.Debugln("Running task")
 				a.RunTask(p.TaskPK)
 			}(payload)
 
@@ -413,9 +417,9 @@ func RunRPC(version string) {
 		case "getwinupdates":
 			go func() {
 				if !atomic.CompareAndSwapUint32(&getWinUpdateLocker, 0, 1) {
-					a.Logger.Debugln("Already checking for windows updates")
+					//a.Logger.Debugln("Already checking for windows updates")
 				} else {
-					a.Logger.Debugln("Checking for windows updates")
+					//a.Logger.Debugln("Checking for windows updates")
 					defer atomic.StoreUint32(&getWinUpdateLocker, 0)
 					a.GetWinUpdates()
 				}
@@ -423,9 +427,9 @@ func RunRPC(version string) {
 		case "installwinupdates":
 			go func(p *NatsMsg) {
 				if !atomic.CompareAndSwapUint32(&installWinUpdateLocker, 0, 1) {
-					a.Logger.Debugln("Already installing windows updates")
+					//a.Logger.Debugln("Already installing windows updates")
 				} else {
-					a.Logger.Debugln("Installing windows updates", p.UpdateGUIDs)
+					//a.Logger.Debugln("Installing windows updates", p.UpdateGUIDs)
 					defer atomic.StoreUint32(&installWinUpdateLocker, 0)
 					a.InstallUpdates(p.UpdateGUIDs)
 				}
@@ -435,7 +439,7 @@ func RunRPC(version string) {
 				var resp []byte
 				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
 				if !atomic.CompareAndSwapUint32(&agentUpdateLocker, 0, 1) {
-					a.Logger.Debugln("Agent update already running")
+					//a.Logger.Debugln("Agent update already running")
 					ret.Encode("updaterunning")
 					msg.Respond(resp)
 				} else {
@@ -465,7 +469,7 @@ func RunRPC(version string) {
 	nc.Flush()
 
 	if err := nc.LastError(); err != nil {
-		a.Logger.Errorln(err)
+		//a.Logger.Errorln(err)
 		os.Exit(1)
 	}
 

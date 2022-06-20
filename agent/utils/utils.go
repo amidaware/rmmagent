@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	"unicode/utf16"
 
 	"github.com/amidaware/rmmagent/shared"
 	"github.com/go-resty/resty/v2"
@@ -183,4 +184,18 @@ func Unzip(src, dest string) error {
 
 func RandomCheckDelay() {
 	time.Sleep(time.Duration(RandRange(300, 950)) * time.Millisecond)
+}
+
+// https://github.com/mackerelio/go-check-plugins/blob/ad7910fdc45ccb892b5e5fda65ba0956c2b2885d/check-windows-eventlog/lib/check-windows-eventlog.go#L219
+func BytesToString(b []byte) (string, uint32) {
+	var i int
+	s := make([]uint16, len(b)/2)
+	for i = range s {
+		s[i] = uint16(b[i*2]) + uint16(b[(i*2)+1])<<8
+		if s[i] == 0 {
+			s = s[0:i]
+			break
+		}
+	}
+	return string(utf16.Decode(s)), uint32(i * 2)
 }

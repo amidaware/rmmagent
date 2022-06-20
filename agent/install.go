@@ -251,7 +251,6 @@ func (a *Agent) Install(i *Installer) {
 		time.Sleep(1 * time.Second)
 		a.Logger.Infoln("Starting service...")
 		out := a.ControlService(winSvcName, "start")
-
 		if !out.Success {
 			a.installerMsg(out.ErrorMsg, "error", i.Silent)
 		}

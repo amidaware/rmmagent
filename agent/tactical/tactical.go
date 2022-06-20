@@ -15,7 +15,7 @@ func PostRequest(url string, body interface{}, timeout time.Duration) (resty.Res
 	client.SetTimeout(timeout * time.Second)
 	client.SetCloseConnection(true)
 	if len(agentConfig.Proxy) > 0 {
-
+		client.SetProxy(agentConfig.Proxy)
 	}
 
 	if shared.DEBUG {

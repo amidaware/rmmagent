@@ -9,7 +9,6 @@ import (
 	"github.com/amidaware/rmmagent/agent/disk"
 	"github.com/amidaware/rmmagent/agent/services"
 	"github.com/amidaware/rmmagent/agent/system"
-	"github.com/amidaware/rmmagent/agent/tactical"
 	"github.com/amidaware/rmmagent/agent/tactical/checks"
 	"github.com/amidaware/rmmagent/agent/utils"
 	"github.com/amidaware/rmmagent/agent/wmi"

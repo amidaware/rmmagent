@@ -29,6 +29,7 @@ import (
 
 	rmm "github.com/amidaware/rmmagent/shared"
 	ps "github.com/elastic/go-sysinfo"
+	gocmd "github.com/go-cmd/cmd"
 	"github.com/go-resty/resty/v2"
 	"github.com/kardianos/service"
 	nats "github.com/nats-io/nats.go"
@@ -136,6 +137,114 @@ func New(logger *logrus.Logger, version string) *Agent {
 	}
 }
 
+type CmdStatus struct {
+	Status gocmd.Status
+	Stdout string
+	Stderr string
+}
+
+type CmdOptions struct {
+	Shell        string
+	Command      string
+	Args         []string
+	Timeout      time.Duration
+	IsScript     bool
+	IsExecutable bool
+	Detached     bool
+}
+
+func (a *Agent) NewCMDOpts() *CmdOptions {
+	return &CmdOptions{
+		Shell:   "/bin/bash",
+		Timeout: 30,
+	}
+}
+
+func (a *Agent) CmdV2(c *CmdOptions) CmdStatus {
+
+	ctx, cancel := context.WithTimeout(context.Background(), c.Timeout*time.Second)
+	defer cancel()
+
+	// Disable output buffering, enable streaming
+	cmdOptions := gocmd.Options{
+		Buffered:  false,
+		Streaming: true,
+	}
+
+	// have a child process that is in a different process group so that
+	// parent terminating doesn't kill child
+	if c.Detached {
+		cmdOptions.BeforeExec = []func(cmd *exec.Cmd){
+			func(cmd *exec.Cmd) {
+				cmd.SysProcAttr = SetDetached()
+			},
+		}
+	}
+
+	var envCmd *gocmd.Cmd
+	if c.IsScript {
+		envCmd = gocmd.NewCmdOptions(cmdOptions, c.Shell, c.Args...) // call script directly
+	} else if c.IsExecutable {
+		envCmd = gocmd.NewCmdOptions(cmdOptions, c.Shell, c.Command) // c.Shell: bin + c.Command: args as one string
+	} else {
+		envCmd = gocmd.NewCmdOptions(cmdOptions, c.Shell, "-c", c.Command) // /bin/bash -c 'ls -l /var/log/...'
+	}
+
+	var stdoutBuf bytes.Buffer
+	var stderrBuf bytes.Buffer
+	// Print STDOUT and STDERR lines streaming from Cmd
+	doneChan := make(chan struct{})
+	go func() {
+		defer close(doneChan)
+		// Done when both channels have been closed
+		// https://dave.cheney.net/2013/04/30/curious-channels
+		for envCmd.Stdout != nil || envCmd.Stderr != nil {
+			select {
+			case line, open := <-envCmd.Stdout:
+				if !open {
+					envCmd.Stdout = nil
+					continue
+				}
+				fmt.Fprintln(&stdoutBuf, line)
+				a.Logger.Debugln(line)
+
+			case line, open := <-envCmd.Stderr:
+				if !open {
+					envCmd.Stderr = nil
+					continue
+				}
+				fmt.Fprintln(&stderrBuf, line)
+				a.Logger.Debugln(line)
+			}
+		}
+	}()
+
+	// Run and wait for Cmd to return, discard Status
+	envCmd.Start()
+
+	go func() {
+		select {
+		case <-doneChan:
+			return
+		case <-ctx.Done():
+			a.Logger.Debugf("Command timed out after %d seconds\n", c.Timeout)
+			pid := envCmd.Status().PID
+			a.Logger.Debugln("Killing process with PID", pid)
+			KillProc(int32(pid))
+		}
+	}()
+
+	// Wait for goroutine to print everything
+	<-doneChan
+	ret := CmdStatus{
+		Status: envCmd.Status(),
+		Stdout: CleanString(stdoutBuf.String()),
+		Stderr: CleanString(stderrBuf.String()),
+	}
+	a.Logger.Debugf("%+v\n", ret)
+	return ret
+}
+
 func (a *Agent) GetCPULoadAvg() int {
 	fallback := false
 	pyCode := `
@@ -187,7 +296,7 @@ func (a *Agent) ForceKillMesh() {
 
 	for _, pid := range pids {
 		a.Logger.Debugln("Killing mesh process with pid %d", pid)
-		if err := utils.KillProc(int32(pid)); err != nil {
+		if err := KillProc(int32(pid)); err != nil {
 			a.Logger.Debugln(err)
 		}
 	}
@@ -213,8 +322,111 @@ func (a *Agent) SyncMeshNodeID() {
 	}
 }
 
+func (a *Agent) setupNatsOptions() []nats.Option {
+	opts := make([]nats.Option, 0)
+	opts = append(opts, nats.Name("TacticalRMM"))
+	opts = append(opts, nats.UserInfo(a.AgentID, a.Token))
+	opts = append(opts, nats.ReconnectWait(time.Second*5))
+	opts = append(opts, nats.RetryOnFailedConnect(true))
+	opts = append(opts, nats.MaxReconnects(-1))
+	opts = append(opts, nats.ReconnectBufSize(-1))
+	return opts
+}
 
+func (a *Agent) GetUninstallExe() string {
+	cderr := os.Chdir(a.ProgramDir)
+	if cderr == nil {
+		files, err := filepath.Glob("unins*.exe")
+		if err == nil {
+			for _, f := range files {
+				if strings.Contains(f, "001") {
+					return f
+				}
+			}
+		}
+	}
+	return "unins000.exe"
+}
 
+func (a *Agent) CleanupAgentUpdates() {
+	cderr := os.Chdir(a.ProgramDir)
+	if cderr != nil {
+		a.Logger.Errorln(cderr)
+		return
+	}
+
+	files, err := filepath.Glob("winagent-v*.exe")
+	if err == nil {
+		for _, f := range files {
+			os.Remove(f)
+		}
+	}
+
+	cderr = os.Chdir(os.Getenv("TMP"))
+	if cderr != nil {
+		a.Logger.Errorln(cderr)
+		return
+	}
+	folders, err := filepath.Glob("tacticalrmm*")
+	if err == nil {
+		for _, f := range folders {
+			os.RemoveAll(f)
+		}
+	}
+}
+
+func (a *Agent) RunPythonCode(code string, timeout int, args []string) (string, error) {
+	content := []byte(code)
+	dir, err := ioutil.TempDir("", "tacticalpy")
+	if err != nil {
+		a.Logger.Debugln(err)
+		return "", err
+	}
+	defer os.RemoveAll(dir)
+
+	tmpfn, _ := ioutil.TempFile(dir, "*.py")
+	if _, err := tmpfn.Write(content); err != nil {
+		a.Logger.Debugln(err)
+		return "", err
+	}
+	if err := tmpfn.Close(); err != nil {
+		a.Logger.Debugln(err)
+		return "", err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
+	defer cancel()
+
+	var outb, errb bytes.Buffer
+	cmdArgs := []string{tmpfn.Name()}
+	if len(args) > 0 {
+		cmdArgs = append(cmdArgs, args...)
+	}
+	a.Logger.Debugln(cmdArgs)
+	cmd := exec.CommandContext(ctx, a.PyBin, cmdArgs...)
+	cmd.Stdout = &outb
+	cmd.Stderr = &errb
+
+	cmdErr := cmd.Run()
+
+	if ctx.Err() == context.DeadlineExceeded {
+		a.Logger.Debugln("RunPythonCode:", ctx.Err())
+		return "", ctx.Err()
+	}
+
+	if cmdErr != nil {
+		a.Logger.Debugln("RunPythonCode:", cmdErr)
+		return "", cmdErr
+	}
+
+	if errb.String() != "" {
+		a.Logger.Debugln(errb.String())
+		return errb.String(), errors.New("RunPythonCode stderr")
+	}
+
+	return outb.String(), nil
+
+}
 
 func (a *Agent) CreateTRMMTempDir() {
 	// create the temp dir for running scripts
@@ -225,8 +437,4 @@ func (a *Agent) CreateTRMMTempDir() {
 			a.Logger.Errorln(err)
 		}
 	}
-}
-
-func (a *Agent) GetDisks() []trmm.Disk {
-	return disk.GetDisks()
 }
