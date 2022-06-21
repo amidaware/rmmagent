@@ -14,3 +14,19 @@ type Package struct {
 	Installed      bool     `json:"installed"`
 	Downloaded     bool     `json:"downloaded"`
 }
+
+type WinUpdateInstallResult struct {
+	AgentID  string `json:"agent_id"`
+	UpdateID string `json:"guid"`
+	Success  bool   `json:"success"`
+}
+
+type SupersededUpdate struct {
+	AgentID  string `json:"agent_id"`
+	UpdateID string `json:"guid"`
+}
+
+type AgentNeedsReboot struct {
+	AgentID     string `json:"agent_id"`
+	NeedsReboot bool   `json:"needs_reboot"`
+}

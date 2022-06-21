@@ -11,3 +11,8 @@ type Service struct {
 	StartType        string `json:"start_type"`
 	DelayedAutoStart bool   `json:"autodelay"`
 }
+
+type WinSvcResp struct {
+	Success  bool   `json:"success"`
+	ErrorMsg string `json:"errormsg"`
+}

@@ -14,17 +14,17 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/amidaware/rmmagent/agent"
+	"github.com/kardianos/service"
+	"github.com/sirupsen/logrus"
 	"os"
 	"os/user"
 	"path/filepath"
 	"runtime"
-	"github.com/amidaware/rmmagent/agent"
-	"github.com/kardianos/service"
-	"github.com/sirupsen/logrus"
 )
 
 var (
-	version = "2.0.4"
+	version = "development"
 	log     = logrus.New()
 	logFile *os.File
 )

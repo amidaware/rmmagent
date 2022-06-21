@@ -1,7 +1,13 @@
 package patching
 
 import (
+	"fmt"
+	"time"
+
 	"github.com/amidaware/rmmagent/agent/patching/wua"
+	"github.com/amidaware/rmmagent/agent/system"
+	"github.com/amidaware/rmmagent/agent/tactical/api"
+	"github.com/amidaware/rmmagent/agent/tactical/config"
 	"golang.org/x/sys/windows/registry"
 )
 
@@ -58,4 +64,69 @@ func GetUpdates() (PackageList, error) {
 	// if err != nil {
 	// 	a.Logger.Debugln(err)
 	// }
+}
+
+func InstallUpdates(guids []string) {
+	config := config.NewAgentConfig()
+	session, err := wua.NewUpdateSession()
+	if err != nil {
+		return
+	}
+
+	defer session.Close()
+	for _, id := range guids {
+		var result WinUpdateInstallResult
+		result.AgentID = config.AgentID
+		result.UpdateID = id
+		query := fmt.Sprintf("UpdateID='%s'", id)
+		updts, err := session.GetWUAUpdateCollection(query)
+		if err != nil {
+			result.Success = false
+			api.Patch(result, "/api/v3/winupdates/")
+			continue
+		}
+
+		defer updts.Release()
+		updtCnt, err := updts.Count()
+		if err != nil {
+			result.Success = false
+			api.Patch(result, "/api/v3/winupdates/")
+			continue
+		}
+
+		if updtCnt == 0 {
+			superseded := SupersededUpdate{AgentID: config.AgentID, UpdateID: id}
+			api.PostPayload(superseded, "/api/v3/superseded/")
+			continue
+		}
+
+		for i := 0; i < int(updtCnt); i++ {
+			u, err := updts.Item(i)
+			if err != nil {
+				result.Success = false
+				api.Patch(result, "/api/v3/winupdates/")
+				continue
+			}
+
+			err = session.InstallWUAUpdate(u)
+			if err != nil {
+				result.Success = false
+				api.Patch(result, "/api/v3/winupdates/")
+				continue
+			}
+
+			result.Success = true
+			api.Patch(result, "/api/v3/winupdates/")
+		}
+	}
+
+	time.Sleep(5 * time.Second)
+	needsReboot, err := system.SystemRebootRequired()
+	if err != nil {
+	}
+
+	rebootPayload := AgentNeedsReboot{AgentID: config.AgentID, NeedsReboot: needsReboot}
+	err = api.Put(rebootPayload, "/api/v3/winupdates/")
+	if err != nil {
+	}
 }

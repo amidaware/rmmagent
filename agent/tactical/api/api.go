@@ -37,11 +37,7 @@ func init() {
 
 func PostPayload(payload interface{}, url string) error {
 	_, err := restyC.R().SetBody(payload).Post("/api/v3/syncmesh/")
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 func GetResult(result interface{}, url string) (*resty.Response, error) {
@@ -51,4 +47,23 @@ func GetResult(result interface{}, url string) (*resty.Response, error) {
 	}
 
 	return r, nil
+}
+
+func Get(url string) (*resty.Response, error) {
+	r, err := restyC.R().Get(url)
+	if err != nil {
+		return nil, err
+	}
+
+	return r, nil
+}
+
+func Patch(payload interface{}, url string) error {
+	_, err := restyC.R().SetBody(payload).Patch(url)
+	return err
+}
+
+func Put(payload interface{}, url string) error {
+	_, err := restyC.R().SetBody(payload).Put(url)
+	return err
 }

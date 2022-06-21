@@ -2,9 +2,11 @@ package services
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/amidaware/rmmagent/agent/utils"
 	"github.com/gonutz/w32/v2"
+	"golang.org/x/sys/windows/svc"
 	"golang.org/x/sys/windows/svc/mgr"
 )
 
@@ -161,4 +163,137 @@ func serviceStartType(num uint32) string {
 	default:
 		return "Unknown"
 	}
+}
+
+func ControlService(name, action string) WinSvcResp {
+	conn, err := mgr.Connect()
+	if err != nil {
+		return WinSvcResp{Success: false, ErrorMsg: err.Error()}
+	}
+
+	defer conn.Disconnect()
+	srv, err := conn.OpenService(name)
+	if err != nil {
+		return WinSvcResp{Success: false, ErrorMsg: err.Error()}
+	}
+
+	defer srv.Close()
+	var status svc.Status
+	switch action {
+
+	case "stop":
+		status, err = srv.Control(svc.Stop)
+		if err != nil {
+			return WinSvcResp{Success: false, ErrorMsg: err.Error()}
+		}
+		timeout := time.Now().Add(30 * time.Second)
+		for status.State != svc.Stopped {
+			if timeout.Before(time.Now()) {
+				return WinSvcResp{Success: false, ErrorMsg: "Timed out waiting for service to stop"}
+			}
+
+			time.Sleep(500 * time.Millisecond)
+			status, err = srv.Query()
+			if err != nil {
+				return WinSvcResp{Success: false, ErrorMsg: err.Error()}
+			}
+		}
+
+		return WinSvcResp{Success: true, ErrorMsg: ""}
+
+	case "start":
+		err := srv.Start()
+		if err != nil {
+			return WinSvcResp{Success: false, ErrorMsg: err.Error()}
+		}
+
+		return WinSvcResp{Success: true, ErrorMsg: ""}
+	}
+
+	return WinSvcResp{Success: false, ErrorMsg: "Something went wrong"}
+}
+
+func GetServiceDetail(name string) Service {
+	ret := Service{}
+
+	conn, err := mgr.Connect()
+	if err != nil {
+		return ret
+	}
+
+	defer conn.Disconnect()
+	srv, err := conn.OpenService(name)
+	if err != nil {
+		return ret
+	}
+
+	defer srv.Close()
+	q, err := srv.Query()
+	if err != nil {
+		return ret
+	}
+
+	conf, err := srv.Config()
+	if err != nil {
+		return ret
+	}
+
+	ret.BinPath = utils.CleanString(conf.BinaryPathName)
+	ret.Description = utils.CleanString(conf.Description)
+	ret.DisplayName = utils.CleanString(conf.DisplayName)
+	ret.Name = name
+	ret.PID = q.ProcessId
+	ret.StartType = serviceStartType(uint32(conf.StartType))
+	ret.Status = serviceStatusText(uint32(q.State))
+	ret.Username = utils.CleanString(conf.ServiceStartName)
+	ret.DelayedAutoStart = conf.DelayedAutoStart
+	return ret
+}
+
+func EditService(name, startupType string) WinSvcResp {
+	conn, err := mgr.Connect()
+	if err != nil {
+		return WinSvcResp{Success: false, ErrorMsg: err.Error()}
+	}
+	defer conn.Disconnect()
+
+	srv, err := conn.OpenService(name)
+	if err != nil {
+		return WinSvcResp{Success: false, ErrorMsg: err.Error()}
+	}
+	defer srv.Close()
+
+	conf, err := srv.Config()
+	if err != nil {
+		return WinSvcResp{Success: false, ErrorMsg: err.Error()}
+	}
+
+	var startType uint32
+	switch startupType {
+	case "auto":
+		startType = 2
+	case "autodelay":
+		startType = 2
+	case "manual":
+		startType = 3
+	case "disabled":
+		startType = 4
+	default:
+		return WinSvcResp{Success: false, ErrorMsg: "Unknown startup type provided"}
+	}
+
+	conf.StartType = startType
+	switch startupType {
+	case "autodelay":
+		conf.DelayedAutoStart = true
+	case "auto":
+		conf.DelayedAutoStart = false
+	}
+
+	err = srv.UpdateConfig(conf)
+	if err != nil {
+		return WinSvcResp{Success: false, ErrorMsg: err.Error()}
+	}
+
+	return WinSvcResp{Success: true, ErrorMsg: ""}
 }

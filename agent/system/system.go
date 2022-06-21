@@ -9,11 +9,14 @@ import (
 	"math"
 	"os"
 	"os/exec"
+	"strconv"
 	"time"
 
 	"github.com/amidaware/rmmagent/agent/utils"
 	ps "github.com/elastic/go-sysinfo"
 	gocmd "github.com/go-cmd/cmd"
+	"github.com/shirou/gopsutil/cpu"
+	gops "github.com/shirou/gopsutil/v3/process"
 )
 
 type CmdStatus struct {
@@ -195,4 +198,69 @@ func BootTime() int64 {
 
 	info := host.Info()
 	return info.BootTime.Unix()
+}
+
+func GetCPULoadAvg() int {
+	fallback := false
+	pyCode := `
+import psutil
+try:
+	print(int(round(psutil.cpu_percent(interval=10))), end='')
+except:
+	print("pyerror", end='')
+`
+	pypercent, err := RunPythonCode(pyCode, 13, []string{})
+	if err != nil || pypercent == "pyerror" {
+		fallback = true
+	}
+
+	i, err := strconv.Atoi(pypercent)
+	if err != nil {
+		fallback = true
+	}
+
+	if fallback {
+		percent, err := cpu.Percent(10*time.Second, false)
+		if err != nil {
+			return 0
+		}
+
+		return int(math.Round(percent[0]))
+	}
+
+	return i
+}
+
+func GetProcsRPC() []ProcessMsg {
+	ret := make([]ProcessMsg, 0)
+
+	procs, _ := ps.Processes()
+	for i, process := range procs {
+		p, err := process.Info()
+		if err != nil {
+			continue
+		}
+		if p.PID == 0 {
+			continue
+		}
+
+		m, _ := process.Memory()
+		proc, gerr := gops.NewProcess(int32(p.PID))
+		if gerr != nil {
+			continue
+		}
+		cpu, _ := proc.CPUPercent()
+		user, _ := proc.Username()
+
+		ret = append(ret, ProcessMsg{
+			Name:     p.Name,
+			Pid:      p.PID,
+			MemBytes: m.Resident,
+			Username: user,
+			UID:      i,
+			CPU:      fmt.Sprintf("%.1f", cpu),
+		})
+	}
+
+	return ret
 }

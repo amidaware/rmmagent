@@ -13,3 +13,12 @@ type CmdOptions struct {
 }
 
 type SchedTask struct{ Name string }
+
+type ProcessMsg struct {
+	Name     string `json:"name"`
+	Pid      int    `json:"pid"`
+	MemBytes uint64 `json:"membytes"`
+	Username string `json:"username"`
+	UID      int    `json:"id"`
+	CPU      string `json:"cpu_percent"`
+}

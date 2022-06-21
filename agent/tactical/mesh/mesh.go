@@ -2,10 +2,12 @@ package mesh
 
 import (
 	"github.com/amidaware/rmmagent/agent/tactical/api"
+	"github.com/amidaware/rmmagent/agent/tactical/config"
 	"github.com/amidaware/rmmagent/agent/utils"
 )
 
-func SyncMeshNodeID(agentID string) error {
+func SyncMeshNodeID() error {
+	config := config.NewAgentConfig()
 	id, err := GetMeshNodeID()
 	if err != nil {
 		return err
@@ -13,7 +15,7 @@ func SyncMeshNodeID(agentID string) error {
 
 	payload := MeshNodeID{
 		Func:    "syncmesh",
-		Agentid: agentID,
+		Agentid: config.AgentID,
 		NodeID:  utils.StripAll(id),
 	}
 

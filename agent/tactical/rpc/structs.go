@@ -18,3 +18,15 @@ type NatsMsg struct {
 	ID              int               `json:"id"`
 	Code            string            `json:"code"`
 }
+
+type RawCMDResp struct {
+	Results string `json:"results"`
+}
+
+type RunScriptResp struct {
+	Stdout   string  `json:"stdout"`
+	Stderr   string  `json:"stderr"`
+	Retcode  int     `json:"retcode"`
+	ExecTime float64 `json:"execution_time"`
+	ID       int     `json:"id"`
+}

@@ -2,9 +2,11 @@ package mesh
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/amidaware/rmmagent/agent/system"
 	"github.com/amidaware/rmmagent/agent/tactical/config"
@@ -71,7 +73,7 @@ func getMeshBinLocation() string {
 	return MeshSysBin
 }
 
-func installMesh(meshbin, exe, proxy string) (string, error) {
+func InstallMesh(meshbin, exe, proxy string) (string, error) {
 	var meshNodeID string
 	meshInstallArgs := []string{"-fullinstall"}
 	if len(proxy) > 0 {
@@ -79,7 +81,6 @@ func installMesh(meshbin, exe, proxy string) (string, error) {
 		meshInstallArgs = append(meshInstallArgs, meshProxy)
 	}
 
-	//a.Logger.Debugln("Mesh install args:", meshInstallArgs)
 	meshOut, meshErr := system.CMD(meshbin, meshInstallArgs, int(90), false)
 	if meshErr != nil {
 		fmt.Println(meshOut[0])
@@ -88,30 +89,24 @@ func installMesh(meshbin, exe, proxy string) (string, error) {
 	}
 
 	fmt.Println(meshOut)
-	//a.Logger.Debugln("Sleeping for 5")
 	time.Sleep(5 * time.Second)
 
 	meshSuccess := false
 
 	for !meshSuccess {
-		//a.Logger.Debugln("Getting mesh node id")
 		pMesh, pErr := system.CMD(exe, []string{"-nodeid"}, int(30), false)
 		if pErr != nil {
-			//a.Logger.Errorln(pErr)
 			time.Sleep(5 * time.Second)
 			continue
 		}
 
 		if pMesh[1] != "" {
-			//a.Logger.Errorln(pMesh[1])
 			time.Sleep(5 * time.Second)
 			continue
 		}
 
 		meshNodeID = utils.StripAll(pMesh[0])
-		//a.Logger.Debugln("Node id:", meshNodeID)
 		if strings.Contains(strings.ToLower(meshNodeID), "not defined") {
-			//a.Logger.Errorln(meshNodeID)
 			time.Sleep(5 * time.Second)
 			continue
 		}
@@ -120,4 +115,11 @@ func installMesh(meshbin, exe, proxy string) (string, error) {
 	}
 
 	return meshNodeID, nil
+}
+
+func RecoverMesh() {
+	defer system.CMD("net", []string{"start", "mesh agent"}, 60, false)
+	_, _ = system.CMD("net", []string{"stop", "mesh agent"}, 60, false)
+	ForceKillMesh()
+	SyncMeshNodeID()
 }

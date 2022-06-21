@@ -7,53 +7,53 @@ import (
 	"time"
 
 	"github.com/amidaware/rmmagent/agent/disk"
+	"github.com/amidaware/rmmagent/agent/network"
 	"github.com/amidaware/rmmagent/agent/services"
 	"github.com/amidaware/rmmagent/agent/system"
+	"github.com/amidaware/rmmagent/agent/tactical/api"
 	"github.com/amidaware/rmmagent/agent/tactical/checks"
+	"github.com/amidaware/rmmagent/agent/tactical/config"
+	"github.com/amidaware/rmmagent/agent/tactical/mesh"
+	"github.com/amidaware/rmmagent/agent/tactical/shared"
 	"github.com/amidaware/rmmagent/agent/utils"
 	"github.com/amidaware/rmmagent/agent/wmi"
 	"github.com/nats-io/nats.go"
 	"github.com/ugorji/go/codec"
-	trmm "github.com/wh1te909/trmm-shared"
 )
 
 var natsCheckin = []string{"agent-hello", "agent-agentinfo", "agent-disks", "agent-winsvc", "agent-publicip", "agent-wmi"}
 
-func RunAsService(agentID string, version string) {
+func RunAsService(version string) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go AgentSvc(version)
-	go checks.CheckRunner(agentID)
+	go checks.CheckRunner(version)
 	wg.Wait()
 }
 
 func AgentSvc(version string) {
-	config := tactical.NewAgentConfig()
-	go tactical.GetPython(false)
+	config := config.NewAgentConfig()
+	go shared.GetPython(false)
 	utils.CreateTRMMTempDir()
-	tactical.RunMigrations()
-
+	shared.RunMigrations()
 	sleepDelay := utils.RandRange(14, 22)
-	//a.Logger.Debugf("AgentSvc() sleeping for %v seconds", sleepDelay)
 	time.Sleep(time.Duration(sleepDelay) * time.Second)
-
-	opts := SetupNatsOptions(config.AgentID, config.Token)
+	opts := SetupNatsOptions()
 	server := fmt.Sprintf("tls://%s:4222", config.APIURL)
 	nc, err := nats.Connect(server, opts...)
 	if err != nil {
-		//a.Logger.Fatalln("AgentSvc() nats.Connect()", err)
 	}
 
 	for _, s := range natsCheckin {
-		NatsMessage(config.AgentID, version, nc, s)
+		NatsMessage(version, nc, s)
 		time.Sleep(time.Duration(utils.RandRange(100, 400)) * time.Millisecond)
 	}
 
-	go tactical.SyncMeshNodeID()
+	go mesh.SyncMeshNodeID()
 
 	time.Sleep(time.Duration(utils.RandRange(1, 3)) * time.Second)
 	AgentStartup(config.AgentID)
-	tactical.SendSoftware()
+	shared.SendSoftware()
 
 	checkInHelloTicker := time.NewTicker(time.Duration(utils.RandRange(30, 60)) * time.Second)
 	checkInAgentInfoTicker := time.NewTicker(time.Duration(utils.RandRange(200, 400)) * time.Second)
@@ -67,29 +67,30 @@ func AgentSvc(version string) {
 	for {
 		select {
 		case <-checkInHelloTicker.C:
-			NatsMessage(config.AgentID, version, nc, "agent-hello")
+			NatsMessage(version, nc, "agent-hello")
 		case <-checkInAgentInfoTicker.C:
-			NatsMessage(config.AgentID, version, nc, "agent-agentinfo")
+			NatsMessage(version, nc, "agent-agentinfo")
 		case <-checkInWinSvcTicker.C:
-			NatsMessage(config.AgentID, version, nc, "agent-winsvc")
+			NatsMessage(version, nc, "agent-winsvc")
 		case <-checkInPubIPTicker.C:
-			NatsMessage(config.AgentID, version, nc, "agent-publicip")
+			NatsMessage(version, nc, "agent-publicip")
 		case <-checkInDisksTicker.C:
-			NatsMessage(config.AgentID, version, nc, "agent-disks")
+			NatsMessage(version, nc, "agent-disks")
 		case <-checkInSWTicker.C:
-			tactical.SendSoftware()
+			shared.SendSoftware()
 		case <-checkInWMITicker.C:
-			NatsMessage(config.AgentID, version, nc, "agent-wmi")
+			NatsMessage(version, nc, "agent-wmi")
 		case <-syncMeshTicker.C:
-			tactical.SyncMeshNodeID()
+			mesh.SyncMeshNodeID()
 		}
 	}
 }
 
-func SetupNatsOptions(agentID string, token string) []nats.Option {
+func SetupNatsOptions() []nats.Option {
+	config := config.NewAgentConfig()
 	opts := make([]nats.Option, 0)
 	opts = append(opts, nats.Name("TacticalRMM"))
-	opts = append(opts, nats.UserInfo(agentID, token))
+	opts = append(opts, nats.UserInfo(config.AgentID, config.Token))
 	opts = append(opts, nats.ReconnectWait(time.Second*5))
 	opts = append(opts, nats.RetryOnFailedConnect(true))
 	opts = append(opts, nats.MaxReconnects(-1))
@@ -97,21 +98,23 @@ func SetupNatsOptions(agentID string, token string) []nats.Option {
 	return opts
 }
 
-func NatsMessage(agentID string, version string, nc *nats.Conn, mode string) {
+func NatsMessage(version string, nc *nats.Conn, mode string) {
+	config := config.NewAgentConfig()
 	var resp []byte
 	var payload interface{}
 	ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
 
 	switch mode {
 	case "agent-hello":
-		payload = trmm.CheckInNats{
-			Agentid: agentID,
+		payload = CheckInNats{
+			Agentid: config.AgentID,
 			Version: version,
 		}
 	case "agent-winsvc":
-		payload = trmm.WinSvcNats{
-			Agentid: agentID,
-			WinSvcs: services.GetServices(),
+		svcs, _, _ := services.GetServices()
+		payload = WinSvcNats{
+			Agentid: config.AgentID,
+			WinSvcs: svcs,
 		}
 	case "agent-agentinfo":
 		osinfo := system.OsString()
@@ -119,8 +122,8 @@ func NatsMessage(agentID string, version string, nc *nats.Conn, mode string) {
 		if err != nil {
 			reboot = false
 		}
-		payload = trmm.AgentInfoNats{
-			Agentid:      agentID,
+		payload = AgentInfoNats{
+			Agentid:      config.AgentID,
 			Username:     system.LoggedOnUser(),
 			Hostname:     system.GetHostname(),
 			OS:           osinfo,
@@ -131,48 +134,47 @@ func NatsMessage(agentID string, version string, nc *nats.Conn, mode string) {
 			GoArch:       runtime.GOARCH,
 		}
 	case "agent-wmi":
-		payload = trmm.WinWMINats{
-			Agentid: agentID,
-			WMI:     wmi.GetWMIInfo(),
+		wmiinfo, _ := wmi.GetWMIInfo()
+		payload = WinWMINats{
+			Agentid: config.AgentID,
+			WMI:     wmiinfo,
 		}
 	case "agent-disks":
-		payload = trmm.WinDisksNats{
-			Agentid: agentID,
-			Disks:   disk.GetDisks(),
+		disks, _ := disk.GetDisks()
+		payload = WinDisksNats{
+			Agentid: config.AgentID,
+			Disks:   disks,
 		}
 	case "agent-publicip":
-		payload = trmm.PublicIPNats{
-			Agentid:  agentID,
-			PublicIP: a.PublicIP(),
+		payload = PublicIPNats{
+			Agentid:  config.AgentID,
+			PublicIP: network.PublicIP(config.Proxy),
 		}
 	}
 
 	//a.Logger.Debugln(mode, payload)
 	ret.Encode(payload)
-	nc.PublishRequest(a.AgentID, mode, resp)
+	nc.PublishRequest(config.AgentID, mode, resp)
 }
 
-func DoNatsCheckIn() {
+func DoNatsCheckIn(version string) {
 	opts := SetupNatsOptions()
-	server := fmt.Sprintf("tls://%s:4222", a.ApiURL)
+	server := fmt.Sprintf("tls://%s:4222", config.NewAgentConfig().APIURL)
 	nc, err := nats.Connect(server, opts...)
 	if err != nil {
-		//a.Logger.Errorln(err)
 		return
 	}
 
 	for _, s := range natsCheckin {
 		time.Sleep(time.Duration(utils.RandRange(100, 400)) * time.Millisecond)
-		NatsMessage(nc, s)
+		NatsMessage(version, nc, s)
 	}
+
 	nc.Close()
 }
 
-func AgentStartup(agentID string) {
-	url := "/api/v3/checkin/"
+func AgentStartup(agentID string) error {
 	payload := map[string]interface{}{"agent_id": agentID}
-	_, err := tactical.PostRequest(url, payload, 15)
-	if err != nil {
-		//a.Logger.Debugln("AgentStartup()", err)
-	}
+	err := api.PostPayload(payload, "/api/v3/checkin/")
+	return err
 }

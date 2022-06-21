@@ -9,35 +9,51 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/amidaware/rmmagent/agent/choco"
 	"github.com/amidaware/rmmagent/agent/events"
+	"github.com/amidaware/rmmagent/agent/network"
 	"github.com/amidaware/rmmagent/agent/patching"
+	"github.com/amidaware/rmmagent/agent/services"
+	"github.com/amidaware/rmmagent/agent/software"
+	"github.com/amidaware/rmmagent/agent/system"
+	"github.com/amidaware/rmmagent/agent/tactical"
+	"github.com/amidaware/rmmagent/agent/tactical/api"
+	"github.com/amidaware/rmmagent/agent/tactical/checks"
+	"github.com/amidaware/rmmagent/agent/tactical/config"
+	"github.com/amidaware/rmmagent/agent/tactical/mesh"
 	"github.com/amidaware/rmmagent/agent/tactical/service"
+	"github.com/amidaware/rmmagent/agent/tactical/shared"
+	ttasks "github.com/amidaware/rmmagent/agent/tactical/tasks"
 	"github.com/amidaware/rmmagent/agent/tasks"
-	rmm "github.com/amidaware/rmmagent/shared"
+	ksvc "github.com/kardianos/service"
 	nats "github.com/nats-io/nats.go"
 	"github.com/ugorji/go/codec"
 )
 
-func RunRPC(a *rmm.AgentConfig) {
-	//a.Logger.Infoln("Agent service started")
-	go service.RunAsService()
+var (
+	agentUpdateLocker      uint32
+	getWinUpdateLocker     uint32
+	installWinUpdateLocker uint32
+)
+
+func RunRPC(version string) {
+	config := config.NewAgentConfig()
+	go service.RunAsService(version)
 	var wg sync.WaitGroup
 	wg.Add(1)
 	opts := service.SetupNatsOptions()
-	server := fmt.Sprintf("tls://%s:4222", a.APIURL)
+	server := fmt.Sprintf("tls://%s:4222", config.APIURL)
 	nc, err := nats.Connect(server, opts...)
 	if err != nil {
-		//a.Logger.Fatalln("RunRPC() nats.Connect()", err)
 	}
 
-	nc.Subscribe(a.AgentID, func(msg *nats.Msg) {
+	nc.Subscribe(config.AgentID, func(msg *nats.Msg) {
 		var payload *NatsMsg
 		var mh codec.MsgpackHandle
 		mh.RawToString = true
 
 		dec := codec.NewDecoderBytes(msg.Data, &mh)
 		if err := dec.Decode(&payload); err != nil {
-			//a.Logger.Errorln(err)
 			return
 		}
 
@@ -46,7 +62,6 @@ func RunRPC(a *rmm.AgentConfig) {
 			go func() {
 				var resp []byte
 				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
-				//a.Logger.Debugln("pong")
 				ret.Encode("pong")
 				msg.Respond(resp)
 			}()
@@ -57,7 +72,6 @@ func RunRPC(a *rmm.AgentConfig) {
 				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
 				err := patching.PatchMgmnt(p.PatchMgmt)
 				if err != nil {
-					//a.Logger.Errorln("PatchMgmnt:", err.Error())
 					ret.Encode(err.Error())
 				} else {
 					ret.Encode("ok")
@@ -71,7 +85,6 @@ func RunRPC(a *rmm.AgentConfig) {
 				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
 				success, err := tasks.CreateSchedTask(p.ScheduledTask)
 				if err != nil {
-					//a.Logger.Errorln(err.Error())
 					ret.Encode(err.Error())
 				} else if !success {
 					ret.Encode("Something went wrong")
@@ -87,7 +100,6 @@ func RunRPC(a *rmm.AgentConfig) {
 				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
 				err := tasks.DeleteSchedTask(p.ScheduledTask.Name)
 				if err != nil {
-					//a.Logger.Errorln(err.Error())
 					ret.Encode(err.Error())
 				} else {
 					ret.Encode("ok")
@@ -99,8 +111,7 @@ func RunRPC(a *rmm.AgentConfig) {
 			go func() {
 				var resp []byte
 				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
-				tasks := tasks.ListSchedTasks()
-				//a.Logger.Debugln(tasks)
+				tasks, _ := tasks.ListSchedTasks()
 				ret.Encode(tasks)
 				msg.Respond(resp)
 			}()
@@ -110,8 +121,7 @@ func RunRPC(a *rmm.AgentConfig) {
 				var resp []byte
 				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
 				days, _ := strconv.Atoi(p.Data["days"])
-				evtLog := events.GetEventLog(p.Data["logname"], days)
-				//a.Logger.Debugln(evtLog)
+				evtLog, _ := events.GetEventLog(p.Data["logname"], days)
 				ret.Encode(evtLog)
 				msg.Respond(resp)
 			}(payload)
@@ -120,7 +130,7 @@ func RunRPC(a *rmm.AgentConfig) {
 			go func() {
 				var resp []byte
 				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
-				procs := a.GetProcsRPC()
+				procs := system.GetProcsRPC()
 				//a.Logger.Debugln(procs)
 				ret.Encode(procs)
 				msg.Respond(resp)
@@ -130,10 +140,9 @@ func RunRPC(a *rmm.AgentConfig) {
 			go func(p *NatsMsg) {
 				var resp []byte
 				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
-				err := KillProc(p.ProcPID)
+				err := system.KillProc(p.ProcPID)
 				if err != nil {
 					ret.Encode(err.Error())
-					//a.Logger.Debugln(err.Error())
 				} else {
 					ret.Encode("ok")
 				}
@@ -143,13 +152,12 @@ func RunRPC(a *rmm.AgentConfig) {
 		case "rawcmd":
 			go func(p *NatsMsg) {
 				var resp []byte
-				var resultData rmm.RawCMDResp
+				var resultData RawCMDResp
 				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
 
 				switch runtime.GOOS {
 				case "windows":
-					out, _ := CMDShell(p.Data["shell"], []string{}, p.Data["command"], p.Timeout, false)
-					//a.Logger.Debugln(out)
+					out, _ := system.CMDShell(p.Data["shell"], []string{}, p.Data["command"], p.Timeout, false)
 					if out[1] != "" {
 						ret.Encode(out[1])
 						resultData.Results = out[1]
@@ -158,11 +166,11 @@ func RunRPC(a *rmm.AgentConfig) {
 						resultData.Results = out[0]
 					}
 				default:
-					opts := a.NewCMDOpts()
+					opts := system.NewCMDOpts()
 					opts.Shell = p.Data["shell"]
 					opts.Command = p.Data["command"]
 					opts.Timeout = time.Duration(p.Timeout)
-					out := a.CmdV2(opts)
+					out := system.CmdV2(opts)
 					tmp := ""
 					if len(out.Stdout) > 0 {
 						tmp += out.Stdout
@@ -177,7 +185,7 @@ func RunRPC(a *rmm.AgentConfig) {
 
 				msg.Respond(resp)
 				if p.ID != 0 {
-					a.rClient.R().SetBody(resultData).Patch(fmt.Sprintf("/api/v3/%d/%s/histresult/", p.ID, a.AgentID))
+					api.Patch(resultData, fmt.Sprintf("/api/v3/%d/%s/histresult/", p.ID, config.AgentID))
 				}
 			}(payload)
 
@@ -185,8 +193,7 @@ func RunRPC(a *rmm.AgentConfig) {
 			go func() {
 				var resp []byte
 				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
-				svcs := a.GetServices()
-				//a.Logger.Debugln(svcs)
+				svcs, _, _ := services.GetServices()
 				ret.Encode(svcs)
 				msg.Respond(resp)
 			}()
@@ -195,8 +202,7 @@ func RunRPC(a *rmm.AgentConfig) {
 			go func(p *NatsMsg) {
 				var resp []byte
 				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
-				svc := a.GetServiceDetail(p.Data["name"])
-				//a.Logger.Debugln(svc)
+				svc := services.GetServiceDetail(p.Data["name"])
 				ret.Encode(svc)
 				msg.Respond(resp)
 			}(payload)
@@ -205,8 +211,7 @@ func RunRPC(a *rmm.AgentConfig) {
 			go func(p *NatsMsg) {
 				var resp []byte
 				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
-				retData := a.ControlService(p.Data["name"], p.Data["action"])
-				//a.Logger.Debugln(retData)
+				retData := services.ControlService(p.Data["name"], p.Data["action"])
 				ret.Encode(retData)
 				msg.Respond(resp)
 			}(payload)
@@ -215,8 +220,7 @@ func RunRPC(a *rmm.AgentConfig) {
 			go func(p *NatsMsg) {
 				var resp []byte
 				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
-				retData := a.EditService(p.Data["name"], p.Data["startType"])
-				//a.Logger.Debugln(retData)
+				retData := services.EditService(p.Data["name"], p.Data["startType"])
 				ret.Encode(retData)
 				msg.Respond(resp)
 			}(payload)
@@ -225,15 +229,14 @@ func RunRPC(a *rmm.AgentConfig) {
 			go func(p *NatsMsg) {
 				var resp []byte
 				var retData string
-				var resultData rmm.RunScriptResp
+				var resultData RunScriptResp
 				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
 				start := time.Now()
-				stdout, stderr, retcode, err := a.RunScript(p.Data["code"], p.Data["shell"], p.ScriptArgs, p.Timeout)
+				stdout, stderr, retcode, err := system.RunScript(p.Data["code"], p.Data["shell"], p.ScriptArgs, p.Timeout)
 				resultData.ExecTime = time.Since(start).Seconds()
 				resultData.ID = p.ID
 
 				if err != nil {
-					//a.Logger.Debugln(err)
 					retData = err.Error()
 					resultData.Retcode = 1
 					resultData.Stderr = err.Error()
@@ -248,17 +251,17 @@ func RunRPC(a *rmm.AgentConfig) {
 				msg.Respond(resp)
 				if p.ID != 0 {
 					results := map[string]interface{}{"script_results": resultData}
-					a.rClient.R().SetBody(results).Patch(fmt.Sprintf("/api/v3/%d/%s/histresult/", p.ID, a.AgentID))
+					api.Patch(results, fmt.Sprintf("/api/v3/%d/%s/histresult/", p.ID, config.AgentID))
 				}
 			}(payload)
 
 		case "runscriptfull":
 			go func(p *NatsMsg) {
 				var resp []byte
-				var retData rmm.RunScriptResp
+				var retData RunScriptResp
 				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
 				start := time.Now()
-				stdout, stderr, retcode, err := a.RunScript(p.Data["code"], p.Data["shell"], p.ScriptArgs, p.Timeout)
+				stdout, stderr, retcode, err := system.RunScript(p.Data["code"], p.Data["shell"], p.ScriptArgs, p.Timeout)
 
 				retData.ExecTime = time.Since(start).Seconds()
 				if err != nil {
@@ -275,7 +278,7 @@ func RunRPC(a *rmm.AgentConfig) {
 				msg.Respond(resp)
 				if p.ID != 0 {
 					results := map[string]interface{}{"script_results": retData}
-					a.rClient.R().SetBody(results).Patch(fmt.Sprintf("/api/v3/%d/%s/histresult/", p.ID, a.AgentID))
+					api.Patch(results, fmt.Sprintf("/api/v3/%d/%s/histresult/", p.ID, config.AgentID))
 				}
 			}(payload)
 
@@ -286,8 +289,7 @@ func RunRPC(a *rmm.AgentConfig) {
 
 				switch p.Data["mode"] {
 				case "mesh":
-					//a.Logger.Debugln("Recovering mesh")
-					a.RecoverMesh()
+					mesh.RecoverMesh()
 				}
 
 				ret.Encode("ok")
@@ -297,8 +299,7 @@ func RunRPC(a *rmm.AgentConfig) {
 			go func() {
 				var resp []byte
 				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
-				sw := a.GetInstalledSoftware()
-				//a.Logger.Debugln(sw)
+				sw, _ := software.GetInstalledSoftware()
 				ret.Encode(sw)
 				msg.Respond(resp)
 			}()
@@ -311,24 +312,21 @@ func RunRPC(a *rmm.AgentConfig) {
 				ret.Encode("ok")
 				msg.Respond(resp)
 				if runtime.GOOS == "windows" {
-					CMD("shutdown.exe", []string{"/r", "/t", "5", "/f"}, 15, false)
+					system.CMD("shutdown.exe", []string{"/r", "/t", "5", "/f"}, 15, false)
 				} else {
-					opts := a.NewCMDOpts()
+					opts := system.NewCMDOpts()
 					opts.Command = "reboot"
-					a.CmdV2(opts)
+					system.CmdV2(opts)
 				}
 			}()
 		case "needsreboot":
 			go func() {
-				//a.Logger.Debugln("Checking if reboot needed")
 				var resp []byte
 				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
-				out, err := a.SystemRebootRequired()
+				out, err := system.SystemRebootRequired()
 				if err == nil {
-					//a.Logger.Debugln("Reboot needed:", out)
 					ret.Encode(out)
 				} else {
-					//a.Logger.Debugln("Error checking if reboot needed:", err)
 					ret.Encode(false)
 				}
 				msg.Respond(resp)
@@ -337,26 +335,22 @@ func RunRPC(a *rmm.AgentConfig) {
 			go func() {
 				var resp []byte
 				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
-				//a.Logger.Debugln("Getting sysinfo with WMI")
 				modes := []string{"agent-agentinfo", "agent-disks", "agent-wmi", "agent-publicip"}
 				for _, m := range modes {
-					a.NatsMessage(nc, m)
+					service.NatsMessage(version, nc, m)
 				}
 				ret.Encode("ok")
 				msg.Respond(resp)
 			}()
 		case "wmi":
 			go func() {
-				//a.Logger.Debugln("Sending WMI")
-				a.NatsMessage(nc, "agent-wmi")
+				service.NatsMessage(version, nc, "agent-wmi")
 			}()
 		case "cpuloadavg":
 			go func() {
 				var resp []byte
 				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
-				//a.Logger.Debugln("Getting CPU Load Avg")
-				loadAvg := a.GetCPULoadAvg()
-				//a.Logger.Debugln("CPU Load Avg:", loadAvg)
+				loadAvg := system.GetCPULoadAvg()
 				ret.Encode(loadAvg)
 				msg.Respond(resp)
 			}()
@@ -365,54 +359,49 @@ func RunRPC(a *rmm.AgentConfig) {
 				var resp []byte
 				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
 				if runtime.GOOS == "windows" {
-					if a.ChecksRunning() {
+					if checks.ChecksRunning() {
 						ret.Encode("busy")
 						msg.Respond(resp)
-						//a.Logger.Debugln("Checks are already running, please wait")
 					} else {
 						ret.Encode("ok")
 						msg.Respond(resp)
-						//a.Logger.Debugln("Running checks")
-						_, checkerr := CMD(a.EXE, []string{"-m", "runchecks"}, 600, false)
+						_, checkerr := system.CMD(system.GetProgramEXE(), []string{"-m", "runchecks"}, 600, false)
 						if checkerr != nil {
-							//a.Logger.Errorln("RPC RunChecks", checkerr)
 						}
 					}
 				} else {
 					ret.Encode("ok")
 					msg.Respond(resp)
-					//a.Logger.Debugln("Running checks")
-					a.RunChecks(true)
+					checks.RunChecks(config.AgentID, true)
 				}
 
 			}()
 		case "runtask":
 			go func(p *NatsMsg) {
-				//a.Logger.Debugln("Running task")
-				a.RunTask(p.TaskPK)
+				ttasks.RunTask(p.TaskPK)
 			}(payload)
 
 		case "publicip":
 			go func() {
 				var resp []byte
 				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
-				ret.Encode(a.PublicIP())
+				ret.Encode(network.PublicIP(config.Proxy))
 				msg.Respond(resp)
 			}()
 		case "installpython":
-			go a.GetPython(true)
+			go shared.GetPython(true)
 		case "installchoco":
-			go a.InstallChoco()
+			go choco.InstallChoco()
 		case "installwithchoco":
 			go func(p *NatsMsg) {
 				var resp []byte
 				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
 				ret.Encode("ok")
 				msg.Respond(resp)
-				out, _ := a.InstallWithChoco(p.ChocoProgName)
+				out, _ := choco.InstallWithChoco(p.ChocoProgName)
 				results := map[string]string{"results": out}
 				url := fmt.Sprintf("/api/v3/%d/chocoresult/", p.PendingActionPK)
-				a.rClient.R().SetBody(results).Patch(url)
+				api.Patch(results, url)
 			}(payload)
 		case "getwinupdates":
 			go func() {
@@ -421,7 +410,7 @@ func RunRPC(a *rmm.AgentConfig) {
 				} else {
 					//a.Logger.Debugln("Checking for windows updates")
 					defer atomic.StoreUint32(&getWinUpdateLocker, 0)
-					a.GetWinUpdates()
+					patching.GetUpdates()
 				}
 			}()
 		case "installwinupdates":
@@ -431,7 +420,7 @@ func RunRPC(a *rmm.AgentConfig) {
 				} else {
 					//a.Logger.Debugln("Installing windows updates", p.UpdateGUIDs)
 					defer atomic.StoreUint32(&installWinUpdateLocker, 0)
-					a.InstallUpdates(p.UpdateGUIDs)
+					patching.InstallUpdates(p.UpdateGUIDs)
 				}
 			}(payload)
 		case "agentupdate":
@@ -445,7 +434,7 @@ func RunRPC(a *rmm.AgentConfig) {
 				} else {
 					ret.Encode("ok")
 					msg.Respond(resp)
-					a.AgentUpdate(p.Data["url"], p.Data["inno"], p.Data["version"])
+					tactical.AgentUpdate(p.Data["url"], p.Data["inno"], p.Data["version"])
 					atomic.StoreUint32(&agentUpdateLocker, 0)
 					nc.Flush()
 					nc.Close()
@@ -459,7 +448,7 @@ func RunRPC(a *rmm.AgentConfig) {
 				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
 				ret.Encode("ok")
 				msg.Respond(resp)
-				a.AgentUninstall(p.Code)
+				tactical.AgentUninstall(p.Code)
 				nc.Flush()
 				nc.Close()
 				os.Exit(0)
@@ -474,4 +463,9 @@ func RunRPC(a *rmm.AgentConfig) {
 	}
 
 	wg.Wait()
+}
+
+func Start(version string, _ ksvc.Service) error {
+	go RunRPC(version)
+	return nil
 }
