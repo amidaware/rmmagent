@@ -56,18 +56,15 @@ func RunScript(code string, shell string, args []string, timeout int) (stdout, s
 
 	tmpfn, err := ioutil.TempFile(dir, ext)
 	if err != nil {
-		//a.Logger.Errorln(err)
 		return "", err.Error(), 85, err
 	}
 
 	defer os.Remove(tmpfn.Name())
 	if _, err := tmpfn.Write(content); err != nil {
-		//a.Logger.Errorln(err)
 		return "", err.Error(), 85, err
 	}
 
 	if err := tmpfn.Close(); err != nil {
-		//a.Logger.Errorln(err)
 		return "", err.Error(), 85, err
 	}
 
@@ -93,7 +90,6 @@ func RunScript(code string, shell string, args []string, timeout int) (stdout, s
 	cmd.Stdout = &outb
 	cmd.Stderr = &errb
 	if cmdErr := cmd.Start(); cmdErr != nil {
-		//a.Logger.Debugln(cmdErr)
 		return "", cmdErr.Error(), 65, cmdErr
 	}
 
@@ -474,7 +470,7 @@ func OsString() string {
 	return osFullName
 }
 
-func AddDefenderExlusions() {
+func AddDefenderExlusions() error {
 	code := `
 Add-MpPreference -ExclusionPath 'C:\Program Files\TacticalAgent\*'
 Add-MpPreference -ExclusionPath 'C:\Windows\Temp\winagent-v*.exe'
@@ -483,6 +479,8 @@ Add-MpPreference -ExclusionPath 'C:\Program Files\Mesh Agent\*'
 `
 	_, _, _, err := RunScript(code, "powershell", []string{}, 20)
 	if err != nil {
-		//a.Logger.Debugln(err)
+		return err
 	}
+
+	return nil
 }

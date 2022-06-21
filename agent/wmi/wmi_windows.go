@@ -7,72 +7,73 @@ import (
 	"github.com/yusufpapurcu/wmi"
 )
 
-func GetWMIInfo() map[string]interface{} {
+func GetWMIInfo() (map[string]interface{}, []error) {
 	wmiInfo := make(map[string]interface{})
+	errs := []error{}
 
 	compSysProd, err := GetWin32_ComputerSystemProduct()
 	if err != nil {
-		//a.Logger.Debugln(err)
+		errs = append(errs, err)
 	}
 
 	compSys, err := GetWin32_ComputerSystem()
 	if err != nil {
-		//a.Logger.Debugln(err)
+		errs = append(errs, err)
 	}
 
 	netAdaptConfig, err := GetWin32_NetworkAdapterConfiguration()
 	if err != nil {
-		//a.Logger.Debugln(err)
+		errs = append(errs, err)
 	}
 
 	physMem, err := GetWin32_PhysicalMemory()
 	if err != nil {
-		//a.Logger.Debugln(err)
+		errs = append(errs, err)
 	}
 
 	winOS, err := GetWin32_OperatingSystem()
 	if err != nil {
-		//a.Logger.Debugln(err)
+		errs = append(errs, err)
 	}
 
 	baseBoard, err := GetWin32_BaseBoard()
 	if err != nil {
-		//a.Logger.Debugln(err)
+		errs = append(errs, err)
 	}
 
 	bios, err := GetWin32_BIOS()
 	if err != nil {
-		//a.Logger.Debugln(err)
+		errs = append(errs, err)
 	}
 
 	disk, err := GetWin32_DiskDrive()
 	if err != nil {
-		//a.Logger.Debugln(err)
+		errs = append(errs, err)
 	}
 
 	netAdapt, err := GetWin32_NetworkAdapter()
 	if err != nil {
-		//a.Logger.Debugln(err)
+		errs = append(errs, err)
 	}
 
 	desktopMon, err := GetWin32_DesktopMonitor()
 	if err != nil {
-		//a.Logger.Debugln(err)
+		errs = append(errs, err)
 	}
 
 	cpu, err := GetWin32_Processor()
 	if err != nil {
-		//a.Logger.Debugln(err)
+		errs = append(errs, err)
 	}
 
 	usb, err := GetWin32_USBController()
 	if err != nil {
-		//a.Logger.Debugln(err)
+		errs = append(errs, err)
 	}
 
 	graphics, err := GetWin32_VideoController()
 	if err != nil {
-		//a.Logger.Debugln(err)
+		errs = append(errs, err)
 	}
 
 	wmiInfo["comp_sys_prod"] = compSysProd
@@ -89,7 +90,7 @@ func GetWMIInfo() map[string]interface{} {
 	wmiInfo["usb"] = usb
 	wmiInfo["graphics"] = graphics
 
-	return wmiInfo
+	return wmiInfo, errs
 }
 
 func GetWin32_ComputerSystemProduct() ([]interface{}, error) {
@@ -113,6 +114,7 @@ func GetWin32_ComputerSystemProduct() ([]interface{}, error) {
 		if err := json.Unmarshal(b, &un); err != nil {
 			return ret, err
 		}
+
 		tmp = append(tmp, un)
 		ret = append(ret, tmp)
 	}

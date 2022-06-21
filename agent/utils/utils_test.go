@@ -1,31 +1,40 @@
-package utils
+package utils_test
 
 import (
 	"testing"
+
+	"github.com/amidaware/rmmagent/agent/utils"
 )
 
 func TestByteCountSI(t *testing.T) {
-	var bytes uint64 = 1048576
-	mb := ByteCountSI(bytes)
-	if mb != "1.0 MB" {
-		t.Errorf("Expected 1.0 MB, got %s", mb)
+	testTable := []struct {
+		name     string
+		expected string
+		bytes    uint64
+	}{
+		{
+			name:     "Bytes to Kilobytes",
+			expected: "1.0 kB",
+			bytes:    1024,
+		},
+		{
+			name:     "Bytes to Megabytes",
+			expected: "1.0 MB",
+			bytes:    1048576,
+		},
+		{
+			name:     "Bytes to Gigabytes",
+			expected: "1.0 GB",
+			bytes:    1073741824,
+		},
 	}
-}
 
-func TestRemoveWinNewLines(t *testing.T) {
-	result := RemoveWinNewLines("test\r\n")
-	if result != "test\n" {
-		t.Fatalf("Expected testing\\n, got %s", result)
+	for _, tt := range testTable {
+		t.Run(tt.name, func(t *testing.T) {
+			result := utils.ByteCountSI(tt.bytes)
+			if result != tt.expected {
+				t.Errorf("expected %s, got %s", tt.expected, result)
+			}
+		})
 	}
-
-	t.Logf("Result: %s", result)
-}
-
-func TestStripAll(t *testing.T) {
-	result := StripAll("   test\r\n    ")
-	if result != "test" {
-		t.Fatalf("Expecte test, got %s", result)
-	}
-
-	t.Log("Test result expected")
 }
