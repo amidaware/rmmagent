@@ -11,18 +11,15 @@ import (
 )
 
 func CreateSchedTask(st SchedTask) (bool, error) {
-	//a.Logger.Debugf("%+v\n", st)
 	conn, err := taskmaster.Connect()
 	if err != nil {
-		//a.Logger.Errorln(err)
 		return false, err
 	}
-	defer conn.Disconnect()
 
+	defer conn.Disconnect()
 	var trigger taskmaster.Trigger
 	var action taskmaster.ExecAction
 	var tasktrigger taskmaster.TaskTrigger
-
 	var now = time.Now()
 	if st.Trigger == "manual" {
 		tasktrigger = taskmaster.TaskTrigger{
@@ -47,7 +44,6 @@ func CreateSchedTask(st SchedTask) (bool, error) {
 
 	var path, workdir, args string
 	def := conn.NewTaskDefinition()
-
 	switch st.Trigger {
 	case "runonce":
 		trigger = taskmaster.TimeTrigger{
@@ -96,10 +92,11 @@ func CreateSchedTask(st SchedTask) (bool, error) {
 
 	def.AddTrigger(trigger)
 
+	currentDir, _ := os.Getwd()
 	switch st.Type {
 	case "rmm":
-		path = winExeName
-		workdir = a.ProgramDir
+		path = os.Args[0]
+		workdir = currentDir
 		args = fmt.Sprintf("-m taskrunner -p %d", st.PK)
 	case "schedreboot":
 		path = "shutdown.exe"
@@ -116,8 +113,8 @@ func CreateSchedTask(st SchedTask) (bool, error) {
 		WorkingDir: workdir,
 		Args:       args,
 	}
-	def.AddAction(action)
 
+	def.AddAction(action)
 	def.Principal.RunLevel = taskmaster.TASK_RUNLEVEL_HIGHEST
 	def.Principal.LogonType = taskmaster.TASK_LOGON_SERVICE_ACCOUNT
 	def.Principal.UserID = "SYSTEM"
@@ -139,7 +136,6 @@ func CreateSchedTask(st SchedTask) (bool, error) {
 
 	_, success, err := conn.CreateTask(fmt.Sprintf("\\%s", st.Name), def, st.Overwrite)
 	if err != nil {
-		//a.Logger.Errorln(err)
 		return false, err
 	}
 
@@ -161,17 +157,17 @@ func DeleteSchedTask(name string) error {
 	return nil
 }
 
-func ListSchedTasks() []string {
+func ListSchedTasks() ([]string, error) {
 	ret := make([]string, 0)
 	conn, err := taskmaster.Connect()
 	if err != nil {
-		return ret
+		return ret, err
 	}
 
 	defer conn.Disconnect()
 	tasks, err := conn.GetRegisteredTasks()
 	if err != nil {
-		return ret
+		return ret, err
 	}
 
 	for _, task := range tasks {
@@ -179,7 +175,7 @@ func ListSchedTasks() []string {
 	}
 
 	tasks.Release()
-	return ret
+	return ret, nil
 }
 
 // CleanupSchedTasks removes all tacticalrmm sched tasks during uninstall
