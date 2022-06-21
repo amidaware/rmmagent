@@ -7,8 +7,8 @@ import (
 	wapi "github.com/iamacarpet/go-win64api"
 )
 
-func GetInstalledSoftware() ([]WinSoftwareList, error) {
-	ret := make([]WinSoftwareList, 0)
+func GetInstalledSoftware() ([]Software, error) {
+	ret := make([]Software, 0)
 	sw, err := installedSoftwareList()
 	if err != nil {
 		return ret, err
@@ -16,7 +16,7 @@ func GetInstalledSoftware() ([]WinSoftwareList, error) {
 
 	for _, s := range sw {
 		t := s.InstallDate
-		ret = append(ret, WinSoftwareList{
+		ret = append(ret, SoftwareList{
 			Name:        utils.CleanString(s.Name()),
 			Version:     utils.CleanString(s.Version()),
 			Publisher:   utils.CleanString(s.Publisher),

@@ -1,6 +1,6 @@
 package software
 
-type SoftwareList struct {
+type Software struct {
 	Name        string `json:"name"`
 	Version     string `json:"version"`
 	Publisher   string `json:"publisher"`
