@@ -2,7 +2,9 @@ package agent
 
 import (
 	"os"
+	"time"
 
+	gocmd "github.com/go-cmd/cmd"
 	"github.com/go-resty/resty/v2"
 	"github.com/kardianos/service"
 	"github.com/sirupsen/logrus"
@@ -36,4 +38,32 @@ type Agent struct {
 	Platform      string
 	GoArch        string
 	ServiceConfig *service.Config
+}
+
+type AgentConfig struct {
+	BaseURL       string
+	AgentID       string
+	APIURL        string
+	Token         string
+	AgentPK       string
+	PK            int
+	Cert          string
+	Proxy         string
+	CustomMeshDir string
+}
+
+type CmdStatus struct {
+	Status gocmd.Status
+	Stdout string
+	Stderr string
+}
+
+type CmdOptions struct {
+	Shell        string
+	Command      string
+	Args         []string
+	Timeout      time.Duration
+	IsScript     bool
+	IsExecutable bool
+	Detached     bool
 }

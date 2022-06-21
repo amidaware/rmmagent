@@ -14,8 +14,6 @@ import (
 
 	"github.com/amidaware/rmmagent/shared"
 	"github.com/go-resty/resty/v2"
-	"github.com/shirou/gopsutil/v3/process"
-	trmm "github.com/wh1te909/trmm-shared"
 )
 
 func CaptureOutput(f func()) string {
@@ -94,37 +92,17 @@ func StripAll(s string) string {
 	return s
 }
 
-// KillProc kills a process and its children
-func KillProc(pid int32) error {
-	p, err := process.NewProcess(pid)
-	if err != nil {
-		return err
-	}
-
-	children, err := p.Children()
-	if err == nil {
-		for _, child := range children {
-			if err := child.Kill(); err != nil {
-				continue
-			}
-		}
-	}
-
-	if err := p.Kill(); err != nil {
-		return err
-	}
-	return nil
-}
-
-func CreateTRMMTempDir() {
+func CreateTRMMTempDir() error {
 	// create the temp dir for running scripts
 	dir := filepath.Join(os.TempDir(), "trmm")
-	if !trmm.FileExists(dir) {
+	if !FileExists(dir) {
 		err := os.Mkdir(dir, 0775)
 		if err != nil {
-			//a.Logger.Errorln(err)
+			return err
 		}
 	}
+
+	return nil
 }
 
 func RandRange(min, max int) int {
@@ -198,4 +176,13 @@ func BytesToString(b []byte) (string, uint32) {
 		}
 	}
 	return string(utf16.Decode(s)), uint32(i * 2)
+}
+
+func FileExists(path string) bool {
+	if _, err := os.Stat(path); err != nil {
+		if os.IsNotExist(err) {
+			return false
+		}
+	}
+	return true
 }

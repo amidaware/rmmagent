@@ -18,6 +18,7 @@ import (
 	ps "github.com/elastic/go-sysinfo"
 	"github.com/go-ole/go-ole"
 	"github.com/go-ole/go-ole/oleutil"
+	"github.com/shirou/gopsutil/process"
 	wapf "github.com/wh1te909/go-win64api"
 	trmm "github.com/wh1te909/trmm-shared"
 	"golang.org/x/sys/windows"
@@ -102,7 +103,7 @@ func RunScript(code string, shell string, args []string, timeout int) (stdout, s
 
 		<-ctx.Done()
 
-		_ = utils.KillProc(p)
+		_ = KillProc(p)
 		timedOut = true
 	}(pid)
 
@@ -223,7 +224,7 @@ func CMDShell(shell string, cmdArgs []string, command string, timeout int, detac
 
 		<-ctx.Done()
 
-		_ = utils.KillProc(p)
+		_ = KillProc(p)
 		timedOut = true
 	}(pid)
 
@@ -441,7 +442,7 @@ func KillHungUpdates() {
 		}
 		if strings.Contains(p.Exe, "winagent-v") {
 			//a.Logger.Debugln("killing process", p.Exe)
-			utils.KillProc(int32(p.PID))
+			KillProc(int32(p.PID))
 		}
 	}
 }
@@ -479,6 +480,29 @@ Add-MpPreference -ExclusionPath 'C:\Program Files\Mesh Agent\*'
 `
 	_, _, _, err := RunScript(code, "powershell", []string{}, 20)
 	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// KillProc kills a process and its children
+func KillProc(pid int32) error {
+	p, err := process.NewProcess(pid)
+	if err != nil {
+		return err
+	}
+
+	children, err := p.Children()
+	if err == nil {
+		for _, child := range children {
+			if err := child.Kill(); err != nil {
+				continue
+			}
+		}
+	}
+
+	if err := p.Kill(); err != nil {
 		return err
 	}
 

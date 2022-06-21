@@ -3,50 +3,45 @@ package checks
 import (
 	"encoding/json"
 	"fmt"
-	"runtime"
 	"sync"
 	"time"
 
 	"github.com/amidaware/rmmagent/agent/system"
+	"github.com/amidaware/rmmagent/agent/tactical/api"
 	"github.com/amidaware/rmmagent/agent/utils"
-	rmm "github.com/amidaware/rmmagent/shared"
 	ps "github.com/elastic/go-sysinfo"
 	"github.com/go-resty/resty/v2"
 )
 
-func CheckRunner(agentID string) {
+func CheckRunner(agentID string) error {
 	sleepDelay := utils.RandRange(14, 22)
-	//a.Logger.Debugf("CheckRunner() init sleeping for %v seconds", sleepDelay)
 	time.Sleep(time.Duration(sleepDelay) * time.Second)
 	for {
 		interval, err := GetCheckInterval(agentID)
 		if err == nil && !ChecksRunning() {
-			if runtime.GOOS == "windows" {
-				_, err = system.CMD(system.GetProgramEXE(), []string{"-m", "checkrunner"}, 600, false)
-				if err != nil {
-					//a.Logger.Errorln("Checkrunner RunChecks", err)
-				}
-			} else {
-				RunChecks(agentID, false)
+			_, err = system.CMD(system.GetProgramEXE(), []string{"-m", "checkrunner"}, 600, false)
+			if err != nil {
+				return err
 			}
 		}
 
-		//a.Logger.Debugln("Checkrunner sleeping for", interval)
 		time.Sleep(time.Duration(interval) * time.Second)
 	}
+
+	return nil
 }
 
 func GetCheckInterval(agentID string) (int, error) {
-	r, err := a.rClient.R().SetResult(&rmm.CheckInfo{}).Get(fmt.Sprintf("/api/v3/%s/checkinterval/", a.AgentID))
+	r, err := api.GetResult(CheckInfo{}, fmt.Sprintf("/api/v3/%s/checkinterval/", agentID))
 	if err != nil {
-		a.Logger.Debugln(err)
 		return 120, err
 	}
+
 	if r.IsError() {
-		a.Logger.Debugln("Checkinterval response code:", r.StatusCode())
 		return 120, fmt.Errorf("checkinterval response code: %v", r.StatusCode())
 	}
-	interval := r.Result().(*rmm.CheckInfo).Interval
+
+	interval := r.Result().(*CheckInfo).Interval
 	return interval, nil
 }
 
@@ -90,7 +85,7 @@ func RunChecks(agentID string, force bool) error {
 	} else {
 		url = fmt.Sprintf("/api/v3/%s/checkrunner/", agentID)
 	}
-	
+
 	r, err := a.rClient.R().Get(url)
 	if err != nil {
 		//a.Logger.Debugln(err)

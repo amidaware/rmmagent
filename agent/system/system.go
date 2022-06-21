@@ -97,7 +97,7 @@ func CmdV2(c *CmdOptions) CmdStatus {
 			return
 		case <-ctx.Done():
 			pid := envCmd.Status().PID
-			utils.KillProc(int32(pid))
+			KillProc(int32(pid))
 		}
 	}()
 

@@ -80,6 +80,7 @@ func New(logger *logrus.Logger, version string) *Agent {
 	if len(ac.Proxy) > 0 {
 		restyC.SetProxy(ac.Proxy)
 	}
+
 	if len(ac.Cert) > 0 {
 		restyC.SetRootCertificate(ac.Cert)
 	}
@@ -135,22 +136,6 @@ func New(logger *logrus.Logger, version string) *Agent {
 		GoArch:        runtime.GOARCH,
 		ServiceConfig: svcConf,
 	}
-}
-
-type CmdStatus struct {
-	Status gocmd.Status
-	Stdout string
-	Stderr string
-}
-
-type CmdOptions struct {
-	Shell        string
-	Command      string
-	Args         []string
-	Timeout      time.Duration
-	IsScript     bool
-	IsExecutable bool
-	Detached     bool
 }
 
 func (a *Agent) NewCMDOpts() *CmdOptions {

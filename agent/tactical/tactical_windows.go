@@ -1,21 +1,19 @@
 package tactical
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/amidaware/rmmagent/agent/patching"
 	"github.com/amidaware/rmmagent/agent/services"
-	"github.com/amidaware/rmmagent/agent/software"
 	"github.com/amidaware/rmmagent/agent/system"
+	"github.com/amidaware/rmmagent/agent/tactical/config"
 	"github.com/amidaware/rmmagent/agent/tactical/rpc"
 	"github.com/amidaware/rmmagent/agent/tasks"
 	"github.com/amidaware/rmmagent/agent/utils"
@@ -26,87 +24,6 @@ import (
 	"golang.org/x/sys/windows"
 	"golang.org/x/sys/windows/registry"
 )
-
-func GetMeshBinary() string {
-	var MeshSysBin string
-	ac := NewAgentConfig()
-	if len(ac.CustomMeshDir) > 0 {
-		MeshSysBin = filepath.Join(ac.CustomMeshDir, "MeshAgent.exe")
-	} else {
-		MeshSysBin = filepath.Join(os.Getenv("ProgramFiles"), "Mesh Agent", "MeshAgent.exe")
-	}
-
-	return MeshSysBin
-}
-
-func NewAgentConfig() *rmm.AgentConfig {
-	k, err := registry.OpenKey(registry.LOCAL_MACHINE, `SOFTWARE\TacticalRMM`, registry.ALL_ACCESS)
-
-	if err != nil {
-		return &rmm.AgentConfig{}
-	}
-
-	baseurl, _, _ := k.GetStringValue("BaseURL")
-	agentid, _, _ := k.GetStringValue("AgentID")
-	apiurl, _, _ := k.GetStringValue("ApiURL")
-	token, _, _ := k.GetStringValue("Token")
-	agentpk, _, _ := k.GetStringValue("AgentPK")
-	pk, _ := strconv.Atoi(agentpk)
-	cert, _, _ := k.GetStringValue("Cert")
-	proxy, _, _ := k.GetStringValue("Proxy")
-	customMeshDir, _, _ := k.GetStringValue("MeshDir")
-
-	return &rmm.AgentConfig{
-		BaseURL:       baseurl,
-		AgentID:       agentid,
-		APIURL:        apiurl,
-		Token:         token,
-		AgentPK:       agentpk,
-		PK:            pk,
-		Cert:          cert,
-		Proxy:         proxy,
-		CustomMeshDir: customMeshDir,
-	}
-}
-
-func GetMeshNodeID() (string, error) {
-	out, err := system.CMD(GetMeshBinary(), []string{"-nodeid"}, 10, false)
-	if err != nil {
-		//a.Logger.Debugln(err)
-		return "", err
-	}
-
-	stdout := out[0]
-	stderr := out[1]
-
-	if stderr != "" {
-		//a.Logger.Debugln(stderr)
-		return "", err
-	}
-
-	if stdout == "" || strings.Contains(strings.ToLower(utils.StripAll(stdout)), "not defined") {
-		//a.Logger.Debugln("Failed getting mesh node id", stdout)
-		return "", errors.New("failed to get mesh node id")
-	}
-
-	return stdout, nil
-}
-
-func SendSoftware() {
-	sw := software.GetInstalledSoftware()
-	//a.Logger.Debugln(sw)
-
-	config := NewAgentConfig()
-	payload := map[string]interface{}{
-		"agent_id": config.AgentID,
-		"software": sw,
-	}
-
-	_, err := PostRequest("/api/v3/software/", payload, 15)
-	if err != nil {
-		//a.Logger.Debugln(err)
-	}
-}
 
 func UninstallCleanup() {
 	registry.DeleteKey(registry.LOCAL_MACHINE, `SOFTWARE\TacticalRMM`)
@@ -123,7 +40,7 @@ func AgentUpdate(url, inno, version string) {
 	//a.Logger.Infof("Agent updating from %s to %s", a.Version, version)
 	//a.Logger.Infoln("Downloading agent update from", url)
 
-	config := NewAgentConfig()
+	config := config.NewAgentConfig()
 	rClient := resty.New()
 	rClient.SetCloseConnection(true)
 	rClient.SetTimeout(15 * time.Minute)
