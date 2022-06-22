@@ -1,18 +1,20 @@
+//go:build !windows
+// +build !windows
+
 package disk
 
 import (
 	"strings"
 
 	d "github.com/shirou/gopsutil/v3/disk"
-	trmm "github.com/wh1te909/trmm-shared"
 	"github.com/amidaware/rmmagent/agent/utils"
 )
 
-func GetDisks() []trmm.Disk {
-	ret := make([]trmm.Disk, 0)
+func GetDisks() ([]Disk, error) {
+	ret := make([]Disk, 0)
 	partitions, err := d.Partitions(false)
 	if err != nil {
-		return nil
+		return []Disk{}, nil
 	}
 
 	for _, p := range partitions {
@@ -24,7 +26,7 @@ func GetDisks() []trmm.Disk {
 			continue
 		}
 
-		d := trmm.Disk{
+		d := Disk{
 			Device:  p.Device,
 			Fstype:  p.Fstype,
 			Total:   utils.ByteCountSI(usage.Total),
@@ -36,5 +38,5 @@ func GetDisks() []trmm.Disk {
 		ret = append(ret, d)
 	}
 
-	return ret
+	return ret, nil
 }

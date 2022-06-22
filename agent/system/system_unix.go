@@ -1,22 +1,30 @@
+//go:build !windows
+// +build !windows
+
 package system
 
 import (
 	"bufio"
 	"fmt"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"syscall"
 	"time"
 
+	"github.com/amidaware/rmmagent/agent/events"
 	"github.com/amidaware/rmmagent/agent/utils"
 	ps "github.com/elastic/go-sysinfo"
 	"github.com/jaypipes/ghw"
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/process"
 	psHost "github.com/shirou/gopsutil/v3/host"
-	rmm "github.com/amidaware/rmmagent/shared"
-	trmm "github.com/wh1te909/trmm-shared"
+)
+
+const (
+	ProgFilesName = "TacticalAgent"
+	winExeName    = "tacticalrmm.exe"
 )
 
 func SetDetached() *syscall.SysProcAttr {
@@ -31,14 +39,14 @@ func SystemRebootRequired() (bool, error) {
 	// deb
 	paths := [2]string{"/var/run/reboot-required", "/run/reboot-required"}
 	for _, p := range paths {
-		if trmm.FileExists(p) {
+		if utils.FileExists(p) {
 			return true, nil
 		}
 	}
 	// rhel
 	bins := [2]string{"/usr/bin/needs-restarting", "/bin/needs-restarting"}
 	for _, bin := range bins {
-		if trmm.FileExists(bin) {
+		if utils.FileExists(bin) {
 			opts := NewCMDOpts()
 			// https://man7.org/linux/man-pages/man1/needs-restarting.1.html
 			// -r Only report whether a full reboot is required (exit code 1) or not (exit code 0).
@@ -269,8 +277,8 @@ func DeleteSchedTask(name string) error { return nil }
 
 func ListSchedTasks() []string { return []string{} }
 
-func GetEventLog(logName string, searchLastDays int) []rmm.EventLogMsg {
-	return []rmm.EventLogMsg{}
+func GetEventLog(logName string, searchLastDays int) []events.EventLogMsg {
+	return []events.EventLogMsg{}
 }
 
 func CMDShell(shell string, cmdArgs []string, command string, timeout int, detached bool) (output [2]string, e error) {
@@ -279,4 +287,21 @@ func CMDShell(shell string, cmdArgs []string, command string, timeout int, detac
 
 func CMD(exe string, args []string, timeout int, detached bool) (output [2]string, e error) {
 	return [2]string{"", ""}, nil
+}
+
+func GetPythonBin() string {
+	opts := NewCMDOpts()
+	opts.Command = "which python"
+	out := CmdV2(opts)
+	return out.Stdout	
+}
+
+func GetProgramDirectory() string {
+	pd := filepath.Join(os.Getenv("ProgramFiles"), ProgFilesName)
+	return pd
+}
+
+func GetProgramBin() string {
+	exe := filepath.Join(GetProgramDirectory(), winExeName)
+	return exe
 }

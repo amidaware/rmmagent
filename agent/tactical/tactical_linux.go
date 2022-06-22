@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/amidaware/rmmagent/agent/system"
+	"github.com/amidaware/rmmagent/agent/tactical/mesh"
 	"github.com/amidaware/rmmagent/agent/utils"
 	"github.com/amidaware/rmmagent/shared"
 	"github.com/go-resty/resty/v2"
@@ -166,7 +167,7 @@ func RecoverMesh(agentID string) {
 	opts := system.NewCMDOpts()
 	opts.Command = "systemctl restart meshagent.service"
 	system.CmdV2(opts)
-	SyncMeshNodeID()
+	mesh.SyncMeshNodeID()
 }
 
 func UninstallCleanup() {}

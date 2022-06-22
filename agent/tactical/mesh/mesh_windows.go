@@ -41,27 +41,7 @@ func ForceKillMesh() error {
 	return nil
 }
 
-func GetMeshNodeID() (string, error) {
-	out, err := system.CMD(getMeshBinLocation(), []string{"-nodeid"}, 10, false)
-	if err != nil {
-		return "", err
-	}
-
-	stdout := out[0]
-	stderr := out[1]
-
-	if stderr != "" {
-		return "", err
-	}
-
-	if stdout == "" || strings.Contains(strings.ToLower(utils.StripAll(stdout)), "not defined") {
-		return "", errors.New("failed to get mesh node id")
-	}
-
-	return stdout, nil
-}
-
-func getMeshBinLocation() string {
+func GetMeshBinLocation() string {
 	ac := config.NewAgentConfig()
 	var MeshSysBin string
 	if len(ac.CustomMeshDir) > 0 {

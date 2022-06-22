@@ -2,23 +2,16 @@ package service
 
 import (
 	"fmt"
-	"runtime"
 	"sync"
 	"time"
 
-	"github.com/amidaware/rmmagent/agent/disk"
-	"github.com/amidaware/rmmagent/agent/network"
-	"github.com/amidaware/rmmagent/agent/services"
-	"github.com/amidaware/rmmagent/agent/system"
 	"github.com/amidaware/rmmagent/agent/tactical/api"
 	"github.com/amidaware/rmmagent/agent/tactical/checks"
 	"github.com/amidaware/rmmagent/agent/tactical/config"
 	"github.com/amidaware/rmmagent/agent/tactical/mesh"
 	"github.com/amidaware/rmmagent/agent/tactical/shared"
 	"github.com/amidaware/rmmagent/agent/utils"
-	"github.com/amidaware/rmmagent/agent/wmi"
 	"github.com/nats-io/nats.go"
-	"github.com/ugorji/go/codec"
 )
 
 var natsCheckin = []string{"agent-hello", "agent-agentinfo", "agent-disks", "agent-winsvc", "agent-publicip", "agent-wmi"}
@@ -96,65 +89,6 @@ func SetupNatsOptions() []nats.Option {
 	opts = append(opts, nats.MaxReconnects(-1))
 	opts = append(opts, nats.ReconnectBufSize(-1))
 	return opts
-}
-
-func NatsMessage(version string, nc *nats.Conn, mode string) {
-	config := config.NewAgentConfig()
-	var resp []byte
-	var payload interface{}
-	ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
-
-	switch mode {
-	case "agent-hello":
-		payload = CheckInNats{
-			Agentid: config.AgentID,
-			Version: version,
-		}
-	case "agent-winsvc":
-		svcs, _, _ := services.GetServices()
-		payload = WinSvcNats{
-			Agentid: config.AgentID,
-			WinSvcs: svcs,
-		}
-	case "agent-agentinfo":
-		osinfo := system.OsString()
-		reboot, err := system.SystemRebootRequired()
-		if err != nil {
-			reboot = false
-		}
-		payload = AgentInfoNats{
-			Agentid:      config.AgentID,
-			Username:     system.LoggedOnUser(),
-			Hostname:     system.GetHostname(),
-			OS:           osinfo,
-			Platform:     runtime.GOOS,
-			TotalRAM:     system.TotalRAM(),
-			BootTime:     system.BootTime(),
-			RebootNeeded: reboot,
-			GoArch:       runtime.GOARCH,
-		}
-	case "agent-wmi":
-		wmiinfo, _ := wmi.GetWMIInfo()
-		payload = WinWMINats{
-			Agentid: config.AgentID,
-			WMI:     wmiinfo,
-		}
-	case "agent-disks":
-		disks, _ := disk.GetDisks()
-		payload = WinDisksNats{
-			Agentid: config.AgentID,
-			Disks:   disks,
-		}
-	case "agent-publicip":
-		payload = PublicIPNats{
-			Agentid:  config.AgentID,
-			PublicIP: network.PublicIP(config.Proxy),
-		}
-	}
-
-	//a.Logger.Debugln(mode, payload)
-	ret.Encode(payload)
-	nc.PublishRequest(config.AgentID, mode, resp)
 }
 
 func DoNatsCheckIn(version string) {

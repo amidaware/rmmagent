@@ -30,3 +30,5 @@ type AgentNeedsReboot struct {
 	AgentID     string `json:"agent_id"`
 	NeedsReboot bool   `json:"needs_reboot"`
 }
+
+type PackageList []Package

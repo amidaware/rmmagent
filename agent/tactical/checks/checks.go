@@ -25,7 +25,7 @@ func CheckRunner(agentID string) error {
 	for {
 		interval, err := GetCheckInterval(agentID)
 		if err == nil && !ChecksRunning() {
-			_, err = system.CMD(system.GetProgramEXE(), []string{"-m", "checkrunner"}, 600, false)
+			_, err = system.CMD(system.GetProgramBin(), []string{"-m", "checkrunner"}, 600, false)
 			if err != nil {
 				return err
 			}
@@ -66,7 +66,7 @@ Out:
 		if p.PID == 0 {
 			continue
 		}
-		if p.Exe != system.GetProgramEXE() {
+		if p.Exe != system.GetProgramBin() {
 			continue
 		}
 

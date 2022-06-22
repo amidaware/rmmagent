@@ -131,7 +131,6 @@ func RunRPC(version string) {
 				var resp []byte
 				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
 				procs := system.GetProcsRPC()
-				//a.Logger.Debugln(procs)
 				ret.Encode(procs)
 				msg.Respond(resp)
 			}()
@@ -365,7 +364,7 @@ func RunRPC(version string) {
 					} else {
 						ret.Encode("ok")
 						msg.Respond(resp)
-						_, checkerr := system.CMD(system.GetProgramEXE(), []string{"-m", "runchecks"}, 600, false)
+						_, checkerr := system.CMD(system.GetProgramBin(), []string{"-m", "runchecks"}, 600, false)
 						if checkerr != nil {
 						}
 					}

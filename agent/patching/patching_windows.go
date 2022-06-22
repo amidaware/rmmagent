@@ -36,7 +36,7 @@ func PatchMgmnt(enable bool) error {
 	return nil
 }
 
-type PackageList []Package
+
 
 func GetUpdates() (PackageList, error) {
 	wuaupdates, err := wua.WUAUpdates("IsInstalled=1 or IsInstalled=0 and Type='Software' and IsHidden=0")

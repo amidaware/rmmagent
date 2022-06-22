@@ -255,7 +255,7 @@ func GetProgramDirectory() string {
 	return pd
 }
 
-func GetProgramEXE() string {
+func GetProgramBin() string {
 	exe := filepath.Join(GetProgramDirectory(), winExeName)
 	return exe
 }
