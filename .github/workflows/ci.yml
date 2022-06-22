@@ -33,3 +33,17 @@ jobs:
           for i in ${ARCHS}; do
             env CGO_ENABLED=0 GOOS=windows GOARCH=${i} go build -ldflags "-s -w"
           done
+      
+      - name: Ensure mac agent compiles
+        run: |
+          ARCHS='amd64 arm64'
+          for i in ${ARCHS}; do
+            env CGO_ENABLED=0 GOOS=darwin GOARCH=${i} go build -ldflags "-s -w"
+          done
+      
+      - name: Ensure freebsd agent compiles
+        run: |
+          ARCHS='amd64 386 arm64 arm'
+          for i in ${ARCHS}; do
+            env CGO_ENABLED=0 GOOS=freebsd GOARCH=${i} go build -ldflags "-s -w"
+          done
