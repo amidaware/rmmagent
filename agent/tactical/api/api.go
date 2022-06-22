@@ -9,7 +9,7 @@ import (
 	"github.com/go-resty/resty/v2"
 )
 
-var restyC resty.Client
+var restyC *resty.Client
 
 func init() {
 	ac := config.NewAgentConfig()
@@ -19,7 +19,7 @@ func init() {
 		headers["Authorization"] = fmt.Sprintf("Token %s", ac.Token)
 	}
 
-	restyC := resty.New()
+	restyC = resty.New()
 	restyC.SetBaseURL(ac.BaseURL)
 	restyC.SetCloseConnection(true)
 	restyC.SetHeaders(headers)
@@ -37,7 +37,11 @@ func init() {
 
 func PostPayload(payload interface{}, url string) error {
 	_, err := restyC.R().SetBody(payload).Post("/api/v3/syncmesh/")
-	return err
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func GetResult(result interface{}, url string) (*resty.Response, error) {
@@ -60,10 +64,18 @@ func Get(url string) (*resty.Response, error) {
 
 func Patch(payload interface{}, url string) error {
 	_, err := restyC.R().SetBody(payload).Patch(url)
-	return err
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func Put(payload interface{}, url string) error {
 	_, err := restyC.R().SetBody(payload).Put(url)
-	return err
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

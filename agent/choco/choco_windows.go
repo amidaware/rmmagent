@@ -1,6 +1,7 @@
 package choco
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/amidaware/rmmagent/agent/system"
@@ -9,7 +10,7 @@ import (
 	"github.com/go-resty/resty/v2"
 )
 
-func InstallChoco() {
+func InstallChoco() error {
 	config := config.NewAgentConfig()
 	var result ChocoInstalled
 	result.AgentID = config.AgentID
@@ -25,27 +26,30 @@ func InstallChoco() {
 	r, err := rClient.R().Get("https://chocolatey.org/install.ps1")
 	if err != nil {
 		api.PostPayload(result, url)
-		return
+		return err
 	}
 
 	if r.IsError() {
 		api.PostPayload(result, url)
-		return
+		return fmt.Errorf("response code: %d", r.StatusCode())
 	}
 
-	_, _, exitcode, err := system.RunScript(string(r.Body()), "powershell", []string{}, 900)
+	installScript := string(r.Body())
+	_, _, exitcode, err := system.RunScript(installScript, "powershell", []string{}, 900)
 	if err != nil {
 		api.PostPayload(result, url)
-		return
+		return err
 	}
 
 	if exitcode != 0 {
 		api.PostPayload(result, url)
-		return
+		return fmt.Errorf("exit code: %d", exitcode)
 	}
 
 	result.Installed = true
-	api.PostPayload(result, url)
+	err = api.PostPayload(result, url)
+
+	return err
 }
 
 func InstallWithChoco(name string) (string, error) {

@@ -9,15 +9,6 @@ import (
 )
 
 func TestGetDisks(t *testing.T) {
-	exampleDisk := disk.Disk{
-		Device:  "C:",
-		Fstype:  "NTFS",
-		Total:   "149.9 GB",
-		Used:    "129.2 GB",
-		Free:    "20.7 GB",
-		Percent: 86,
-	}
-
 	testTable := []struct {
 		name          string
 		expected      []disk.Disk
@@ -26,7 +17,7 @@ func TestGetDisks(t *testing.T) {
 	}{
 		{
 			name:          "Get Disks",
-			expected:      []disk.Disk{exampleDisk},
+			expected:      []disk.Disk{},
 			atLeast:       1,
 			expectedError: nil,
 		},
