@@ -36,7 +36,7 @@ func init() {
 }
 
 func PostPayload(payload interface{}, url string) error {
-	_, err := restyC.R().SetBody(payload).Post("/api/v3/syncmesh/")
+	_, err := restyC.R().SetBody(payload).Post(url)
 	if err != nil {
 		return err
 	}
