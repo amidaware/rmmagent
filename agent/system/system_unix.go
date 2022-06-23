@@ -7,7 +7,6 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"path/filepath"
 	"runtime"
 	"strings"
 	"syscall"
@@ -287,21 +286,4 @@ func CMDShell(shell string, cmdArgs []string, command string, timeout int, detac
 
 func CMD(exe string, args []string, timeout int, detached bool) (output [2]string, e error) {
 	return [2]string{"", ""}, nil
-}
-
-func GetPythonBin() string {
-	opts := NewCMDOpts()
-	opts.Command = "which python"
-	out := CmdV2(opts)
-	return out.Stdout	
-}
-
-func GetProgramDirectory() string {
-	pd := filepath.Join(os.Getenv("ProgramFiles"), ProgFilesName)
-	return pd
-}
-
-func GetProgramBin() string {
-	exe := filepath.Join(GetProgramDirectory(), winExeName)
-	return exe
 }

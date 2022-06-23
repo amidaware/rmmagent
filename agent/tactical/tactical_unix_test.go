@@ -1,11 +1,13 @@
-package tactical
+package tactical_test
 
 import (
 	"testing"
+
+	"github.com/amidaware/rmmagent/agent/tactical"
 )
 
 func TestNewAgentConfig(t *testing.T) {
-	config := NewAgentConfig()
+	config := tactical.NewAgentConfig()
 	if config.BaseURL == "" {
 		t.Fatal("Could not get config")
 	}
@@ -15,8 +17,8 @@ func TestNewAgentConfig(t *testing.T) {
 
 func TestAgentUpdate(t *testing.T) {
 	url := "https://github.com/redanthrax/rmmagent/releases/download/v2.0.4/linuxagent"
-	result := AgentUpdate(url, "", "v2.0.4")
-	if(!result) {
+	result := tactical.AgentUpdate(url, "")
+	if !result {
 		t.Fatal("Agent update resulted in false")
 	}
 
@@ -24,7 +26,7 @@ func TestAgentUpdate(t *testing.T) {
 }
 
 func TestAgentUninstall(t *testing.T) {
-	result := AgentUninstall("foo")
+	result := tactical.AgentUninstall("foo")
 	if !result {
 		t.Fatal("Agent uninstall resulted in error")
 	}
@@ -33,11 +35,10 @@ func TestAgentUninstall(t *testing.T) {
 }
 
 func TestNixMeshNodeID(t *testing.T) {
-	nodeid := NixMeshNodeID()
+	nodeid := tactical.NixMeshNodeID()
 	if nodeid == "" {
 		t.Fatal("Unable to get mesh node id")
 	}
 
 	t.Logf("MeshNodeID: %s", nodeid)
 }
-

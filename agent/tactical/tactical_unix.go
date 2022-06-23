@@ -1,15 +1,20 @@
+//go:build !windows
+// +build !windows
+
 package tactical
 
 import (
 	"os"
+	"os/exec"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/amidaware/rmmagent/agent/system"
 	"github.com/amidaware/rmmagent/agent/tactical/mesh"
+	"github.com/amidaware/rmmagent/agent/tactical/shared"
 	"github.com/amidaware/rmmagent/agent/utils"
-	"github.com/amidaware/rmmagent/shared"
 	"github.com/go-resty/resty/v2"
 	"github.com/spf13/viper"
 	"github.com/wh1te909/trmm-shared"
@@ -19,7 +24,7 @@ func GetMeshBinary() string {
 	return "/opt/tacticalmesh/meshagent"
 }
 
-func NewAgentConfig() *shared.AgentConfig {
+func NewAgentConfig() *AgentConfig {
 	viper.SetConfigName("tacticalagent")
 	viper.SetConfigType("json")
 	viper.AddConfigPath("/etc/")
@@ -28,13 +33,13 @@ func NewAgentConfig() *shared.AgentConfig {
 	err := viper.ReadInConfig()
 
 	if err != nil {
-		return &shared.AgentConfig{}
+		return &AgentConfig{}
 	}
 
 	agentpk := viper.GetString("agentpk")
 	pk, _ := strconv.Atoi(agentpk)
 
-	ret := &shared.AgentConfig{
+	ret := &AgentConfig{
 		BaseURL:       viper.GetString("baseurl"),
 		AgentID:       viper.GetString("agentid"),
 		APIURL:        viper.GetString("apiurl"),
@@ -49,7 +54,7 @@ func NewAgentConfig() *shared.AgentConfig {
 	return ret
 }
 
-func AgentUpdate(url, inno, version string) bool {
+func AgentUpdate(url string, inno string) bool {
 	self, err := os.Executable()
 	if err != nil {
 		return false
@@ -61,15 +66,12 @@ func AgentUpdate(url, inno, version string) bool {
 	}
 	defer os.Remove(f.Name())
 
-	//logger.Infof("Agent updating from %s to %s", a.Version, version)
-	//logger.Infoln("Downloading agent update from", url)
-
 	rClient := resty.New()
 	rClient.SetCloseConnection(true)
 	rClient.SetTimeout(15 * time.Minute)
-	if shared.DEBUG {
-		rClient.SetDebug(true)
-	}
+	//if shared.DEBUG {
+		//rClient.SetDebug(true)
+	//}
 
 	config := NewAgentConfig()
 	if len(config.Proxy) > 0 {
@@ -185,3 +187,14 @@ func installMesh(meshbin, exe, proxy string) (string, error) {
 }
 
 func SendSoftware() {}
+
+func GetVersion() string {
+	version, err := exec.Command(shared.GetProgramBin(), "-version").Output()
+	if err != nil {
+		return ""
+	}
+
+	re := regexp.MustCompile(`Tactical RMM Agent: v([0-9]\.[0-9]\.[0-9])`)
+	match := re.FindStringSubmatch(string(version))
+	return match[1]
+}

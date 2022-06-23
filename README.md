@@ -3,8 +3,6 @@ https://github.com/amidaware/tacticalrmm
 
 #### building the agent - linux
 ```
-go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo
-go generate
 env CGO_ENABLED=0 GOOS=<GOOS> GOARCH=<GOARCH> go build -ldflags "-s -w -X 'main.version=v2.0.4'"
 example: env CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-s -w -X 'main.version=v2.0.4' -o build/output/rmmagent"
 ```
