@@ -7,14 +7,18 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/amidaware/rmmagent/agent/system"
 	"github.com/amidaware/rmmagent/agent/tactical/config"
 	"github.com/amidaware/rmmagent/agent/utils"
 	"github.com/go-resty/resty/v2"
 )
 
+const (
+	ProgFilesName = "TacticalAgent"
+	winExeName    = "tacticalrmm.exe"
+)
+
 func GetPython(force bool) {
-	if utils.FileExists(system.GetPythonBin()) && !force {
+	if utils.FileExists(GetPythonBin()) && !force {
 		return
 	}
 
@@ -28,8 +32,8 @@ func GetPython(force bool) {
 		archZip = "py38-x32.zip"
 		folder = "py38-x32"
 	}
-	pyFolder := filepath.Join(system.GetProgramDirectory(), folder)
-	pyZip := filepath.Join(system.GetProgramDirectory(), archZip)
+	pyFolder := filepath.Join(GetProgramDirectory(), folder)
+	pyZip := filepath.Join(GetProgramDirectory(), archZip)
 	defer os.Remove(pyZip)
 
 	if force {
@@ -55,16 +59,38 @@ func GetPython(force bool) {
 		return
 	}
 
-	err = utils.Unzip(pyZip, system.GetProgramDirectory())
+	err = utils.Unzip(pyZip, GetProgramDirectory())
 	if err != nil {
 	}
 }
 
 func RunMigrations() {
 	for _, i := range []string{"nssm.exe", "nssm-x86.exe"} {
-		nssm := filepath.Join(system.GetProgramDirectory(), i)
+		nssm := filepath.Join(GetProgramDirectory(), i)
 		if utils.FileExists(nssm) {
 			os.Remove(nssm)
 		}
 	}
+}
+
+func GetPythonBin() string {
+	var pybin string
+	switch runtime.GOARCH {
+	case "amd64":
+		pybin = filepath.Join(GetProgramDirectory(), "py38-x64", "python.exe")
+	case "386":
+		pybin = filepath.Join(GetProgramDirectory(), "py38-x32", "python.exe")
+	}
+
+	return pybin
+}
+
+func GetProgramDirectory() string {
+	pd := filepath.Join(os.Getenv("ProgramFiles"), ProgFilesName)
+	return pd
+}
+
+func GetProgramBin() string {
+	exe := filepath.Join(GetProgramDirectory(), winExeName)
+	return exe
 }

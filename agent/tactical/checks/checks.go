@@ -13,6 +13,7 @@ import (
 	"github.com/amidaware/rmmagent/agent/services"
 	"github.com/amidaware/rmmagent/agent/system"
 	"github.com/amidaware/rmmagent/agent/tactical/api"
+	"github.com/amidaware/rmmagent/agent/tactical/shared"
 	"github.com/amidaware/rmmagent/agent/utils"
 	ps "github.com/elastic/go-sysinfo"
 	"github.com/go-ping/ping"
@@ -25,7 +26,7 @@ func CheckRunner(agentID string) error {
 	for {
 		interval, err := GetCheckInterval(agentID)
 		if err == nil && !ChecksRunning() {
-			_, err = system.CMD(system.GetProgramBin(), []string{"-m", "checkrunner"}, 600, false)
+			_, err = system.CMD(shared.GetProgramBin(), []string{"-m", "checkrunner"}, 600, false)
 			if err != nil {
 				return err
 			}
@@ -66,7 +67,7 @@ Out:
 		if p.PID == 0 {
 			continue
 		}
-		if p.Exe != system.GetProgramBin() {
+		if p.Exe != shared.GetProgramBin() {
 			continue
 		}
 

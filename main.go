@@ -1,3 +1,5 @@
+//go:generate goversioninfo
+
 /*
 Copyright 2022 AmidaWare LLC.
 

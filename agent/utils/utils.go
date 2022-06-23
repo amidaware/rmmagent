@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -185,4 +186,14 @@ func FileExists(path string) bool {
 		}
 	}
 	return true
+}
+
+func TestTCP(addr string) error {
+	conn, err := net.Dial("tcp4", addr)
+	if err != nil {
+		return err
+	}
+
+	defer conn.Close()
+	return nil
 }

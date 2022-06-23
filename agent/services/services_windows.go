@@ -297,3 +297,19 @@ func EditService(name, startupType string) WinSvcResp {
 
 	return WinSvcResp{Success: true, ErrorMsg: ""}
 }
+
+func ServiceExists(name string) (bool, error) {
+	conn, err := mgr.Connect()
+	if err != nil {
+		return false, err
+	}
+
+	defer conn.Disconnect()
+	srv, err := conn.OpenService(name)
+	if err != nil {
+		return false, err
+	}
+
+	defer srv.Close()
+	return true, nil
+}

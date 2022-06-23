@@ -8,12 +8,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"sync"
 	"syscall"
 	"time"
 
+	"github.com/amidaware/rmmagent/agent/tactical/shared"
 	"github.com/amidaware/rmmagent/agent/utils"
 	ps "github.com/elastic/go-sysinfo"
 	"github.com/go-ole/go-ole"
@@ -23,11 +23,6 @@ import (
 	trmm "github.com/wh1te909/trmm-shared"
 	"golang.org/x/sys/windows"
 	"golang.org/x/sys/windows/registry"
-)
-
-const (
-	ProgFilesName = "TacticalAgent"
-	winExeName    = "tacticalrmm.exe"
 )
 
 func RunScript(code string, shell string, args []string, timeout int) (stdout, stderr string, exitcode int, e error) {
@@ -74,7 +69,7 @@ func RunScript(code string, shell string, args []string, timeout int) (stdout, s
 		exe = "Powershell"
 		cmdArgs = []string{"-NonInteractive", "-NoProfile", "-ExecutionPolicy", "Bypass", tmpfn.Name()}
 	case "python":
-		exe = GetPythonBin()
+		exe = shared.GetPythonBin()
 		cmdArgs = []string{tmpfn.Name()}
 	case "cmd":
 		exe = tmpfn.Name()
@@ -248,28 +243,6 @@ func CMDShell(shell string, cmdArgs []string, command string, timeout int, detac
 			utils.CleanString(outb.String()),
 			utils.CleanString(errb.String())},
 		nil
-}
-
-func GetProgramDirectory() string {
-	pd := filepath.Join(os.Getenv("ProgramFiles"), ProgFilesName)
-	return pd
-}
-
-func GetProgramBin() string {
-	exe := filepath.Join(GetProgramDirectory(), winExeName)
-	return exe
-}
-
-func GetPythonBin() string {
-	var pybin string
-	switch runtime.GOARCH {
-	case "amd64":
-		pybin = filepath.Join(GetProgramDirectory(), "py38-x64", "python.exe")
-	case "386":
-		pybin = filepath.Join(GetProgramDirectory(), "py38-x32", "python.exe")
-	}
-
-	return pybin
 }
 
 // LoggedOnUser returns the first logged on user it finds
@@ -471,7 +444,7 @@ func OsString() string {
 	return osFullName
 }
 
-func AddDefenderExlusions() error {
+func AddDefenderExclusions() error {
 	code := `
 Add-MpPreference -ExclusionPath 'C:\Program Files\TacticalAgent\*'
 Add-MpPreference -ExclusionPath 'C:\Windows\Temp\winagent-v*.exe'

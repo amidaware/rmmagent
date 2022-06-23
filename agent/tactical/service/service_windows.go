@@ -9,8 +9,10 @@ import (
 	"github.com/amidaware/rmmagent/agent/system"
 	"github.com/amidaware/rmmagent/agent/tactical/config"
 	"github.com/amidaware/rmmagent/agent/wmi"
+	ksvc "github.com/kardianos/service"
 	"github.com/nats-io/nats.go"
 	"github.com/ugorji/go/codec"
+	"golang.org/x/sys/windows/registry"
 )
 
 func NatsMessage(version string, nc *nats.Conn, mode string) {
@@ -69,4 +71,24 @@ func NatsMessage(version string, nc *nats.Conn, mode string) {
 
 	ret.Encode(payload)
 	nc.PublishRequest(config.AgentID, mode, resp)
+}
+
+func InstallService(name string, svc IService, config *ksvc.Config) error {
+	exists, err := services.ServiceExists(name)
+	if exists {
+		return nil
+	}
+
+	// skip on first call of inno setup if this is a new install
+	_, err = registry.OpenKey(registry.LOCAL_MACHINE, `SOFTWARE\TacticalRMM`, registry.ALL_ACCESS)
+	if err != nil {
+		return nil
+	}
+
+	s, err := ksvc.New(svc, config)
+	if err != nil {
+		return err
+	}
+
+	return ksvc.Control(s, "install")
 }

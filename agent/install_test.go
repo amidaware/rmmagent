@@ -6,7 +6,32 @@ import (
 	"github.com/spf13/viper"
 )
 
+
+
 func TestInstall(t *testing.T) {
+	testTable := []struct {
+		name string
+		expectedError error
+		version string
+	}{
+		{
+			name: "Install",
+			expectedError: nil,
+			version: "2.0.4",
+		},
+		{
+			name: "Install Error",
+			expectedError: nil,
+			version: "bad ver",
+		},
+	}
+
+	for _, tt := range testTable {
+		t.Run(tt.name, func(t *testing.T) {
+			
+		})
+	}
+
 	var (
 		version = "2.0.4"
 		log     = logrus.New()

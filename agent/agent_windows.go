@@ -836,15 +836,15 @@ func (a *Agent) InstallService() error {
 	// skip on first call of inno setup if this is a new install
 	_, err := registry.OpenKey(registry.LOCAL_MACHINE, `SOFTWARE\TacticalRMM`, registry.ALL_ACCESS)
 	if err != nil {
-		return nil
+		return err
 	}
 
-	s, err := service.New(a, a.ServiceConfig)
+	svc, err := service.New(a, a.ServiceConfig)
 	if err != nil {
 		return err
 	}
 
-	return service.Control(s, "install")
+	return service.Control(svc, "install")
 }
 
 // TODO add to stub

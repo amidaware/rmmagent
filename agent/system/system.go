@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/amidaware/rmmagent/agent/tactical/shared"
 	"github.com/amidaware/rmmagent/agent/utils"
 	ps "github.com/elastic/go-sysinfo"
 	gocmd "github.com/go-cmd/cmd"
@@ -144,7 +145,7 @@ func RunPythonCode(code string, timeout int, args []string) (string, error) {
 	}
 
 	//a.Logger.Debugln(cmdArgs)
-	cmd := exec.CommandContext(ctx, GetPythonBin(), cmdArgs...)
+	cmd := exec.CommandContext(ctx, shared.GetPythonBin(), cmdArgs...)
 	cmd.Stdout = &outb
 	cmd.Stderr = &errb
 
