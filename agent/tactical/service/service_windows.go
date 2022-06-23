@@ -1,5 +1,18 @@
 package service
 
+import (
+	"runtime"
+
+	"github.com/amidaware/rmmagent/agent/disk"
+	"github.com/amidaware/rmmagent/agent/network"
+	"github.com/amidaware/rmmagent/agent/services"
+	"github.com/amidaware/rmmagent/agent/system"
+	"github.com/amidaware/rmmagent/agent/tactical/config"
+	"github.com/amidaware/rmmagent/agent/wmi"
+	"github.com/nats-io/nats.go"
+	"github.com/ugorji/go/codec"
+)
+
 func NatsMessage(version string, nc *nats.Conn, mode string) {
 	config := config.NewAgentConfig()
 	var resp []byte
@@ -54,7 +67,6 @@ func NatsMessage(version string, nc *nats.Conn, mode string) {
 		}
 	}
 
-	//a.Logger.Debugln(mode, payload)
 	ret.Encode(payload)
 	nc.PublishRequest(config.AgentID, mode, resp)
 }
