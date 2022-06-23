@@ -437,7 +437,7 @@ func RunRPC() error {
 				} else {
 					ret.Encode("ok")
 					msg.Respond(resp)
-					tactical.AgentUpdate(p.Data["url"], p.Data["inno"], p.Data["version"])
+					tactical.AgentUpdate(p.Data["url"], p.Data["inno"])
 					atomic.StoreUint32(&agentUpdateLocker, 0)
 					nc.Flush()
 					nc.Close()

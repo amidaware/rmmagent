@@ -48,7 +48,7 @@ func UninstallCleanup() {
 	tasks.CleanupSchedTasks()
 }
 
-func AgentUpdate(url, inno, version string) {
+func AgentUpdate(url string, inno string) {
 	time.Sleep(time.Duration(utils.RandRange(1, 15)) * time.Second)
 	system.KillHungUpdates()
 	CleanupAgentUpdates()
