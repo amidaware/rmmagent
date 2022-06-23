@@ -14,6 +14,7 @@ func NewAgentConfig() *AgentConfig {
 	viper.SetConfigType("json")
 	viper.AddConfigPath("/etc/")
 	viper.AddConfigPath(".")
+	viper.AddConfigPath("../.")
 	err := viper.ReadInConfig()
 
 	if err != nil {

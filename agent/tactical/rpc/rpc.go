@@ -36,7 +36,7 @@ var (
 	installWinUpdateLocker uint32
 )
 
-func RunRPC(version string) {
+func RunRPC(version string) error {
 	config := config.NewAgentConfig()
 	go service.RunAsService(version)
 	var wg sync.WaitGroup
@@ -45,6 +45,7 @@ func RunRPC(version string) {
 	server := fmt.Sprintf("tls://%s:4222", config.APIURL)
 	nc, err := nats.Connect(server, opts...)
 	if err != nil {
+		return err
 	}
 
 	nc.Subscribe(config.AgentID, func(msg *nats.Msg) {
@@ -457,11 +458,12 @@ func RunRPC(version string) {
 	nc.Flush()
 
 	if err := nc.LastError(); err != nil {
-		//a.Logger.Errorln(err)
-		os.Exit(1)
+		return err
 	}
 
 	wg.Wait()
+
+	return nil
 }
 
 func Start(version string, _ ksvc.Service) error {

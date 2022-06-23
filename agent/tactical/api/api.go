@@ -36,6 +36,7 @@ func init() {
 }
 
 func PostPayload(payload interface{}, url string) error {
+	fmt.Println(restyC.BaseURL)
 	_, err := restyC.R().SetBody(payload).Post(url)
 	if err != nil {
 		return err

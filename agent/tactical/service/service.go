@@ -24,7 +24,7 @@ func RunAsService(version string) {
 	wg.Wait()
 }
 
-func AgentSvc(version string) {
+func AgentSvc(version string) error {
 	config := config.NewAgentConfig()
 	go shared.GetPython(false)
 	utils.CreateTRMMTempDir()
@@ -35,6 +35,7 @@ func AgentSvc(version string) {
 	server := fmt.Sprintf("tls://%s:4222", config.APIURL)
 	nc, err := nats.Connect(server, opts...)
 	if err != nil {
+		return err
 	}
 
 	for _, s := range natsCheckin {
