@@ -159,6 +159,7 @@ func (a *Agent) RunChecks(force bool) error {
 
 type ScriptCheckResult struct {
 	ID      int     `json:"id"`
+	AgentID string  `json:"agent_id"`
 	Stdout  string  `json:"stdout"`
 	Stderr  string  `json:"stderr"`
 	Retcode int     `json:"retcode"`
@@ -176,6 +177,7 @@ func (a *Agent) ScriptCheck(data rmm.Check, r *resty.Client) {
 		Stderr:  stderr,
 		Retcode: retcode,
 		Runtime: time.Since(start).Seconds(),
+		AgentID: a.AgentID,
 	}
 
 	_, err := r.R().SetBody(payload).Patch("/api/v3/checkrunner/")
