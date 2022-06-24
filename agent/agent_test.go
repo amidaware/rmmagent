@@ -1,17 +1,28 @@
 package agent
 
 import (
+	"errors"
 	"testing"
+
 	"github.com/sirupsen/logrus"
 )
 
 var (
 	version = "2.0.4"
 	lg     = logrus.New()
+	a = New(lg, version)
 )
 
+func TestGetDisks(t *testing.T) {
+	disks := a.GetDisks()
+	if(len(disks) < 1) {
+		t.Errorf("Could not get disks")
+	}
+
+	t.Logf("Result: %v", disks)
+}
+
 func TestAgentId(t *testing.T) {
-	a := New(lg, version)
 	if a.AgentID == "" {
 		t.Error("AgentID not set")
 	} else {
@@ -20,7 +31,6 @@ func TestAgentId(t *testing.T) {
 }
 
 func TestSystemRebootRequired(t *testing.T) {
-	a := New(lg, version)
 	result, err := a.SystemRebootRequired()
 	if err != nil {
 		t.Error(err)
@@ -30,7 +40,6 @@ func TestSystemRebootRequired(t *testing.T) {
 }
 
 func TestLoggedOnUser(t *testing.T) {
-	a := New(lg, version)
 	result := a.LoggedOnUser()
 	if result == "" {
 		t.Errorf("Could not get logged on user.")
@@ -39,3 +48,49 @@ func TestLoggedOnUser(t *testing.T) {
 	t.Logf("Result: %s", result)
 }
 
+func TestRunScript(t *testing.T){
+	testTable := []struct {
+		name string
+		code string
+		shell string
+		args []string
+		timeout int
+		expectedStdout string
+		expectedStderr string
+		expectedExitcode int
+		expectedError error
+	}{
+		{
+			name: "Run Script",
+			code: "ls",
+			shell: "/bin/sh",
+			args: []string{},
+			timeout: 30,
+			expectedStdout: "",
+			expectedStderr: "",
+			expectedExitcode: 0,
+			expectedError: nil,
+		},
+	}
+
+	for _, tt := range testTable {
+		t.Run(tt.name, func(t *testing.T) {
+			stdout, stderr, exitcode, err := a.RunScript(tt.code, tt.shell, tt.args, tt.timeout)
+			if tt.expectedStdout != stdout {
+				t.Errorf("expected %s, got %s", tt.expectedStdout, stdout)
+			}
+
+			if tt.expectedStderr != stderr {
+				t.Errorf("expected %s, got %s", tt.expectedStderr, stderr)
+			}
+
+			if tt.expectedExitcode != exitcode {
+				t.Errorf("expected exit %d, got exit %d", tt.expectedExitcode, exitcode)
+			}
+
+			if errors.Is(tt.expectedError, err) {
+				t.Errorf("expected (%v), got (%v)", tt.expectedError, err)
+			}
+		})
+	}
+}
