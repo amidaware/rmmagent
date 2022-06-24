@@ -138,19 +138,11 @@ func (a *Agent) Install(i *Installer) {
 		rClient.SetProxy(i.Proxy)
 	}
 
-	var arch string
-	switch a.Arch {
-	case "x86_64":
-		arch = "64"
-	case "x86":
-		arch = "32"
-	}
-
-	var installerMeshSystemBin string
+	var installerMeshSystemEXE string
 	if len(i.MeshDir) > 0 {
-		installerMeshSystemBin = filepath.Join(i.MeshDir, "MeshAgent.exe")
+		installerMeshSystemEXE = filepath.Join(i.MeshDir, "MeshAgent.exe")
 	} else {
-		installerMeshSystemBin = a.MeshSystemBin
+		installerMeshSystemEXE = a.MeshSystemEXE
 	}
 
 	var meshNodeID string
@@ -159,7 +151,7 @@ func (a *Agent) Install(i *Installer) {
 		mesh := filepath.Join(a.ProgramDir, a.MeshInstaller)
 		if i.LocalMesh == "" {
 			a.Logger.Infoln("Downloading mesh agent...")
-			payload := map[string]string{"arch": arch, "plat": a.Platform}
+			payload := map[string]string{"goarch": a.GoArch, "plat": a.Platform}
 			r, err := rClient.R().SetBody(payload).SetOutput(mesh).Post(fmt.Sprintf("%s/api/v3/meshexe/", baseURL))
 			if err != nil {
 				a.installerMsg(fmt.Sprintf("Failed to download mesh agent: %s", err.Error()), "error", i.Silent)
@@ -178,7 +170,7 @@ func (a *Agent) Install(i *Installer) {
 		a.Logger.Debugln("Mesh agent:", mesh)
 		time.Sleep(1 * time.Second)
 
-		meshNodeID, err = a.installMesh(mesh, installerMeshSystemBin, i.Proxy)
+		meshNodeID, err = a.installMesh(mesh, installerMeshSystemEXE, i.Proxy)
 		if err != nil {
 			a.installerMsg(fmt.Sprintf("Failed to install mesh agent: %s", err.Error()), "error", i.Silent)
 		}

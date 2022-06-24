@@ -78,7 +78,6 @@ func createAgentConfig(baseurl, agentid, apiurl, token, agentpk, cert, proxy, me
 func (a *Agent) checkExistingAndRemove(silent bool) {
 	hasReg := false
 	_, err := registry.OpenKey(registry.LOCAL_MACHINE, `SOFTWARE\TacticalRMM`, registry.ALL_ACCESS)
-
 	if err == nil {
 		hasReg = true
 	}

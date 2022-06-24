@@ -1,0 +1,49 @@
+name: Run tests
+
+on:
+  push:
+    branches:
+      - "*"
+  pull_request:
+    branches:
+      - "*"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    name: Run tests
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-go@v3
+        with:
+          go-version: '1.18.3'
+
+      - name: Ensure linux agent compiles
+        run: |
+          ARCHS='amd64 386 arm64 arm'
+          for i in ${ARCHS}; do
+            env CGO_ENABLED=0 GOOS=linux GOARCH=${i} go build -ldflags "-s -w"
+          done
+      
+      - name: Ensure windows agent compiles
+        run: |
+          ARCHS='amd64 386'
+          for i in ${ARCHS}; do
+            env CGO_ENABLED=0 GOOS=windows GOARCH=${i} go build -ldflags "-s -w"
+          done
+      
+      - name: Ensure mac agent compiles
+        run: |
+          ARCHS='amd64 arm64'
+          for i in ${ARCHS}; do
+            env CGO_ENABLED=0 GOOS=darwin GOARCH=${i} go build -ldflags "-s -w"
+          done
+      
+      - name: Ensure freebsd agent compiles
+        run: |
+          ARCHS='amd64 386 arm64 arm'
+          for i in ${ARCHS}; do
+            env CGO_ENABLED=0 GOOS=freebsd GOARCH=${i} go build -ldflags "-s -w"
+          done

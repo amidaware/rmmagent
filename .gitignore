@@ -10,5 +10,3 @@
 *.bmp
 build/Output
 tacticalagent-v*
-tacticalagent
-agent/testargs.json

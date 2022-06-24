@@ -19,6 +19,10 @@ import (
 	"github.com/spf13/viper"
 )
 
+const (
+	etcConfig = "/etc/tacticalagent"
+)
+
 func (a *Agent) checkExistingAndRemove(silent bool) {}
 
 func (a *Agent) installerMsg(msg, alert string, silent bool) {
@@ -40,10 +44,7 @@ func createAgentConfig(baseurl, agentid, apiurl, token, agentpk, cert, proxy, me
 	viper.Set("proxy", proxy)
 	viper.Set("meshdir", meshdir)
 	viper.SetConfigPermissions(0660)
-	configLocation := "/etc/tacticalagent"
-
-	err := viper.SafeWriteConfigAs(configLocation)
-
+	err := viper.SafeWriteConfigAs(etcConfig)
 	if err != nil {
 		log.Fatalln("createAgentConfig", err)
 	}
