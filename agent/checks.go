@@ -307,6 +307,7 @@ func (a *Agent) EventLogCheck(data rmm.Check, r *resty.Client) {
 }
 
 func (a *Agent) SendPingCheckResult(payload rmm.PingCheckResponse, r *resty.Client) {
+	payload.AgentID = a.AgentID
 	_, err := r.R().SetBody(payload).Patch("/api/v3/checkrunner/")
 	if err != nil {
 		a.Logger.Debugln(err)

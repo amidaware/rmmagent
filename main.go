@@ -186,7 +186,10 @@ func setupLogging(level, to *string) {
 			logFile, _ = os.OpenFile(filepath.Join(os.Getenv("ProgramFiles"), "TacticalAgent", "agent.log"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0664)
 		case "linux":
 			logFile, _ = os.OpenFile(filepath.Join("/var/log/", "tacticalagent.log"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0664)
+		case "darwin":
+			logFile, _ = os.OpenFile(filepath.Join("/Library/Logs", "tacticalagent.log"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0664)
 		}
+
 		log.SetOutput(logFile)
 	}
 }
