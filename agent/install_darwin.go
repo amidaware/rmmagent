@@ -1,17 +1,6 @@
 //go:build !windows
 // +build !windows
 
-/*
-Copyright 2022 AmidaWare LLC.
-
-Licensed under the Tactical RMM License Version 1.0 (the “License”).
-You may only use the Licensed Software in accordance with the License.
-A copy of the License is available at:
-
-https://license.tacticalrmm.com
-
-*/
-
 package agent
 
 import (
@@ -20,6 +9,7 @@ import (
 	"net/url"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -35,14 +25,13 @@ const (
 
 func (a *Agent) Install(i *Installer) {
 	a.checkExistingAndRemove(i.Silent)
-
 	i.Headers = map[string]string{
 		"content-type":  "application/json",
 		"Authorization": fmt.Sprintf("Token %s", i.Token),
 	}
+
 	a.AgentID = GenerateAgentID()
 	a.Logger.Debugln("Agent ID:", a.AgentID)
-
 	u, err := url.Parse(i.RMM)
 	if err != nil {
 		a.installerMsg(err.Error(), "error", i.Silent)
@@ -54,7 +43,6 @@ func (a *Agent) Install(i *Installer) {
 
 	// will match either ipv4 , or ipv4:port
 	var ipPort = regexp.MustCompile(`[0-9]+(?:\.[0-9]+){3}(:[0-9]+)?`)
-
 	// if ipv4:port, strip the port to get ip for salt master
 	if ipPort.MatchString(u.Host) && strings.Contains(u.Host, ":") {
 		i.SaltMaster = strings.Split(u.Host, ":")[0]
@@ -65,7 +53,6 @@ func (a *Agent) Install(i *Installer) {
 	}
 
 	a.Logger.Debugln("API:", i.SaltMaster)
-
 	terr := TestTCP(fmt.Sprintf("%s:4222", i.SaltMaster))
 	if terr != nil {
 		a.installerMsg(fmt.Sprintf("ERROR: Either port 4222 TCP is not open on your RMM, or nats.service is not running.\n\n%s", terr.Error()), "error", i.Silent)
@@ -122,38 +109,42 @@ func (a *Agent) Install(i *Installer) {
 		rClient.SetProxy(i.Proxy)
 	}
 
-	var installerMeshSystemBin string
+	var installerMeshSystemEXE string
 	if len(i.MeshDir) > 0 {
-		installerMeshSystemBin = filepath.Join(i.MeshDir, "meshagent")
+		installerMeshSystemEXE = filepath.Join(i.MeshDir, "MeshAgent.exe")
 	} else {
-		installerMeshSystemBin = a.MeshSystemBin
+		installerMeshSystemEXE = a.MeshSystemBin
 	}
 
 	var meshNodeID string
-	mesh := a.MeshSystemBin
-	if i.LocalMesh == "" {
-		a.Logger.Infoln("Downloading mesh agent...")
-		payload := map[string]string{"goarch": a.GoArch, "plat": a.Platform}
-		r, err := rClient.R().SetBody(payload).SetOutput(mesh).Post(fmt.Sprintf("%s/api/v3/meshexe/", baseURL))
-		if err != nil {
-			a.installerMsg(fmt.Sprintf("Failed to download mesh agent: %s", err.Error()), "error", i.Silent)
-		}
-		if r.StatusCode() != 200 {
-			a.installerMsg(fmt.Sprintf("Unable to download the mesh agent from the RMM. %s", r.String()), "error", i.Silent)
-		}
-	} else {
-		err := copyFile(i.LocalMesh, mesh)
-		if err != nil {
-			a.installerMsg(err.Error(), "error", i.Silent)
-		}
-	}
 
-	a.Logger.Infoln("Installing mesh agent...")
-	a.Logger.Debugln("Mesh agent:", mesh)
-	time.Sleep(1 * time.Second)
-	meshNodeID, err = a.installMesh(mesh, installerMeshSystemBin, i.Proxy)
-	if err != nil {
-		a.installerMsg(fmt.Sprintf("Failed to install mesh agent: %s", err.Error()), "error", i.Silent)
+	if runtime.GOOS == "windows" && !i.NoMesh {
+		mesh := filepath.Join(a.ProgramDir, a.MeshInstaller)
+		if i.LocalMesh == "" {
+			a.Logger.Infoln("Downloading mesh agent...")
+			payload := map[string]string{"goarch": a.GoArch, "plat": a.Platform}
+			r, err := rClient.R().SetBody(payload).SetOutput(mesh).Post(fmt.Sprintf("%s/api/v3/meshexe/", baseURL))
+			if err != nil {
+				a.installerMsg(fmt.Sprintf("Failed to download mesh agent: %s", err.Error()), "error", i.Silent)
+			}
+			if r.StatusCode() != 200 {
+				a.installerMsg(fmt.Sprintf("Unable to download the mesh agent from the RMM. %s", r.String()), "error", i.Silent)
+			}
+		} else {
+			err := copyFile(i.LocalMesh, mesh)
+			if err != nil {
+				a.installerMsg(err.Error(), "error", i.Silent)
+			}
+		}
+
+		a.Logger.Infoln("Installing mesh agent...")
+		a.Logger.Debugln("Mesh agent:", mesh)
+		time.Sleep(1 * time.Second)
+
+		meshNodeID, err = a.installMesh(mesh, installerMeshSystemEXE, i.Proxy)
+		if err != nil {
+			a.installerMsg(fmt.Sprintf("Failed to install mesh agent: %s", err.Error()), "error", i.Silent)
+		}
 	}
 
 	if len(i.MeshNodeID) > 0 {
@@ -187,33 +178,63 @@ func (a *Agent) Install(i *Installer) {
 
 	agentPK := r.Result().(*NewAgentResp).AgentPK
 	agentToken := r.Result().(*NewAgentResp).Token
+
 	a.Logger.Debugln("Agent token:", agentToken)
 	a.Logger.Debugln("Agent PK:", agentPK)
+
 	createAgentConfig(baseURL, a.AgentID, i.SaltMaster, agentToken, strconv.Itoa(agentPK), i.Cert, i.Proxy, i.MeshDir)
 	time.Sleep(1 * time.Second)
 	// refresh our agent with new values
 	a = New(a.Logger, a.Version)
 	a.Logger.Debugf("%+v\n", a)
+
 	// set new headers, no longer knox auth...use agent auth
 	rClient.SetHeaders(a.Headers)
+
 	time.Sleep(3 * time.Second)
 	// check in once
 	a.DoNatsCheckIn()
-	// send software api
-	a.SendSoftware()
-	a.Logger.Debugln("Creating temp dir")
-	a.CreateTRMMTempDir()
-	a.Logger.Infoln("Installing service...")
-	err = a.InstallService()
-	if err != nil {
-		a.installerMsg(err.Error(), "error", i.Silent)
-	}
 
-	time.Sleep(1 * time.Second)
-	a.Logger.Infoln("Starting service...")
-	out := a.ControlService(winSvcName, "start")
-	if !out.Success {
-		a.installerMsg(out.ErrorMsg, "error", i.Silent)
+	if runtime.GOOS == "windows" {
+		// send software api
+		a.SendSoftware()
+
+		a.Logger.Debugln("Creating temp dir")
+		a.CreateTRMMTempDir()
+
+		a.Logger.Debugln("Disabling automatic windows updates")
+		a.PatchMgmnt(true)
+
+		a.Logger.Infoln("Installing service...")
+		err := a.InstallService()
+		if err != nil {
+			a.installerMsg(err.Error(), "error", i.Silent)
+		}
+
+		time.Sleep(1 * time.Second)
+		a.Logger.Infoln("Starting service...")
+		out := a.ControlService(winSvcName, "start")
+		if !out.Success {
+			a.installerMsg(out.ErrorMsg, "error", i.Silent)
+		}
+
+		a.Logger.Infoln("Adding windows defender exclusions")
+		a.addDefenderExlusions()
+
+		if i.Power {
+			a.Logger.Infoln("Disabling sleep/hibernate...")
+			DisableSleepHibernate()
+		}
+
+		if i.Ping {
+			a.Logger.Infoln("Enabling ping...")
+			EnablePing()
+		}
+
+		if i.RDP {
+			a.Logger.Infoln("Enabling RDP...")
+			EnableRDP()
+		}
 	}
 
 	a.installerMsg("Installation was successfull!\nAllow a few minutes for the agent to properly display in the RMM", "info", i.Silent)

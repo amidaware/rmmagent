@@ -478,8 +478,52 @@ func (a *Agent) GetWinUpdates() {}
 
 func (a *Agent) InstallUpdates(guids []string) {}
 
-func (a *Agent) installMesh(meshbin, exe, proxy string) (string, error) {
-	return "not implemented", nil
+func (a *Agent) installMesh(meshbin, bin, proxy string) (string, error) {
+	var meshNodeID string
+	meshInstallArgs := []string{"-fullinstall"}
+	if len(proxy) > 0 {
+		meshProxy := fmt.Sprintf("--WebProxy=%s", proxy)
+		meshInstallArgs = append(meshInstallArgs, meshProxy)
+	}
+	a.Logger.Debugln("Mesh install args:", meshInstallArgs)
+
+	meshOut, meshErr := CMD(meshbin, meshInstallArgs, int(90), false)
+	if meshErr != nil {
+		fmt.Println(meshOut[0])
+		fmt.Println(meshOut[1])
+		fmt.Println(meshErr)
+	}
+
+	fmt.Println(meshOut)
+	a.Logger.Debugln("Sleeping for 5")
+	time.Sleep(5 * time.Second)
+
+	meshSuccess := false
+
+	for !meshSuccess {
+		a.Logger.Debugln("Getting mesh node id")
+		pMesh, pErr := CMD(bin, []string{"-nodeid"}, int(30), false)
+		if pErr != nil {
+			a.Logger.Errorln(pErr)
+			time.Sleep(5 * time.Second)
+			continue
+		}
+		if pMesh[1] != "" {
+			a.Logger.Errorln(pMesh[1])
+			time.Sleep(5 * time.Second)
+			continue
+		}
+		meshNodeID = StripAll(pMesh[0])
+		a.Logger.Debugln("Node id:", meshNodeID)
+		if strings.Contains(strings.ToLower(meshNodeID), "not defined") {
+			a.Logger.Errorln(meshNodeID)
+			time.Sleep(5 * time.Second)
+			continue
+		}
+		meshSuccess = true
+	}
+
+	return meshNodeID, nil
 }
 
 func CMDShell(shell string, cmdArgs []string, command string, timeout int, detached bool) (output [2]string, e error) {
