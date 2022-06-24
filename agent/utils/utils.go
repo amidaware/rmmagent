@@ -77,10 +77,6 @@ func WebRequest(requestType string, timeout time.Duration, payload map[string]st
 	client := resty.New()
 	client.SetTimeout(timeout * time.Second)
 	client.SetCloseConnection(true)
-	if shared.DEBUG {
-		client.SetDebug(true)
-	}
-
 	result, err := client.R().Get(url)
 	return *result, err
 }

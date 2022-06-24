@@ -24,7 +24,6 @@ func init() {
 	restyC.SetCloseConnection(true)
 	restyC.SetHeaders(headers)
 	restyC.SetTimeout(15 * time.Second)
-	restyC.SetDebug(shared.DEBUG)
 
 	if len(ac.Proxy) > 0 {
 		restyC.SetProxy(ac.Proxy)

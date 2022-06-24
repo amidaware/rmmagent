@@ -142,7 +142,7 @@ func (a *Agent) Install(i *Installer) {
 	if len(i.MeshDir) > 0 {
 		installerMeshSystemEXE = filepath.Join(i.MeshDir, "MeshAgent.exe")
 	} else {
-		installerMeshSystemEXE = a.MeshSystemEXE
+		installerMeshSystemEXE = a.MeshSystemBin
 	}
 
 	var meshNodeID string
