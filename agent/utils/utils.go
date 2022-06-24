@@ -13,7 +13,6 @@ import (
 	"time"
 	"unicode/utf16"
 
-	"github.com/amidaware/rmmagent/shared"
 	"github.com/go-resty/resty/v2"
 )
 

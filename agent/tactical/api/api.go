@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/amidaware/rmmagent/agent/tactical/config"
-	"github.com/amidaware/rmmagent/shared"
 	"github.com/go-resty/resty/v2"
 )
 
