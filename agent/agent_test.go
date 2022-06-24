@@ -2,6 +2,7 @@ package agent
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/sirupsen/logrus"
@@ -62,13 +63,24 @@ func TestRunScript(t *testing.T){
 	}{
 		{
 			name: "Run Script",
-			code: "ls",
+			code: "#!/bin/sh\necho 'test'",
+			shell: "/bin/sh",
+			args: []string{},
+			timeout: 30,
+			expectedStdout: "test\n",
+			expectedStderr: "",
+			expectedExitcode: 0,
+			expectedError: nil,
+		},
+		{
+			name: "Run Bad Script No Hash Bang",
+			code: "echo 'test'",
 			shell: "/bin/sh",
 			args: []string{},
 			timeout: 30,
 			expectedStdout: "",
-			expectedStderr: "",
-			expectedExitcode: 0,
+			expectedStderr: "exec format error",
+			expectedExitcode: -1,
 			expectedError: nil,
 		},
 	}
@@ -80,15 +92,15 @@ func TestRunScript(t *testing.T){
 				t.Errorf("expected %s, got %s", tt.expectedStdout, stdout)
 			}
 
-			if tt.expectedStderr != stderr {
-				t.Errorf("expected %s, got %s", tt.expectedStderr, stderr)
+			if !strings.Contains(stderr, tt.expectedStderr) {
+				t.Errorf("expected stderr to contain %s, got %s", tt.expectedStderr, stderr)
 			}
 
 			if tt.expectedExitcode != exitcode {
 				t.Errorf("expected exit %d, got exit %d", tt.expectedExitcode, exitcode)
 			}
 
-			if errors.Is(tt.expectedError, err) {
+			if !errors.Is(tt.expectedError, err) {
 				t.Errorf("expected (%v), got (%v)", tt.expectedError, err)
 			}
 		})

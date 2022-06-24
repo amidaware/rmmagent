@@ -1,22 +1,24 @@
 //go:build !windows
 // +build !windows
 
-package system
+package system_test
 
 import (
 	"testing"
+
+	"github.com/amidaware/rmmagent/agent/system"
 	"github.com/amidaware/rmmagent/agent/utils"
 )
 
 func TestNewCMDOpts(t *testing.T) {
-	opts := NewCMDOpts()
+	opts := system.NewCMDOpts()
 	if opts.Shell != "/bin/bash" {
 		t.Fatalf("Expected /bin/bash, got %s", opts.Shell)
 	}
 }
 
 func TestSystemRebootRequired(t *testing.T) {
-	required, err := SystemRebootRequired()
+	required, err := system.SystemRebootRequired()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -26,7 +28,7 @@ func TestSystemRebootRequired(t *testing.T) {
 
 func TestShowStatus(t *testing.T) {
 	output := utils.CaptureOutput(func() {
-		ShowStatus("1.0.0")
+		system.ShowStatus("1.0.0")
 	});
 
 	if output != "1.0.0\n" {
@@ -35,7 +37,7 @@ func TestShowStatus(t *testing.T) {
 }
 
 func TestLoggedOnUser(t *testing.T) {
-	user := LoggedOnUser()
+	user := system.LoggedOnUser()
 	if user == "" {
 		t.Fatalf("Expected a user, got empty")
 	}
@@ -44,7 +46,7 @@ func TestLoggedOnUser(t *testing.T) {
 }
 
 func TestOsString(t *testing.T) {
-	osString := OsString()
+	osString := system.OsString()
 	if osString == "error getting host info" {
 		t.Fatalf("Unable to get OS string")
 	}
@@ -53,7 +55,7 @@ func TestOsString(t *testing.T) {
 }
 
 func TestRunScript(t *testing.T) {
-	stdout, stderr, exitcode, err := RunScript("#!/bin/sh\ncat /etc/os-release", "/bin/sh", nil, 30)
+	stdout, stderr, exitcode, err := system.RunScript("#!/bin/sh\ncat /etc/os-release", "/bin/sh", nil, 30)
 	if err != nil {
 		t.Fatal(err)
 	}
