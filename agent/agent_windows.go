@@ -635,7 +635,7 @@ func (a *Agent) AgentUninstall(code string) {
 func (a *Agent) addDefenderExlusions() {
 	code := `
 Add-MpPreference -ExclusionPath 'C:\Program Files\TacticalAgent\*'
-Add-MpPreference -ExclusionPath 'C:\Windows\Temp\winagent-v*.exe'
+Add-MpPreference -ExclusionPath 'C:\Windows\Temp\tacticalagent-v*.exe'
 Add-MpPreference -ExclusionPath 'C:\Windows\Temp\trmm\*'
 Add-MpPreference -ExclusionPath 'C:\Program Files\Mesh Agent\*'
 `

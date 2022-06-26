@@ -384,9 +384,17 @@ func (a *Agent) CleanupAgentUpdates() {
 		return
 	}
 
+	// winagent-v* is deprecated
 	files, err := filepath.Glob("winagent-v*.exe")
 	if err == nil {
 		for _, f := range files {
+			os.Remove(f)
+		}
+	}
+
+	agents, err := filepath.Glob("tacticalagent-v*.exe")
+	if err == nil {
+		for _, f := range agents {
 			os.Remove(f)
 		}
 	}

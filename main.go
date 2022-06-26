@@ -197,6 +197,6 @@ func installUsage() {
 }
 
 func updateUsage() {
-	u := `Usage: tacticalrmm.exe -m update -updateurl https://example.com/winagent-vX.X.X.exe -inno winagent-vX.X.X.exe -updatever 1.1.1`
+	u := `Usage: tacticalrmm.exe -m update -updateurl https://example.com/tacticalagent-vX.X.X.exe -inno tacticalagent-vX.X.X.exe -updatever 1.1.1`
 	fmt.Println(u)
 }
