@@ -82,11 +82,6 @@ func (a *Agent) Install(i *Installer) {
 
 	a.Logger.Debugln("API:", i.SaltMaster)
 
-	terr := TestTCP(fmt.Sprintf("%s:4222", i.SaltMaster))
-	if terr != nil {
-		a.installerMsg(fmt.Sprintf("ERROR: Either port 4222 TCP is not open on your RMM, or nats.service is not running.\n\n%s", terr.Error()), "error", i.Silent)
-	}
-
 	baseURL := u.Scheme + "://" + u.Host
 	a.Logger.Debugln("Base URL:", baseURL)
 

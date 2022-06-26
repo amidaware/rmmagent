@@ -42,6 +42,8 @@ type AgentConfig struct {
 	Cert          string
 	Proxy         string
 	CustomMeshDir string
+	NatsProxyPath string
+	NatsProxyPort string
 }
 
 type RunScriptResp struct {
