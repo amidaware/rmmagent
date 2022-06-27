@@ -16,7 +16,6 @@ import (
 	"github.com/amidaware/rmmagent/agent/tactical/shared"
 	"github.com/amidaware/rmmagent/agent/tasks"
 	"github.com/amidaware/rmmagent/agent/utils"
-	rmm "github.com/amidaware/rmmagent/shared"
 	"github.com/go-resty/resty/v2"
 	"github.com/gonutz/w32/v2"
 	"golang.org/x/sys/windows"
@@ -57,7 +56,6 @@ func AgentUpdate(url string, inno string) {
 	rClient := resty.New()
 	rClient.SetCloseConnection(true)
 	rClient.SetTimeout(15 * time.Minute)
-	rClient.SetDebug(rmm.DEBUG)
 	if len(config.Proxy) > 0 {
 		rClient.SetProxy(config.Proxy)
 	}

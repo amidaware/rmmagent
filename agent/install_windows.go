@@ -14,10 +14,17 @@ package agent
 import (
 	"fmt"
 	"log"
+	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strconv"
+	"strings"
+	"time"
 
+	"github.com/go-resty/resty/v2"
 	"github.com/gonutz/w32/v2"
+	trmm "github.com/wh1te909/trmm-shared"
 	"golang.org/x/sys/windows/registry"
 )
 
@@ -204,7 +211,7 @@ func (a *Agent) Install(i *Installer) {
 	a.PatchMgmnt(true)
 
 	a.Logger.Infoln("Installing service...")
-	err := a.InstallService()
+	err = a.InstallService()
 	if err != nil {
 		a.installerMsg(err.Error(), "error", i.Silent)
 	}
