@@ -61,6 +61,8 @@ func NewAgentConfig() *rmm.AgentConfig {
 	cert, _, _ := k.GetStringValue("Cert")
 	proxy, _, _ := k.GetStringValue("Proxy")
 	customMeshDir, _, _ := k.GetStringValue("MeshDir")
+	natsProxyPath, _, _ := k.GetStringValue("NatsProxyPath")
+	natsProxyPort, _, _ := k.GetStringValue("NatsProxyPort")
 
 	return &rmm.AgentConfig{
 		BaseURL:       baseurl,
@@ -72,6 +74,8 @@ func NewAgentConfig() *rmm.AgentConfig {
 		Cert:          cert,
 		Proxy:         proxy,
 		CustomMeshDir: customMeshDir,
+		NatsProxyPath: natsProxyPath,
+		NatsProxyPort: natsProxyPort,
 	}
 }
 
@@ -635,7 +639,7 @@ func (a *Agent) AgentUninstall(code string) {
 func (a *Agent) addDefenderExlusions() {
 	code := `
 Add-MpPreference -ExclusionPath 'C:\Program Files\TacticalAgent\*'
-Add-MpPreference -ExclusionPath 'C:\Windows\Temp\winagent-v*.exe'
+Add-MpPreference -ExclusionPath 'C:\Windows\Temp\tacticalagent-v*.exe'
 Add-MpPreference -ExclusionPath 'C:\Windows\Temp\trmm\*'
 Add-MpPreference -ExclusionPath 'C:\Program Files\Mesh Agent\*'
 `

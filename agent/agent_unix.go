@@ -154,6 +154,8 @@ func NewAgentConfig() *rmm.AgentConfig {
 		Cert:          viper.GetString("cert"),
 		Proxy:         viper.GetString("proxy"),
 		CustomMeshDir: viper.GetString("meshdir"),
+		NatsProxyPath: viper.GetString("natsproxypath"),
+		NatsProxyPort: viper.GetString("natsproxyport"),
 	}
 	return ret
 }
