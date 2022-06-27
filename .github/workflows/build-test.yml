@@ -1,0 +1,12 @@
+name: Run tests on all
+
+on:
+  push:
+    branches: [ BigRefactor ]
+
+jobs:
+  build:
+    runs-on: [ self-hosted ]
+    steps:
+    - name: Test
+      run: go test -v ./...
