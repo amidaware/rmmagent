@@ -38,6 +38,9 @@ type Agent struct {
 	Platform      string
 	GoArch        string
 	ServiceConfig *service.Config
+	NatsServer    string
+	NatsProxyPath string
+	NatsProxyPort string
 }
 
 type AgentConfig struct {
