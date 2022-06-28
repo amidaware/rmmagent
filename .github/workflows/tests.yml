@@ -14,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - uses: https://github.com/redanthrax/setup-go/tree/ExtractArchiveFix
+      - uses: redanthrax/setup-go@ExtractArchiveFix
         with:
           go-version-file: 'go.mod'
       
