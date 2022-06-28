@@ -22,6 +22,4 @@ func TestRunScript(t *testing.T) {
 	if exitcode != 0 {
 		t.Fatalf("Error: Exit Code %d", exitcode)
 	}
-
-	t.Logf("Result: %s", stdout)
 }

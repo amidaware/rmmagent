@@ -22,7 +22,6 @@ func TestPublicIP(t *testing.T) {
 	for _, tt := range testTable {
 		t.Run(tt.name, func(t *testing.T) {
 			result := network.PublicIP(tt.proxy)
-			t.Logf("result: (%v)", result)
 			if result != tt.expected {
 				t.Errorf("expected %s, got %s", tt.expected, result)
 			}

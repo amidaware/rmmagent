@@ -26,7 +26,6 @@ func TestGetDisks(t *testing.T) {
 	for _, tt := range testTable {
 		t.Run(tt.name, func(t *testing.T) {
 			result, err := disk.GetDisks()
-			t.Logf("Result: (%v)", result)
 			if fmt.Sprintf("%T", result) != "[]disk.Disk" {
 				t.Errorf("expected type %T, got type %T", tt.expected, result)
 			}

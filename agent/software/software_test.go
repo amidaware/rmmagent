@@ -25,7 +25,6 @@ func TestGetInstalledSoftware(t *testing.T) {
 	for _, tt := range testTable {
 		t.Run(tt.name, func(t *testing.T) {
 			result, err := software.GetInstalledSoftware()
-			t.Logf("result: (%v)", result)
 			if len(result) < tt.atLeast {
 				t.Errorf("expected at least %d, got %d", tt.atLeast, len(result))
 			}

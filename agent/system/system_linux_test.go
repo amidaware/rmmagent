@@ -10,7 +10,7 @@ import (
 )
 
 func TestRunScript(t *testing.T) {
-	stdout, stderr, exitcode, err := system.RunScript("#!/bin/sh\ncat /etc/os-release", "/bin/sh", nil, 30)
+	_, stderr, exitcode, err := system.RunScript("#!/bin/sh\ncat /etc/os-release", "/bin/sh", nil, 30)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -22,6 +22,4 @@ func TestRunScript(t *testing.T) {
 	if exitcode != 0 {
 		t.Fatalf("Error: Exit Code %d", exitcode)
 	}
-
-	t.Logf("Result: %s", stdout)
 }

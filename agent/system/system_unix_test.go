@@ -22,8 +22,6 @@ func TestSystemRebootRequired(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	t.Logf("System Reboot Required %t", required)
 }
 
 func TestShowStatus(t *testing.T) {
@@ -41,8 +39,6 @@ func TestLoggedOnUser(t *testing.T) {
 	if user == "" {
 		t.Fatalf("Expected a user, got empty")
 	}
-
-	t.Logf("Logged on user: %s", user)
 }
 
 func TestOsString(t *testing.T) {
@@ -50,6 +46,4 @@ func TestOsString(t *testing.T) {
 	if osString == "error getting host info" {
 		t.Fatalf("Unable to get OS string")
 	}
-
-	t.Logf("OS String: %s", osString)
 }

@@ -48,8 +48,7 @@ func TestGetUpdates(t *testing.T) {
 
 	for _, tt := range testTable {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := patching.GetUpdates()
-			t.Logf("result: (%v)", result)
+			_, err := patching.GetUpdates()
 			if !errors.Is(tt.expectedError, err) {
 				t.Errorf("expected (%v), got (%v)", tt.expectedError, err)
 			}

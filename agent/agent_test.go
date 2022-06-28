@@ -17,17 +17,13 @@ func TestGetDisks(t *testing.T) {
 	if len(disks) < 1 {
 		t.Errorf("Could not get disks")
 	}
-
-	t.Logf("Result: %v", disks)
 }
 
 func TestSystemRebootRequired(t *testing.T) {
-	result, err := a.SystemRebootRequired()
+	_, err := a.SystemRebootRequired()
 	if err != nil {
 		t.Error(err)
 	}
-
-	t.Logf("Result: %t", result)
 }
 
 func TestLoggedOnUser(t *testing.T) {
@@ -35,6 +31,4 @@ func TestLoggedOnUser(t *testing.T) {
 	if result == "" {
 		t.Errorf("Could not get logged on user.")
 	}
-
-	t.Logf("Result: %s", result)
 }
