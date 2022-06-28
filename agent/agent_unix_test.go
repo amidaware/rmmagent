@@ -6,6 +6,7 @@ package agent
 import (
 	"errors"
 	"strings"
+	"testing"
 )
 
 func TestRunScript(t *testing.T){
