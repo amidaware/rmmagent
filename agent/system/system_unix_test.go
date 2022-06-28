@@ -1,5 +1,5 @@
-//go:build darwin
-// +build darwin
+//go:build !windows
+// +build !windows
 
 package system_test
 
@@ -18,7 +18,7 @@ func TestNewCMDOpts(t *testing.T) {
 }
 
 func TestSystemRebootRequired(t *testing.T) {
-	required, err := system.SystemRebootRequired()
+	_, err := system.SystemRebootRequired()
 	if err != nil {
 		t.Fatal(err)
 	}
