@@ -8,7 +8,7 @@ on:
 
 jobs:
   test-windows:
-    runs-on: [ self-hosted, Windows]
+    runs-on: [ self-hosted, Windows ]
     name: Test on Windows
 
     steps:
@@ -24,7 +24,7 @@ jobs:
           CGO_ENABLED: 0
 
   test-ubuntu:
-    runs-on: [ self-hosted, Linux]
+    runs-on: [ self-hosted, Linux ]
     name: Test on Ubuntu
 
     steps:
@@ -38,3 +38,16 @@ jobs:
         run: go test -v ./...
         env:
           CGO_ENABLED: 0
+  test-macos:
+    runs-on: [ self-hosted, macOS ]
+    name: Test on MacOS
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - uses: actions/setup-go@v3
+      with:
+        go-version-file: 'go.mod'
+
+    - name: Test
+      run: go test -v ./...
