@@ -39,12 +39,10 @@ func TestGetUpdates(t *testing.T) {
 	testTable := []struct {
 		name          string
 		expectedError error
-		atLeast       int
 	}{
 		{
 			name:          "Get Updates",
 			expectedError: nil,
-			atLeast:       1,
 		},
 	}
 
@@ -54,10 +52,6 @@ func TestGetUpdates(t *testing.T) {
 			t.Logf("result: (%v)", result)
 			if !errors.Is(tt.expectedError, err) {
 				t.Errorf("expected (%v), got (%v)", tt.expectedError, err)
-			}
-
-			if len(result) < tt.atLeast {
-				t.Errorf("expected at least %d, got %d", tt.atLeast, len(result))
 			}
 		})
 	}

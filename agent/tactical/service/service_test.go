@@ -1,18 +1,18 @@
 package service_test
 
-import (
-	"errors"
-	"testing"
+//import (
+	//"errors"
+	//"testing"
 
-	"github.com/amidaware/rmmagent/agent/tactical/service"
-)
+	//"github.com/amidaware/rmmagent/agent/tactical/service"
+//)
 
-func TestAgentSvc(t *testing.T) {
-	testTable := []struct {
-		name          string
-		expectedError error
-		version       string
-	}{
+//func TestAgentSvc(t *testing.T) {
+	//testTable := []struct {
+		//name          string
+		//expectedError error
+		//version       string
+	//}{
 		//{
 			//name:          "Agent Svc",
 			//expectedError: nil,
@@ -23,14 +23,14 @@ func TestAgentSvc(t *testing.T) {
 			//expectedError: nil,
 			//version:       "bad version",
 		//},
-	}
+	//}
 
-	for _, tt := range testTable {
-		t.Run(tt.name, func(t *testing.T) {
-			err := service.AgentSvc(tt.version)
-			if errors.Is(tt.expectedError, err) {
-				t.Errorf("expected (%v), got (%v)", tt.expectedError, err)
-			}
-		})
-	}
-}
+	//for _, tt := range testTable {
+		//t.Run(tt.name, func(t *testing.T) {
+			//err := service.AgentSvc(tt.version)
+			//if errors.Is(tt.expectedError, err) {
+				//t.Errorf("expected (%v), got (%v)", tt.expectedError, err)
+			//}
+		//})
+	//}
+//}

@@ -23,14 +23,6 @@ func TestGetDisks(t *testing.T) {
 	t.Logf("Result: %v", disks)
 }
 
-func TestAgentId(t *testing.T) {
-	if a.AgentID == "" {
-		t.Error("AgentID not set")
-	} else {
-		t.Logf("AgentID: %s", a.AgentID)
-	}
-}
-
 func TestSystemRebootRequired(t *testing.T) {
 	result, err := a.SystemRebootRequired()
 	if err != nil {
