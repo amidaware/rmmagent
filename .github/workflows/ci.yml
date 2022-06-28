@@ -60,6 +60,8 @@ jobs:
       
       - name: Test
         run: go test -v ./...
+        env:
+          CGO_ENABLED: 0
 
   test-ubuntu:
     runs-on: [ self-hosted, Linux]
@@ -74,3 +76,5 @@ jobs:
 
       - name: Test
         run: go test -v ./...
+        env:
+          CGO_ENABLED: 0
