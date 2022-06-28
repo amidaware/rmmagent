@@ -1,5 +1,5 @@
-//go:build !windows
-// +build !windows
+//go:build darwin
+// +build darwin
 
 package system_test
 
@@ -29,7 +29,7 @@ func TestSystemRebootRequired(t *testing.T) {
 func TestShowStatus(t *testing.T) {
 	output := utils.CaptureOutput(func() {
 		system.ShowStatus("1.0.0")
-	});
+	})
 
 	if output != "1.0.0\n" {
 		t.Fatalf("Expected 1.0.0, got %s", output)
@@ -52,21 +52,4 @@ func TestOsString(t *testing.T) {
 	}
 
 	t.Logf("OS String: %s", osString)
-}
-
-func TestRunScript(t *testing.T) {
-	stdout, stderr, exitcode, err := system.RunScript("#!/bin/sh\ncat /etc/os-release", "/bin/sh", nil, 30)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if stderr != "" {
-		t.Fatal(stderr)
-	}
-
-	if exitcode != 0 {
-		t.Fatalf("Error: Exit Code %d", exitcode)
-	}
-
-	t.Logf("Result: %s", stdout)
 }
