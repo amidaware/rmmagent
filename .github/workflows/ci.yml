@@ -47,34 +47,3 @@ jobs:
           for i in ${ARCHS}; do
             env CGO_ENABLED=0 GOOS=freebsd GOARCH=${i} go build -ldflags "-s -w"
           done
-  test-windows:
-    runs-on: [ self-hosted, Windows]
-    name: Test on Windows
-
-    steps:
-      - uses: actions/checkout@v3
-
-      - uses: actions/setup-go@v3
-        with:
-          go-version-file: 'go.mod'
-      
-      - name: Test
-        run: go test -v ./...
-        env:
-          CGO_ENABLED: 0
-
-  test-ubuntu:
-    runs-on: [ self-hosted, Linux]
-    name: Test on Ubuntu
-
-    steps:
-      - uses: actions/checkout@v3
-
-      - uses: actions/setup-go@v3
-        with:
-          go-version-file: 'go.mod'
-
-      - name: Test
-        run: go test -v ./...
-        env:
-          CGO_ENABLED: 0
