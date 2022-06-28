@@ -18,15 +18,15 @@ func TestNewAgentConfig(t *testing.T) {
 	t.Logf("Config BaseURL: %s", config.BaseURL)
 }
 
-func TestAgentUpdate(t *testing.T) {
-	url := "https://github.com/redanthrax/rmmagent/releases/download/v2.0.4/linuxagent"
-	result := tactical.AgentUpdate(url, "")
-	if !result {
-		t.Fatal("Agent update resulted in false")
-	}
+//func TestAgentUpdate(t *testing.T) {
+	//url := "https://github.com/redanthrax/rmmagent/releases/download/v2.0.4/linuxagent"
+	//result := tactical.AgentUpdate(url, "")
+	//if !result {
+		//t.Fatal("Agent update resulted in false")
+	//}
 
-	t.Log("Agent update resulted in true")
-}
+	//t.Log("Agent update resulted in true")
+//}
 
 func TestAgentUninstall(t *testing.T) {
 	result := tactical.AgentUninstall("foo")
