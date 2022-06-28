@@ -376,7 +376,7 @@ func (a *Agent) setupNatsOptions() []nats.Option {
 	opts = append(opts, nats.RetryOnFailedConnect(true))
 	opts = append(opts, nats.MaxReconnects(-1))
 	opts = append(opts, nats.ReconnectBufSize(-1))
-	opts = append(opts, nats.ProxyPath("natsws"))
+	opts = append(opts, nats.ProxyPath(a.NatsProxyPath))
 	return opts
 }
 
