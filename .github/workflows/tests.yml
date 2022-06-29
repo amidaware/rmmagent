@@ -8,7 +8,7 @@ on:
 
 jobs:
   test-windows:
-    runs-on: [ self-hosted, Windows ]
+    runs-on: windows-latest
     name: Test on Windows
 
     steps:
@@ -24,7 +24,7 @@ jobs:
           CGO_ENABLED: 0
 
   test-ubuntu:
-    runs-on: [ self-hosted, Linux ]
+    runs-on: ubuntu-latest
     name: Test on Ubuntu
 
     steps:
@@ -39,7 +39,7 @@ jobs:
         env:
           CGO_ENABLED: 0
   test-macos:
-    runs-on: [ self-hosted, macOS ]
+    runs-on: macos-latest
     name: Test on MacOS
 
     steps:
