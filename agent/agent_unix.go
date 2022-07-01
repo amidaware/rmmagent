@@ -146,17 +146,18 @@ func NewAgentConfig() *rmm.AgentConfig {
 	pk, _ := strconv.Atoi(agentpk)
 
 	ret := &rmm.AgentConfig{
-		BaseURL:       viper.GetString("baseurl"),
-		AgentID:       viper.GetString("agentid"),
-		APIURL:        viper.GetString("apiurl"),
-		Token:         viper.GetString("token"),
-		AgentPK:       agentpk,
-		PK:            pk,
-		Cert:          viper.GetString("cert"),
-		Proxy:         viper.GetString("proxy"),
-		CustomMeshDir: viper.GetString("meshdir"),
-		NatsProxyPath: viper.GetString("natsproxypath"),
-		NatsProxyPort: viper.GetString("natsproxyport"),
+		BaseURL:          viper.GetString("baseurl"),
+		AgentID:          viper.GetString("agentid"),
+		APIURL:           viper.GetString("apiurl"),
+		Token:            viper.GetString("token"),
+		AgentPK:          agentpk,
+		PK:               pk,
+		Cert:             viper.GetString("cert"),
+		Proxy:            viper.GetString("proxy"),
+		CustomMeshDir:    viper.GetString("meshdir"),
+		NatsProxyPath:    viper.GetString("natsproxypath"),
+		NatsProxyPort:    viper.GetString("natsproxyport"),
+		NatsStandardPort: viper.GetString("natsstandardport"),
 	}
 	return ret
 }
