@@ -63,19 +63,21 @@ func NewAgentConfig() *rmm.AgentConfig {
 	customMeshDir, _, _ := k.GetStringValue("MeshDir")
 	natsProxyPath, _, _ := k.GetStringValue("NatsProxyPath")
 	natsProxyPort, _, _ := k.GetStringValue("NatsProxyPort")
+	natsStandardPort, _, _ := k.GetStringValue("NatsStandardPort")
 
 	return &rmm.AgentConfig{
-		BaseURL:       baseurl,
-		AgentID:       agentid,
-		APIURL:        apiurl,
-		Token:         token,
-		AgentPK:       agentpk,
-		PK:            pk,
-		Cert:          cert,
-		Proxy:         proxy,
-		CustomMeshDir: customMeshDir,
-		NatsProxyPath: natsProxyPath,
-		NatsProxyPort: natsProxyPort,
+		BaseURL:          baseurl,
+		AgentID:          agentid,
+		APIURL:           apiurl,
+		Token:            token,
+		AgentPK:          agentpk,
+		PK:               pk,
+		Cert:             cert,
+		Proxy:            proxy,
+		CustomMeshDir:    customMeshDir,
+		NatsProxyPath:    natsProxyPath,
+		NatsProxyPort:    natsProxyPort,
+		NatsStandardPort: natsStandardPort,
 	}
 }
 

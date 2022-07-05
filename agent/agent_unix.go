@@ -18,6 +18,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
@@ -145,17 +146,18 @@ func NewAgentConfig() *rmm.AgentConfig {
 	pk, _ := strconv.Atoi(agentpk)
 
 	ret := &rmm.AgentConfig{
-		BaseURL:       viper.GetString("baseurl"),
-		AgentID:       viper.GetString("agentid"),
-		APIURL:        viper.GetString("apiurl"),
-		Token:         viper.GetString("token"),
-		AgentPK:       agentpk,
-		PK:            pk,
-		Cert:          viper.GetString("cert"),
-		Proxy:         viper.GetString("proxy"),
-		CustomMeshDir: viper.GetString("meshdir"),
-		NatsProxyPath: viper.GetString("natsproxypath"),
-		NatsProxyPort: viper.GetString("natsproxyport"),
+		BaseURL:          viper.GetString("baseurl"),
+		AgentID:          viper.GetString("agentid"),
+		APIURL:           viper.GetString("apiurl"),
+		Token:            viper.GetString("token"),
+		AgentPK:          agentpk,
+		PK:               pk,
+		Cert:             viper.GetString("cert"),
+		Proxy:            viper.GetString("proxy"),
+		CustomMeshDir:    viper.GetString("meshdir"),
+		NatsProxyPath:    viper.GetString("natsproxypath"),
+		NatsProxyPort:    viper.GetString("natsproxyport"),
+		NatsStandardPort: viper.GetString("natsstandardport"),
 	}
 	return ret
 }
@@ -249,8 +251,29 @@ func (a *Agent) AgentUpdate(url, inno, version string) {
 	os.Chmod(f.Name(), 0755)
 	err = os.Rename(f.Name(), self)
 	if err != nil {
-		a.Logger.Errorln("AgentUpdate() os.Rename():", err)
-		return
+		a.Logger.Debugln("Detected /tmp on different filesystem")
+		// rename does not work when src and dest are on different filesystems
+		// so we need to manually copy it to the same fs then rename it
+		cwd, err := os.Getwd()
+		if err != nil {
+			a.Logger.Errorln("AgentUpdate() os.Getwd():", err)
+			return
+		}
+		// create a tmpfile in same fs as agent
+		tmpfile := filepath.Join(cwd, GenerateAgentID())
+		defer os.Remove(tmpfile)
+		a.Logger.Debugln("Copying tmpfile from", f.Name(), "to", tmpfile)
+		cperr := copyFile(f.Name(), tmpfile)
+		if cperr != nil {
+			a.Logger.Errorln("AgentUpdate() copyFile:", cperr)
+			return
+		}
+		os.Chmod(tmpfile, 0755)
+		rerr := os.Rename(tmpfile, self)
+		if rerr != nil {
+			a.Logger.Errorln("AgentUpdate() os.Rename():", rerr)
+			return
+		}
 	}
 
 	opts := a.NewCMDOpts()

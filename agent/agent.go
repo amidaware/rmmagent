@@ -118,7 +118,13 @@ func New(logger *logrus.Logger, version string) *Agent {
 		natsProxyPort = "443"
 	}
 
-	natsServer := fmt.Sprintf("wss://%s:%s", ac.APIURL, natsProxyPort)
+	// check if using nats standard tcp, otherwise use nats websockets by default
+	var natsServer string
+	if ac.NatsStandardPort != "" {
+		natsServer = fmt.Sprintf("tls://%s:%s", ac.APIURL, ac.NatsStandardPort)
+	} else {
+		natsServer = fmt.Sprintf("wss://%s:%s", ac.APIURL, natsProxyPort)
+	}
 
 	return &Agent{
 		Hostname:      info.Hostname,
