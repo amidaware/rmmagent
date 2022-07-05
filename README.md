@@ -19,6 +19,11 @@ go generate
 $env:CGO_ENABLED="0";$env:GOOS="windows";$env:GOARCH="amd64"; go build -ldflags "-s -w -X 'main.version=v2.0.4'" -o build/output/tacticalrmm.exe
 ```
 
+#### building the agent - freebsd
+```
+env GOOS=freebsd GOARCH=amd64 go build -ldflags "-s -w -X 'main.version=v2.0.4'" -o build/output/rmmagent
+```
+
 ### tests
 Navigate to repo directory
 ```

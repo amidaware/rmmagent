@@ -4,7 +4,6 @@ go 1.18
 
 require (
 	github.com/StackExchange/wmi v1.2.1
-	github.com/elastic/go-sysinfo v1.8.0
 	github.com/go-ole/go-ole v1.2.6
 	github.com/go-ping/ping v1.1.0
 	github.com/go-resty/resty/v2 v2.7.0
@@ -12,6 +11,7 @@ require (
 	github.com/iamacarpet/go-win64api v0.0.0-20220531152116-0aa0ec10b240
 	github.com/nats-io/nats-server/v2 v2.8.4 // indirect
 	github.com/nats-io/nats.go v1.16.0
+	github.com/redanthrax/go-sysinfo v1.8.2
 	github.com/rickb777/date v1.19.1
 	github.com/shirou/gopsutil/v3 v3.22.5
 	github.com/sirupsen/logrus v1.8.1
@@ -19,7 +19,7 @@ require (
 	github.com/wh1te909/go-win64api v0.0.0-20210906074314-ab23795a6ae5
 	github.com/wh1te909/trmm-shared v0.0.0-20220227075846-f9f757361139
 	golang.org/x/net v0.0.0-20220531201128-c960675eff93 // indirect
-	golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a
+	golang.org/x/sys v0.0.0-20220627191245-f75cf1eec38b
 )
 
 require (
@@ -28,6 +28,7 @@ require (
 )
 
 require (
+	github.com/elastic/go-sysinfo v1.8.0
 	github.com/jaypipes/ghw v0.9.0
 	github.com/kardianos/service v1.2.1
 	github.com/spf13/viper v1.12.0
@@ -59,7 +60,7 @@ require (
 	github.com/rickb777/plural v1.4.1 // indirect
 	github.com/rogpeppe/go-internal v1.8.1 // indirect
 	github.com/scjalliance/comshim v0.0.0-20190308082608-cf06d2532c4e // indirect
-	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
+	github.com/shirou/gopsutil v3.21.11+incompatible
 	github.com/spf13/afero v1.8.2 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
@@ -67,12 +68,11 @@ require (
 	github.com/subosito/gotenv v1.4.0 // indirect
 	github.com/tklauser/go-sysconf v0.3.10 // indirect
 	github.com/tklauser/numcpus v0.5.0 // indirect
-	github.com/yusufpapurcu/wmi v1.2.2 // indirect
+	github.com/yusufpapurcu/wmi v1.2.2
 	golang.org/x/crypto v0.0.0-20220525230936-793ad666bf5e // indirect
 	golang.org/x/sync v0.0.0-20220601150217-0de741cfad7f // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/time v0.0.0-20220411224347-583f2d630306 // indirect
-	golang.org/x/tools v0.1.11
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/ini.v1 v1.66.6 // indirect
 	gopkg.in/toast.v1 v1.0.0-20180812000517-0a84660828b2 // indirect

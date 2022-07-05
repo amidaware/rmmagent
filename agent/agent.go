@@ -27,11 +27,11 @@ import (
 	"time"
 
 	rmm "github.com/amidaware/rmmagent/shared"
-	ps "github.com/elastic/go-sysinfo"
 	gocmd "github.com/go-cmd/cmd"
 	"github.com/go-resty/resty/v2"
 	"github.com/kardianos/service"
 	nats "github.com/nats-io/nats.go"
+	ps "github.com/redanthrax/go-sysinfo"
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/sirupsen/logrus"
 	trmm "github.com/wh1te909/trmm-shared"
@@ -115,7 +115,7 @@ func New(logger *logrus.Logger, version string) *Agent {
 	}
 
 	if ac.NatsProxyPort == "" {
-		natsProxyPort = "443"
+		natsProxyPort = "8000"
 	}
 
 	// check if using nats standard tcp, otherwise use nats websockets by default
