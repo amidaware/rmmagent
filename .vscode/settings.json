@@ -17,5 +17,10 @@
         "usePlaceholders": true,
         "completeUnimported": true,
         "staticcheck": true,
-    }
+    },
+    "go.testFlags": [
+        "-v",
+        "-vet=off",
+        "-timeout=300s"
+    ]
 }

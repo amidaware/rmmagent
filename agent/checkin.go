@@ -72,6 +72,7 @@ func (a *Agent) NatsMessage(nc *nats.Conn, mode string) {
 
 	a.Logger.Debugln(mode, payload)
 	ret.Encode(payload)
+	a.Logger.Infoln(a.AgentID, mode, payload)
 	nc.PublishRequest(a.AgentID, mode, resp)
 }
 

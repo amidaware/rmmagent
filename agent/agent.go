@@ -24,52 +24,18 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-
 	"time"
 
 	rmm "github.com/amidaware/rmmagent/shared"
-	ps "github.com/elastic/go-sysinfo"
 	gocmd "github.com/go-cmd/cmd"
 	"github.com/go-resty/resty/v2"
 	"github.com/kardianos/service"
 	nats "github.com/nats-io/nats.go"
+	ps "github.com/redanthrax/go-sysinfo"
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/sirupsen/logrus"
 	trmm "github.com/wh1te909/trmm-shared"
 )
-
-// Agent struct
-type Agent struct {
-	Hostname      string
-	Arch          string
-	AgentID       string
-	BaseURL       string
-	ApiURL        string
-	Token         string
-	AgentPK       int
-	Cert          string
-	ProgramDir    string
-	EXE           string
-	SystemDrive   string
-	MeshInstaller string
-	MeshSystemEXE string
-	MeshSVC       string
-	PyBin         string
-	Headers       map[string]string
-	Logger        *logrus.Logger
-	Version       string
-	Debug         bool
-	rClient       *resty.Client
-	Proxy         string
-	LogTo         string
-	LogFile       *os.File
-	Platform      string
-	GoArch        string
-	ServiceConfig *service.Config
-	NatsServer    string
-	NatsProxyPath string
-	NatsProxyPort string
-}
 
 const (
 	progFilesName = "TacticalAgent"
@@ -113,6 +79,7 @@ func New(logger *logrus.Logger, version string) *Agent {
 	if len(ac.Proxy) > 0 {
 		restyC.SetProxy(ac.Proxy)
 	}
+
 	if len(ac.Cert) > 0 {
 		restyC.SetRootCertificate(ac.Cert)
 	}
@@ -148,7 +115,7 @@ func New(logger *logrus.Logger, version string) *Agent {
 	}
 
 	if ac.NatsProxyPort == "" {
-		natsProxyPort = "443"
+		natsProxyPort = "8000"
 	}
 
 	// check if using nats standard tcp, otherwise use nats websockets by default
@@ -171,7 +138,7 @@ func New(logger *logrus.Logger, version string) *Agent {
 		EXE:           exe,
 		SystemDrive:   sd,
 		MeshInstaller: "meshagent.exe",
-		MeshSystemEXE: MeshSysExe,
+		MeshSystemBin: MeshSysExe,
 		MeshSVC:       meshSvcName,
 		PyBin:         pybin,
 		Headers:       headers,
@@ -187,22 +154,6 @@ func New(logger *logrus.Logger, version string) *Agent {
 		NatsProxyPath: natsProxyPath,
 		NatsProxyPort: natsProxyPort,
 	}
-}
-
-type CmdStatus struct {
-	Status gocmd.Status
-	Stdout string
-	Stderr string
-}
-
-type CmdOptions struct {
-	Shell        string
-	Command      string
-	Args         []string
-	Timeout      time.Duration
-	IsScript     bool
-	IsExecutable bool
-	Detached     bool
 }
 
 func (a *Agent) NewCMDOpts() *CmdOptions {

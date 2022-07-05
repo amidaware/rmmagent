@@ -1,0 +1,53 @@
+name: Run tests on self-hosted runners
+
+on:
+  push:
+    branches: [ BigRefactor ]
+  pull_request:
+    branches: [ BigRefactor ]
+
+jobs:
+  test-windows:
+    runs-on: windows-latest
+    name: Test on Windows
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: redanthrax/setup-go@ExtractArchiveFix
+        with:
+          go-version-file: 'go.mod'
+      
+      - name: Test
+        run: go test -v ./... -vet=off
+        env:
+          CGO_ENABLED: 0
+
+  test-ubuntu:
+    runs-on: ubuntu-latest
+    name: Test on Ubuntu
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-go@v3
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Test
+        run: go test -v ./... -vet=off
+        env:
+          CGO_ENABLED: 0
+  test-macos:
+    runs-on: macos-latest
+    name: Test on MacOS
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - uses: actions/setup-go@v3
+      with:
+        go-version-file: 'go.mod'
+
+    - name: Test
+      run: go test -v ./... -vet=off

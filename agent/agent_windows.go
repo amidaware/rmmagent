@@ -803,7 +803,7 @@ func (a *Agent) RecoverMesh() {
 }
 
 func (a *Agent) getMeshNodeID() (string, error) {
-	out, err := CMD(a.MeshSystemEXE, []string{"-nodeid"}, 10, false)
+	out, err := CMD(a.MeshSystemBin, []string{"-nodeid"}, 10, false)
 	if err != nil {
 		a.Logger.Debugln(err)
 		return "", err
@@ -845,12 +845,12 @@ func (a *Agent) InstallService() error {
 		return nil
 	}
 
-	s, err := service.New(a, a.ServiceConfig)
+	svc, err := service.New(a, a.ServiceConfig)
 	if err != nil {
 		return err
 	}
 
-	return service.Control(s, "install")
+	return service.Control(svc, "install")
 }
 
 // TODO add to stub
