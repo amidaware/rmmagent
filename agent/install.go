@@ -82,11 +82,6 @@ func (a *Agent) Install(i *Installer) {
 
 	a.Logger.Debugln("API:", i.SaltMaster)
 
-	terr := TestTCP(fmt.Sprintf("%s:4222", i.SaltMaster))
-	if terr != nil {
-		a.installerMsg(fmt.Sprintf("ERROR: Either port 4222 TCP is not open on your RMM, or nats.service is not running.\n\n%s", terr.Error()), "error", i.Silent)
-	}
-
 	baseURL := u.Scheme + "://" + u.Host
 	a.Logger.Debugln("Base URL:", baseURL)
 
@@ -138,14 +133,6 @@ func (a *Agent) Install(i *Installer) {
 		rClient.SetProxy(i.Proxy)
 	}
 
-	var arch string
-	switch a.Arch {
-	case "x86_64":
-		arch = "64"
-	case "x86":
-		arch = "32"
-	}
-
 	var installerMeshSystemEXE string
 	if len(i.MeshDir) > 0 {
 		installerMeshSystemEXE = filepath.Join(i.MeshDir, "MeshAgent.exe")
@@ -159,7 +146,7 @@ func (a *Agent) Install(i *Installer) {
 		mesh := filepath.Join(a.ProgramDir, a.MeshInstaller)
 		if i.LocalMesh == "" {
 			a.Logger.Infoln("Downloading mesh agent...")
-			payload := map[string]string{"arch": arch, "plat": a.Platform}
+			payload := map[string]string{"goarch": a.GoArch, "plat": a.Platform}
 			r, err := rClient.R().SetBody(payload).SetOutput(mesh).Post(fmt.Sprintf("%s/api/v3/meshexe/", baseURL))
 			if err != nil {
 				a.installerMsg(fmt.Sprintf("Failed to download mesh agent: %s", err.Error()), "error", i.Silent)

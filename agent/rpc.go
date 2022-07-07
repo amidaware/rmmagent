@@ -54,8 +54,7 @@ func (a *Agent) RunRPC() {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	opts := a.setupNatsOptions()
-	server := fmt.Sprintf("tls://%s:4222", a.ApiURL)
-	nc, err := nats.Connect(server, opts...)
+	nc, err := nats.Connect(a.NatsServer, opts...)
 	if err != nil {
 		a.Logger.Fatalln("RunRPC() nats.Connect()", err)
 	}

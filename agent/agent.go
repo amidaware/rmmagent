@@ -66,6 +66,9 @@ type Agent struct {
 	Platform      string
 	GoArch        string
 	ServiceConfig *service.Config
+	NatsServer    string
+	NatsProxyPath string
+	NatsProxyPort string
 }
 
 const (
@@ -139,9 +142,25 @@ func New(logger *logrus.Logger, version string) *Agent {
 		},
 	}
 
+	var natsProxyPath, natsProxyPort string
+	if ac.NatsProxyPath == "" {
+		natsProxyPath = "natsws"
+	}
+
+	if ac.NatsProxyPort == "" {
+		natsProxyPort = "443"
+	}
+
+	// check if using nats standard tcp, otherwise use nats websockets by default
+	var natsServer string
+	if ac.NatsStandardPort != "" {
+		natsServer = fmt.Sprintf("tls://%s:%s", ac.APIURL, ac.NatsStandardPort)
+	} else {
+		natsServer = fmt.Sprintf("wss://%s:%s", ac.APIURL, natsProxyPort)
+	}
+
 	return &Agent{
 		Hostname:      info.Hostname,
-		Arch:          info.Architecture,
 		BaseURL:       ac.BaseURL,
 		AgentID:       ac.AgentID,
 		ApiURL:        ac.APIURL,
@@ -164,6 +183,9 @@ func New(logger *logrus.Logger, version string) *Agent {
 		Platform:      runtime.GOOS,
 		GoArch:        runtime.GOARCH,
 		ServiceConfig: svcConf,
+		NatsServer:    natsServer,
+		NatsProxyPath: natsProxyPath,
+		NatsProxyPort: natsProxyPort,
 	}
 }
 
@@ -360,6 +382,7 @@ func (a *Agent) setupNatsOptions() []nats.Option {
 	opts = append(opts, nats.RetryOnFailedConnect(true))
 	opts = append(opts, nats.MaxReconnects(-1))
 	opts = append(opts, nats.ReconnectBufSize(-1))
+	opts = append(opts, nats.ProxyPath(a.NatsProxyPath))
 	return opts
 }
 
@@ -385,9 +408,17 @@ func (a *Agent) CleanupAgentUpdates() {
 		return
 	}
 
+	// winagent-v* is deprecated
 	files, err := filepath.Glob("winagent-v*.exe")
 	if err == nil {
 		for _, f := range files {
+			os.Remove(f)
+		}
+	}
+
+	agents, err := filepath.Glob("tacticalagent-v*.exe")
+	if err == nil {
+		for _, f := range agents {
 			os.Remove(f)
 		}
 	}
