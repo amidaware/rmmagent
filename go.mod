@@ -9,7 +9,7 @@ require (
 	github.com/go-ping/ping v1.1.0
 	github.com/go-resty/resty/v2 v2.7.0
 	github.com/gonutz/w32/v2 v2.4.0
-	github.com/iamacarpet/go-win64api v0.0.0-20220531152116-0aa0ec10b240
+	github.com/iamacarpet/go-win64api v0.0.0-20220531131246-e84054eb584d
 	github.com/nats-io/nats-server/v2 v2.8.4 // indirect
 	github.com/nats-io/nats.go v1.16.0
 	github.com/rickb777/date v1.19.1
