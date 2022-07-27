@@ -565,7 +565,7 @@ func (a *Agent) AgentUpdate(url, inno, version string) {
 	a.CleanupAgentUpdates()
 	updater := filepath.Join(a.ProgramDir, inno)
 	a.Logger.Infof("Agent updating from %s to %s", a.Version, version)
-	a.Logger.Infoln("Downloading agent update from", url)
+	a.Logger.Debugln("Downloading agent update from", url)
 
 	rClient := resty.New()
 	rClient.SetCloseConnection(true)
