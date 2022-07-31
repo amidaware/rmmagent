@@ -162,7 +162,7 @@ func NewAgentConfig() *rmm.AgentConfig {
 	return ret
 }
 
-func (a *Agent) RunScript(code string, shell string, args []string, timeout int) (stdout, stderr string, exitcode int, e error) {
+func (a *Agent) RunScript(code string, shell string, args []string, timeout int, runasuser bool) (stdout, stderr string, exitcode int, e error) {
 	code = removeWinNewLines(code)
 	content := []byte(code)
 
@@ -507,7 +507,7 @@ func (a *Agent) installMesh(meshbin, exe, proxy string) (string, error) {
 	return "not implemented", nil
 }
 
-func CMDShell(shell string, cmdArgs []string, command string, timeout int, detached bool) (output [2]string, e error) {
+func CMDShell(shell string, cmdArgs []string, command string, timeout int, detached bool, runasuser bool) (output [2]string, e error) {
 	return [2]string{"", ""}, nil
 }
 
