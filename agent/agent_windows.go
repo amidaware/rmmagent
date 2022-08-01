@@ -147,7 +147,7 @@ func (a *Agent) RunScript(code string, shell string, args []string, timeout int,
 	var timedOut = false
 	cmd := exec.Command(exe, cmdArgs...)
 	if runasuser {
-		token, err := wintoken.GetInteractiveToken(wintoken.TokenLinked)
+		token, err := wintoken.GetInteractiveToken(wintoken.TokenImpersonation)
 		if err != nil {
 			return "", err.Error(), 66, err
 		}
@@ -277,7 +277,7 @@ func CMDShell(shell string, cmdArgs []string, command string, timeout int, detac
 	}
 
 	if runasuser {
-		token, err := wintoken.GetInteractiveToken(wintoken.TokenLinked)
+		token, err := wintoken.GetInteractiveToken(wintoken.TokenImpersonation)
 		if err != nil {
 			return [2]string{"", CleanString(err.Error())}, err
 		}
