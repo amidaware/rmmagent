@@ -19,7 +19,7 @@ require (
 	github.com/wh1te909/go-win64api v0.0.0-20210906074314-ab23795a6ae5
 	github.com/wh1te909/trmm-shared v0.0.0-20220227075846-f9f757361139
 	golang.org/x/net v0.0.0-20220706163947-c90051bbdb60 // indirect
-	golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8
+	golang.org/x/sys v0.0.0-20220728004956-3c1f35247d10
 )
 
 require (
@@ -28,6 +28,7 @@ require (
 )
 
 require (
+	github.com/fourcorelabs/wintoken v1.0.0
 	github.com/jaypipes/ghw v0.9.0
 	github.com/kardianos/service v1.2.1
 	github.com/spf13/viper v1.12.0
