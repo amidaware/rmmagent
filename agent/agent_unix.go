@@ -209,6 +209,13 @@ func SetDetached() *syscall.SysProcAttr {
 	return &syscall.SysProcAttr{Setpgid: true}
 }
 
+func (a *Agent) seEnforcing() bool {
+	opts := a.NewCMDOpts()
+	opts.Command = "getenforce"
+	out := a.CmdV2(opts)
+	return out.Status.Exit == 0 && strings.Contains(out.Stdout, "Enforcing")
+}
+
 func (a *Agent) AgentUpdate(url, inno, version string) {
 
 	self, err := os.Executable()
@@ -274,6 +281,13 @@ func (a *Agent) AgentUpdate(url, inno, version string) {
 			a.Logger.Errorln("AgentUpdate() os.Rename():", rerr)
 			return
 		}
+	}
+
+	if a.seEnforcing() {
+		se := a.NewCMDOpts()
+		se.Command = fmt.Sprintf("restorecon -rv %s", self)
+		out := a.CmdV2(se)
+		a.Logger.Debugln("%+v\n", out)
 	}
 
 	opts := a.NewCMDOpts()
