@@ -224,13 +224,16 @@ func (a *Agent) Install(i *Installer) {
 		a.SendSoftware()
 
 		a.Logger.Debugln("Creating temp dir")
-		a.CreateTRMMTempDir()
+		err := createWinTempDir()
+		if err != nil {
+			a.Logger.Errorln("Install() createWinTempDir():", err)
+		}
 
 		a.Logger.Debugln("Disabling automatic windows updates")
 		a.PatchMgmnt(true)
 
 		a.Logger.Infoln("Installing service...")
-		err := a.InstallService()
+		err = a.InstallService()
 		if err != nil {
 			a.installerMsg(err.Error(), "error", i.Silent)
 		}

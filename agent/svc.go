@@ -29,7 +29,10 @@ func (a *Agent) RunAsService() {
 func (a *Agent) AgentSvc() {
 	go a.GetPython(false)
 
-	a.CreateTRMMTempDir()
+	err := createWinTempDir()
+	if err != nil {
+		a.Logger.Errorln("AgentSvc() createWinTempDir():", err)
+	}
 	a.RunMigrations()
 
 	sleepDelay := randRange(14, 22)
