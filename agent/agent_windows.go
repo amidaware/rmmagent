@@ -657,7 +657,8 @@ func (a *Agent) addDefenderExlusions() {
 	code := fmt.Sprintf(`
 Add-MpPreference -ExclusionPath '%s\*'
 Add-MpPreference -ExclusionPath '%s\*'
-`, winTempDir, winMeshDir)
+Add-MpPreference -ExclusionPath '%s\*'
+`, winTempDir, a.ProgramDir, winMeshDir)
 	_, _, _, err := a.RunScript(code, "powershell", []string{}, 20, false)
 	if err != nil {
 		a.Logger.Debugln(err)
