@@ -577,6 +577,7 @@ func (a *Agent) UninstallCleanup() {
 	a.PatchMgmnt(false)
 	a.CleanupAgentUpdates()
 	CleanupSchedTasks()
+	os.RemoveAll(winTempDir)
 }
 
 func (a *Agent) AgentUpdate(url, inno, version string) {

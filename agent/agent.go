@@ -444,6 +444,7 @@ func (a *Agent) RunPythonCode(code string, timeout int, args []string) (string, 
 		a.Logger.Debugln(err)
 		return "", err
 	}
+	defer os.Remove(tmpfn.Name())
 	if err := tmpfn.Close(); err != nil {
 		a.Logger.Debugln(err)
 		return "", err
