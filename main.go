@@ -85,6 +85,8 @@ func main() {
 	a.Logger.Debugf("%+v\n", a)
 
 	switch *mode {
+	case "getenv":
+		fmt.Println(os.Getenv(flag.Arg(0)))
 	case "nixmeshnodeid":
 		fmt.Print(a.NixMeshNodeID())
 	case "installsvc":
