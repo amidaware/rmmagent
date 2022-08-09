@@ -78,6 +78,8 @@ const (
 	meshSvcName   = "mesh agent"
 )
 
+var winTempDir = filepath.Join(os.Getenv("PROGRAMDATA"), "TacticalRMM")
+var winMeshDir = filepath.Join(os.Getenv("PROGRAMFILES"), "Mesh Agent")
 var natsCheckin = []string{"agent-hello", "agent-agentinfo", "agent-disks", "agent-winsvc", "agent-publicip", "agent-wmi"}
 
 func New(logger *logrus.Logger, version string) *Agent {
@@ -402,54 +404,47 @@ func (a *Agent) GetUninstallExe() string {
 }
 
 func (a *Agent) CleanupAgentUpdates() {
-	cderr := os.Chdir(a.ProgramDir)
-	if cderr != nil {
-		a.Logger.Errorln(cderr)
-		return
-	}
+	// TODO remove a.ProgramDir, updates are now in winTempDir
+	dirs := [2]string{winTempDir, a.ProgramDir}
+	for _, dir := range dirs {
+		err := os.Chdir(dir)
+		if err != nil {
+			a.Logger.Debugln("CleanupAgentUpdates()", dir, err)
+			continue
+		}
 
-	// winagent-v* is deprecated
-	files, err := filepath.Glob("winagent-v*.exe")
-	if err == nil {
-		for _, f := range files {
-			os.Remove(f)
+		// TODO winagent-v* is deprecated
+		globs := [2]string{"tacticalagent-v*", "winagent-v*"}
+		for _, glob := range globs {
+			files, err := filepath.Glob(glob)
+			if err == nil {
+				for _, f := range files {
+					a.Logger.Debugln("CleanupAgentUpdates() Removing file:", f)
+					os.Remove(f)
+				}
+			}
 		}
 	}
 
-	agents, err := filepath.Glob("tacticalagent-v*.exe")
+	err := os.Chdir(os.Getenv("TMP"))
 	if err == nil {
-		for _, f := range agents {
-			os.Remove(f)
-		}
-	}
-
-	cderr = os.Chdir(os.Getenv("TMP"))
-	if cderr != nil {
-		a.Logger.Errorln(cderr)
-		return
-	}
-	folders, err := filepath.Glob("tacticalrmm*")
-	if err == nil {
-		for _, f := range folders {
-			os.RemoveAll(f)
+		dirs, err := filepath.Glob("tacticalrmm*")
+		if err == nil {
+			for _, f := range dirs {
+				os.RemoveAll(f)
+			}
 		}
 	}
 }
 
 func (a *Agent) RunPythonCode(code string, timeout int, args []string) (string, error) {
 	content := []byte(code)
-	dir, err := ioutil.TempDir("", "tacticalpy")
-	if err != nil {
-		a.Logger.Debugln(err)
-		return "", err
-	}
-	defer os.RemoveAll(dir)
-
-	tmpfn, _ := ioutil.TempFile(dir, "*.py")
+	tmpfn, _ := ioutil.TempFile(winTempDir, "*.py")
 	if _, err := tmpfn.Write(content); err != nil {
 		a.Logger.Debugln(err)
 		return "", err
 	}
+	defer os.Remove(tmpfn.Name())
 	if err := tmpfn.Close(); err != nil {
 		a.Logger.Debugln(err)
 		return "", err
@@ -489,13 +484,12 @@ func (a *Agent) RunPythonCode(code string, timeout int, args []string) (string, 
 
 }
 
-func (a *Agent) CreateTRMMTempDir() {
-	// create the temp dir for running scripts
-	dir := filepath.Join(os.TempDir(), "trmm")
-	if !trmm.FileExists(dir) {
-		err := os.Mkdir(dir, 0775)
+func createWinTempDir() error {
+	if !trmm.FileExists(winTempDir) {
+		err := os.Mkdir(winTempDir, 0775)
 		if err != nil {
-			a.Logger.Errorln(err)
+			return err
 		}
 	}
+	return nil
 }

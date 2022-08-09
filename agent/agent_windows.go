@@ -86,9 +86,10 @@ func (a *Agent) RunScript(code string, shell string, args []string, timeout int,
 
 	content := []byte(code)
 
-	dir := filepath.Join(os.TempDir(), "trmm")
-	if !trmm.FileExists(dir) {
-		a.CreateTRMMTempDir()
+	err := createWinTempDir()
+	if err != nil {
+		a.Logger.Errorln(err)
+		return "", err.Error(), 85, err
 	}
 
 	const defaultExitCode = 1
@@ -110,7 +111,7 @@ func (a *Agent) RunScript(code string, shell string, args []string, timeout int,
 		ext = "*.bat"
 	}
 
-	tmpfn, err := ioutil.TempFile(dir, ext)
+	tmpfn, err := ioutil.TempFile(winTempDir, ext)
 	if err != nil {
 		a.Logger.Errorln(err)
 		return "", err.Error(), 85, err
@@ -576,13 +577,15 @@ func (a *Agent) UninstallCleanup() {
 	a.PatchMgmnt(false)
 	a.CleanupAgentUpdates()
 	CleanupSchedTasks()
+	os.RemoveAll(winTempDir)
 }
 
 func (a *Agent) AgentUpdate(url, inno, version string) {
 	time.Sleep(time.Duration(randRange(1, 15)) * time.Second)
 	a.KillHungUpdates()
+	time.Sleep(1 * time.Second)
 	a.CleanupAgentUpdates()
-	updater := filepath.Join(a.ProgramDir, inno)
+	updater := filepath.Join(winTempDir, inno)
 	a.Logger.Infof("Agent updating from %s to %s", a.Version, version)
 	a.Logger.Debugln("Downloading agent update from", url)
 
@@ -605,14 +608,7 @@ func (a *Agent) AgentUpdate(url, inno, version string) {
 		return
 	}
 
-	dir, err := ioutil.TempDir("", "tacticalrmm")
-	if err != nil {
-		a.Logger.Errorln("Agentupdate create tempdir:", err)
-		CMD("net", []string{"start", winSvcName}, 10, false)
-		return
-	}
-
-	innoLogFile := filepath.Join(dir, "tacticalrmm.txt")
+	innoLogFile := filepath.Join(winTempDir, fmt.Sprintf("tacticalagent_update_v%s.txt", version))
 
 	args := []string{"/C", updater, "/VERYSILENT", fmt.Sprintf("/LOG=%s", innoLogFile)}
 	cmd := exec.Command("cmd.exe", args...)
@@ -658,12 +654,11 @@ func (a *Agent) AgentUninstall(code string) {
 }
 
 func (a *Agent) addDefenderExlusions() {
-	code := `
-Add-MpPreference -ExclusionPath 'C:\Program Files\TacticalAgent\*'
-Add-MpPreference -ExclusionPath 'C:\Windows\Temp\tacticalagent-v*.exe'
-Add-MpPreference -ExclusionPath 'C:\Windows\Temp\trmm\*'
-Add-MpPreference -ExclusionPath 'C:\Program Files\Mesh Agent\*'
-`
+	code := fmt.Sprintf(`
+Add-MpPreference -ExclusionPath '%s\*'
+Add-MpPreference -ExclusionPath '%s\*'
+Add-MpPreference -ExclusionPath '%s\*'
+`, winTempDir, a.ProgramDir, winMeshDir)
 	_, _, _, err := a.RunScript(code, "powershell", []string{}, 20, false)
 	if err != nil {
 		a.Logger.Debugln(err)
