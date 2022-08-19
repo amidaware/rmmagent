@@ -30,6 +30,7 @@ import (
 
 	rmm "github.com/amidaware/rmmagent/shared"
 	ps "github.com/elastic/go-sysinfo"
+	"github.com/fourcorelabs/wintoken"
 	"github.com/go-ole/go-ole"
 	"github.com/go-ole/go-ole/oleutil"
 	"github.com/go-resty/resty/v2"
@@ -61,27 +62,34 @@ func NewAgentConfig() *rmm.AgentConfig {
 	cert, _, _ := k.GetStringValue("Cert")
 	proxy, _, _ := k.GetStringValue("Proxy")
 	customMeshDir, _, _ := k.GetStringValue("MeshDir")
+	natsProxyPath, _, _ := k.GetStringValue("NatsProxyPath")
+	natsProxyPort, _, _ := k.GetStringValue("NatsProxyPort")
+	natsStandardPort, _, _ := k.GetStringValue("NatsStandardPort")
 
 	return &rmm.AgentConfig{
-		BaseURL:       baseurl,
-		AgentID:       agentid,
-		APIURL:        apiurl,
-		Token:         token,
-		AgentPK:       agentpk,
-		PK:            pk,
-		Cert:          cert,
-		Proxy:         proxy,
-		CustomMeshDir: customMeshDir,
+		BaseURL:          baseurl,
+		AgentID:          agentid,
+		APIURL:           apiurl,
+		Token:            token,
+		AgentPK:          agentpk,
+		PK:               pk,
+		Cert:             cert,
+		Proxy:            proxy,
+		CustomMeshDir:    customMeshDir,
+		NatsProxyPath:    natsProxyPath,
+		NatsProxyPort:    natsProxyPort,
+		NatsStandardPort: natsStandardPort,
 	}
 }
 
-func (a *Agent) RunScript(code string, shell string, args []string, timeout int) (stdout, stderr string, exitcode int, e error) {
+func (a *Agent) RunScript(code string, shell string, args []string, timeout int, runasuser bool) (stdout, stderr string, exitcode int, e error) {
 
 	content := []byte(code)
 
-	dir := filepath.Join(os.TempDir(), "trmm")
-	if !trmm.FileExists(dir) {
-		a.CreateTRMMTempDir()
+	err := createWinTempDir()
+	if err != nil {
+		a.Logger.Errorln(err)
+		return "", err.Error(), 85, err
 	}
 
 	const defaultExitCode = 1
@@ -103,7 +111,7 @@ func (a *Agent) RunScript(code string, shell string, args []string, timeout int)
 		ext = "*.bat"
 	}
 
-	tmpfn, err := ioutil.TempFile(dir, ext)
+	tmpfn, err := ioutil.TempFile(winTempDir, ext)
 	if err != nil {
 		a.Logger.Errorln(err)
 		return "", err.Error(), 85, err
@@ -137,8 +145,16 @@ func (a *Agent) RunScript(code string, shell string, args []string, timeout int)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
 	defer cancel()
 
-	var timedOut bool = false
+	var timedOut = false
 	cmd := exec.Command(exe, cmdArgs...)
+	if runasuser {
+		token, err := wintoken.GetInteractiveToken(wintoken.TokenImpersonation)
+		if err != nil {
+			return "", err.Error(), 66, err
+		}
+		defer token.Close()
+		cmd.SysProcAttr = &syscall.SysProcAttr{Token: syscall.Token(token.Token()), HideWindow: true}
+	}
 	cmd.Stdout = &outb
 	cmd.Stderr = &errb
 
@@ -224,7 +240,7 @@ func CMD(exe string, args []string, timeout int, detached bool) (output [2]strin
 	return [2]string{CleanString(outb.String()), CleanString(errb.String())}, nil
 }
 
-func CMDShell(shell string, cmdArgs []string, command string, timeout int, detached bool) (output [2]string, e error) {
+func CMDShell(shell string, cmdArgs []string, command string, timeout int, detached bool, runasuser bool) (output [2]string, e error) {
 	var (
 		outb     bytes.Buffer
 		errb     bytes.Buffer
@@ -234,6 +250,8 @@ func CMDShell(shell string, cmdArgs []string, command string, timeout int, detac
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
 	defer cancel()
+
+	sysProcAttr := &windows.SysProcAttr{}
 
 	if len(cmdArgs) > 0 && command == "" {
 		switch shell {
@@ -248,9 +266,7 @@ func CMDShell(shell string, cmdArgs []string, command string, timeout int, detac
 		switch shell {
 		case "cmd":
 			cmd = exec.Command("cmd.exe")
-			cmd.SysProcAttr = &windows.SysProcAttr{
-				CmdLine: fmt.Sprintf("cmd.exe /C %s", command),
-			}
+			sysProcAttr.CmdLine = fmt.Sprintf("cmd.exe /C %s", command)
 		case "powershell":
 			cmd = exec.Command("Powershell", "-NonInteractive", "-NoProfile", command)
 		}
@@ -258,10 +274,20 @@ func CMDShell(shell string, cmdArgs []string, command string, timeout int, detac
 
 	// https://docs.microsoft.com/en-us/windows/win32/procthread/process-creation-flags
 	if detached {
-		cmd.SysProcAttr = &windows.SysProcAttr{
-			CreationFlags: windows.DETACHED_PROCESS | windows.CREATE_NEW_PROCESS_GROUP,
-		}
+		sysProcAttr.CreationFlags = windows.DETACHED_PROCESS | windows.CREATE_NEW_PROCESS_GROUP
 	}
+
+	if runasuser {
+		token, err := wintoken.GetInteractiveToken(wintoken.TokenImpersonation)
+		if err != nil {
+			return [2]string{"", CleanString(err.Error())}, err
+		}
+		defer token.Close()
+		sysProcAttr.Token = syscall.Token(token.Token())
+		sysProcAttr.HideWindow = true
+	}
+
+	cmd.SysProcAttr = sysProcAttr
 	cmd.Stdout = &outb
 	cmd.Stderr = &errb
 	cmd.Start()
@@ -443,7 +469,7 @@ func (a *Agent) PlatVer() (string, error) {
 func EnablePing() {
 	args := make([]string, 0)
 	cmd := `netsh advfirewall firewall add rule name="ICMP Allow incoming V4 echo request" protocol=icmpv4:8,any dir=in action=allow`
-	_, err := CMDShell("cmd", args, cmd, 10, false)
+	_, err := CMDShell("cmd", args, cmd, 10, false, false)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -464,7 +490,7 @@ func EnableRDP() {
 
 	args := make([]string, 0)
 	cmd := `netsh advfirewall firewall set rule group="remote desktop" new enable=Yes`
-	_, cerr := CMDShell("cmd", args, cmd, 10, false)
+	_, cerr := CMDShell("cmd", args, cmd, 10, false, false)
 	if cerr != nil {
 		fmt.Println(cerr)
 	}
@@ -491,15 +517,15 @@ func DisableSleepHibernate() {
 		wg.Add(1)
 		go func(c string) {
 			defer wg.Done()
-			_, _ = CMDShell("cmd", args, fmt.Sprintf("powercfg /set%svalueindex scheme_current sub_buttons lidaction 0", c), 5, false)
-			_, _ = CMDShell("cmd", args, fmt.Sprintf("powercfg /x -standby-timeout-%s 0", c), 5, false)
-			_, _ = CMDShell("cmd", args, fmt.Sprintf("powercfg /x -hibernate-timeout-%s 0", c), 5, false)
-			_, _ = CMDShell("cmd", args, fmt.Sprintf("powercfg /x -disk-timeout-%s 0", c), 5, false)
-			_, _ = CMDShell("cmd", args, fmt.Sprintf("powercfg /x -monitor-timeout-%s 0", c), 5, false)
+			_, _ = CMDShell("cmd", args, fmt.Sprintf("powercfg /set%svalueindex scheme_current sub_buttons lidaction 0", c), 5, false, false)
+			_, _ = CMDShell("cmd", args, fmt.Sprintf("powercfg /x -standby-timeout-%s 0", c), 5, false, false)
+			_, _ = CMDShell("cmd", args, fmt.Sprintf("powercfg /x -hibernate-timeout-%s 0", c), 5, false, false)
+			_, _ = CMDShell("cmd", args, fmt.Sprintf("powercfg /x -disk-timeout-%s 0", c), 5, false, false)
+			_, _ = CMDShell("cmd", args, fmt.Sprintf("powercfg /x -monitor-timeout-%s 0", c), 5, false, false)
 		}(i)
 	}
 	wg.Wait()
-	_, _ = CMDShell("cmd", args, "powercfg -S SCHEME_CURRENT", 5, false)
+	_, _ = CMDShell("cmd", args, "powercfg -S SCHEME_CURRENT", 5, false, false)
 }
 
 // NewCOMObject creates a new COM object for the specifed ProgramID.
@@ -551,15 +577,17 @@ func (a *Agent) UninstallCleanup() {
 	a.PatchMgmnt(false)
 	a.CleanupAgentUpdates()
 	CleanupSchedTasks()
+	os.RemoveAll(winTempDir)
 }
 
 func (a *Agent) AgentUpdate(url, inno, version string) {
 	time.Sleep(time.Duration(randRange(1, 15)) * time.Second)
 	a.KillHungUpdates()
+	time.Sleep(1 * time.Second)
 	a.CleanupAgentUpdates()
-	updater := filepath.Join(a.ProgramDir, inno)
+	updater := filepath.Join(winTempDir, inno)
 	a.Logger.Infof("Agent updating from %s to %s", a.Version, version)
-	a.Logger.Infoln("Downloading agent update from", url)
+	a.Logger.Debugln("Downloading agent update from", url)
 
 	rClient := resty.New()
 	rClient.SetCloseConnection(true)
@@ -580,14 +608,7 @@ func (a *Agent) AgentUpdate(url, inno, version string) {
 		return
 	}
 
-	dir, err := ioutil.TempDir("", "tacticalrmm")
-	if err != nil {
-		a.Logger.Errorln("Agentupdate create tempdir:", err)
-		CMD("net", []string{"start", winSvcName}, 10, false)
-		return
-	}
-
-	innoLogFile := filepath.Join(dir, "tacticalrmm.txt")
+	innoLogFile := filepath.Join(winTempDir, fmt.Sprintf("tacticalagent_update_v%s.txt", version))
 
 	args := []string{"/C", updater, "/VERYSILENT", fmt.Sprintf("/LOG=%s", innoLogFile)}
 	cmd := exec.Command("cmd.exe", args...)
@@ -633,13 +654,12 @@ func (a *Agent) AgentUninstall(code string) {
 }
 
 func (a *Agent) addDefenderExlusions() {
-	code := `
-Add-MpPreference -ExclusionPath 'C:\Program Files\TacticalAgent\*'
-Add-MpPreference -ExclusionPath 'C:\Windows\Temp\winagent-v*.exe'
-Add-MpPreference -ExclusionPath 'C:\Windows\Temp\trmm\*'
-Add-MpPreference -ExclusionPath 'C:\Program Files\Mesh Agent\*'
-`
-	_, _, _, err := a.RunScript(code, "powershell", []string{}, 20)
+	code := fmt.Sprintf(`
+Add-MpPreference -ExclusionPath '%s\*'
+Add-MpPreference -ExclusionPath '%s\*'
+Add-MpPreference -ExclusionPath '%s\*'
+`, winTempDir, a.ProgramDir, winMeshDir)
+	_, _, _, err := a.RunScript(code, "powershell", []string{}, 20, false)
 	if err != nil {
 		a.Logger.Debugln(err)
 	}

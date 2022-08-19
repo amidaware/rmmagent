@@ -1,3 +1,6 @@
+//go:build !windows
+// +build !windows
+
 /*
 Copyright 2022 AmidaWare LLC.
 
@@ -15,6 +18,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
@@ -142,20 +146,23 @@ func NewAgentConfig() *rmm.AgentConfig {
 	pk, _ := strconv.Atoi(agentpk)
 
 	ret := &rmm.AgentConfig{
-		BaseURL:       viper.GetString("baseurl"),
-		AgentID:       viper.GetString("agentid"),
-		APIURL:        viper.GetString("apiurl"),
-		Token:         viper.GetString("token"),
-		AgentPK:       agentpk,
-		PK:            pk,
-		Cert:          viper.GetString("cert"),
-		Proxy:         viper.GetString("proxy"),
-		CustomMeshDir: viper.GetString("meshdir"),
+		BaseURL:          viper.GetString("baseurl"),
+		AgentID:          viper.GetString("agentid"),
+		APIURL:           viper.GetString("apiurl"),
+		Token:            viper.GetString("token"),
+		AgentPK:          agentpk,
+		PK:               pk,
+		Cert:             viper.GetString("cert"),
+		Proxy:            viper.GetString("proxy"),
+		CustomMeshDir:    viper.GetString("meshdir"),
+		NatsProxyPath:    viper.GetString("natsproxypath"),
+		NatsProxyPort:    viper.GetString("natsproxyport"),
+		NatsStandardPort: viper.GetString("natsstandardport"),
 	}
 	return ret
 }
 
-func (a *Agent) RunScript(code string, shell string, args []string, timeout int) (stdout, stderr string, exitcode int, e error) {
+func (a *Agent) RunScript(code string, shell string, args []string, timeout int, runasuser bool) (stdout, stderr string, exitcode int, e error) {
 	code = removeWinNewLines(code)
 	content := []byte(code)
 
@@ -202,6 +209,13 @@ func SetDetached() *syscall.SysProcAttr {
 	return &syscall.SysProcAttr{Setpgid: true}
 }
 
+func (a *Agent) seEnforcing() bool {
+	opts := a.NewCMDOpts()
+	opts.Command = "getenforce"
+	out := a.CmdV2(opts)
+	return out.Status.Exit == 0 && strings.Contains(out.Stdout, "Enforcing")
+}
+
 func (a *Agent) AgentUpdate(url, inno, version string) {
 
 	self, err := os.Executable()
@@ -218,7 +232,7 @@ func (a *Agent) AgentUpdate(url, inno, version string) {
 	defer os.Remove(f.Name())
 
 	a.Logger.Infof("Agent updating from %s to %s", a.Version, version)
-	a.Logger.Infoln("Downloading agent update from", url)
+	a.Logger.Debugln("Downloading agent update from", url)
 
 	rClient := resty.New()
 	rClient.SetCloseConnection(true)
@@ -244,8 +258,36 @@ func (a *Agent) AgentUpdate(url, inno, version string) {
 	os.Chmod(f.Name(), 0755)
 	err = os.Rename(f.Name(), self)
 	if err != nil {
-		a.Logger.Errorln("AgentUpdate() os.Rename():", err)
-		return
+		a.Logger.Debugln("Detected /tmp on different filesystem")
+		// rename does not work when src and dest are on different filesystems
+		// so we need to manually copy it to the same fs then rename it
+		cwd, err := os.Getwd()
+		if err != nil {
+			a.Logger.Errorln("AgentUpdate() os.Getwd():", err)
+			return
+		}
+		// create a tmpfile in same fs as agent
+		tmpfile := filepath.Join(cwd, GenerateAgentID())
+		defer os.Remove(tmpfile)
+		a.Logger.Debugln("Copying tmpfile from", f.Name(), "to", tmpfile)
+		cperr := copyFile(f.Name(), tmpfile)
+		if cperr != nil {
+			a.Logger.Errorln("AgentUpdate() copyFile:", cperr)
+			return
+		}
+		os.Chmod(tmpfile, 0755)
+		rerr := os.Rename(tmpfile, self)
+		if rerr != nil {
+			a.Logger.Errorln("AgentUpdate() os.Rename():", rerr)
+			return
+		}
+	}
+
+	if a.seEnforcing() {
+		se := a.NewCMDOpts()
+		se.Command = fmt.Sprintf("restorecon -rv %s", self)
+		out := a.CmdV2(se)
+		a.Logger.Debugln("%+v\n", out)
 	}
 
 	opts := a.NewCMDOpts()
@@ -479,7 +521,7 @@ func (a *Agent) installMesh(meshbin, exe, proxy string) (string, error) {
 	return "not implemented", nil
 }
 
-func CMDShell(shell string, cmdArgs []string, command string, timeout int, detached bool) (output [2]string, e error) {
+func CMDShell(shell string, cmdArgs []string, command string, timeout int, detached bool, runasuser bool) (output [2]string, e error) {
 	return [2]string{"", ""}, nil
 }
 

@@ -12,7 +12,6 @@ https://license.tacticalrmm.com
 package agent
 
 import (
-	"fmt"
 	"runtime"
 	"time"
 
@@ -78,8 +77,7 @@ func (a *Agent) NatsMessage(nc *nats.Conn, mode string) {
 
 func (a *Agent) DoNatsCheckIn() {
 	opts := a.setupNatsOptions()
-	server := fmt.Sprintf("tls://%s:4222", a.ApiURL)
-	nc, err := nats.Connect(server, opts...)
+	nc, err := nats.Connect(a.NatsServer, opts...)
 	if err != nil {
 		a.Logger.Errorln(err)
 		return

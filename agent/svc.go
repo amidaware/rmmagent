@@ -12,7 +12,6 @@ https://license.tacticalrmm.com
 package agent
 
 import (
-	"fmt"
 	"sync"
 	"time"
 
@@ -30,7 +29,10 @@ func (a *Agent) RunAsService() {
 func (a *Agent) AgentSvc() {
 	go a.GetPython(false)
 
-	a.CreateTRMMTempDir()
+	err := createWinTempDir()
+	if err != nil {
+		a.Logger.Errorln("AgentSvc() createWinTempDir():", err)
+	}
 	a.RunMigrations()
 
 	sleepDelay := randRange(14, 22)
@@ -38,8 +40,7 @@ func (a *Agent) AgentSvc() {
 	time.Sleep(time.Duration(sleepDelay) * time.Second)
 
 	opts := a.setupNatsOptions()
-	server := fmt.Sprintf("tls://%s:4222", a.ApiURL)
-	nc, err := nats.Connect(server, opts...)
+	nc, err := nats.Connect(a.NatsServer, opts...)
 	if err != nil {
 		a.Logger.Fatalln("AgentSvc() nats.Connect()", err)
 	}

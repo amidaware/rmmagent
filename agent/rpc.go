@@ -40,6 +40,7 @@ type NatsMsg struct {
 	PatchMgmt       bool              `json:"patch_mgmt"`
 	ID              int               `json:"id"`
 	Code            string            `json:"code"`
+	RunAsUser       bool              `json:"run_as_user"`
 }
 
 var (
@@ -54,8 +55,7 @@ func (a *Agent) RunRPC() {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	opts := a.setupNatsOptions()
-	server := fmt.Sprintf("tls://%s:4222", a.ApiURL)
-	nc, err := nats.Connect(server, opts...)
+	nc, err := nats.Connect(a.NatsServer, opts...)
 	if err != nil {
 		a.Logger.Fatalln("RunRPC() nats.Connect()", err)
 	}
@@ -178,7 +178,7 @@ func (a *Agent) RunRPC() {
 
 				switch runtime.GOOS {
 				case "windows":
-					out, _ := CMDShell(p.Data["shell"], []string{}, p.Data["command"], p.Timeout, false)
+					out, _ := CMDShell(p.Data["shell"], []string{}, p.Data["command"], p.Timeout, false, p.RunAsUser)
 					a.Logger.Debugln(out)
 					if out[1] != "" {
 						ret.Encode(out[1])
@@ -258,7 +258,7 @@ func (a *Agent) RunRPC() {
 				var resultData rmm.RunScriptResp
 				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
 				start := time.Now()
-				stdout, stderr, retcode, err := a.RunScript(p.Data["code"], p.Data["shell"], p.ScriptArgs, p.Timeout)
+				stdout, stderr, retcode, err := a.RunScript(p.Data["code"], p.Data["shell"], p.ScriptArgs, p.Timeout, p.RunAsUser)
 				resultData.ExecTime = time.Since(start).Seconds()
 				resultData.ID = p.ID
 
@@ -288,7 +288,7 @@ func (a *Agent) RunRPC() {
 				var retData rmm.RunScriptResp
 				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
 				start := time.Now()
-				stdout, stderr, retcode, err := a.RunScript(p.Data["code"], p.Data["shell"], p.ScriptArgs, p.Timeout)
+				stdout, stderr, retcode, err := a.RunScript(p.Data["code"], p.Data["shell"], p.ScriptArgs, p.Timeout, p.RunAsUser)
 
 				retData.ExecTime = time.Since(start).Seconds()
 				if err != nil {

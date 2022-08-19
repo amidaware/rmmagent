@@ -59,7 +59,7 @@ func (a *Agent) RunTask(id int) error {
 
 		action_start := time.Now()
 		if action.ActionType == "script" {
-			stdout, stderr, retcode, err := a.RunScript(action.Code, action.Shell, action.Args, action.Timeout)
+			stdout, stderr, retcode, err := a.RunScript(action.Code, action.Shell, action.Args, action.Timeout, action.RunAsUser)
 
 			if err != nil {
 				a.Logger.Debugln(err)
@@ -83,7 +83,7 @@ func (a *Agent) RunTask(id int) error {
 
 		} else if action.ActionType == "cmd" {
 			// out[0] == stdout, out[1] == stderr
-			out, err := CMDShell(action.Shell, []string{}, action.Command, action.Timeout, false)
+			out, err := CMDShell(action.Shell, []string{}, action.Command, action.Timeout, false, action.RunAsUser)
 
 			if err != nil {
 				a.Logger.Debugln(err)

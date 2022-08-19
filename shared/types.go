@@ -33,15 +33,18 @@ type ProcessMsg struct {
 }
 
 type AgentConfig struct {
-	BaseURL       string
-	AgentID       string
-	APIURL        string
-	Token         string
-	AgentPK       string
-	PK            int
-	Cert          string
-	Proxy         string
-	CustomMeshDir string
+	BaseURL          string
+	AgentID          string
+	APIURL           string
+	Token            string
+	AgentPK          string
+	PK               int
+	Cert             string
+	Proxy            string
+	CustomMeshDir    string
+	NatsProxyPath    string
+	NatsProxyPort    string
+	NatsStandardPort string
 }
 
 type RunScriptResp struct {
@@ -138,8 +141,9 @@ type AssignedTask struct {
 }
 
 type Script struct {
-	Shell string `json:"shell"`
-	Code  string `json:"code"`
+	Shell     string `json:"shell"`
+	Code      string `json:"code"`
+	RunAsUser bool   `json:"run_as_user"`
 }
 
 type CheckInfo struct {
@@ -185,6 +189,7 @@ type TaskAction struct {
 	Code       string   `json:"code"`
 	Args       []string `json:"script_args"`
 	Timeout    int      `json:"timeout"`
+	RunAsUser  bool     `json:"run_as_user"`
 }
 
 type AutomatedTask struct {
