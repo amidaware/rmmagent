@@ -47,10 +47,10 @@ var (
 	getDriveType = windows.NewLazySystemDLL("kernel32.dll").NewProc("GetDriveTypeW")
 )
 
-func NewAgentConfig() *rmm.AgentConfig {
+func NewAgentConfig() (*rmm.AgentConfig, error) {
 	k, err := registry.OpenKey(registry.LOCAL_MACHINE, `SOFTWARE\TacticalRMM`, registry.ALL_ACCESS)
 	if err != nil {
-		return &rmm.AgentConfig{}
+		return &rmm.AgentConfig{}, err
 	}
 
 	baseurl, _, _ := k.GetStringValue("BaseURL")
@@ -79,7 +79,7 @@ func NewAgentConfig() *rmm.AgentConfig {
 		NatsProxyPath:    natsProxyPath,
 		NatsProxyPort:    natsProxyPort,
 		NatsStandardPort: natsStandardPort,
-	}
+	}, nil
 }
 
 func (a *Agent) RunScript(code string, shell string, args []string, timeout int, runasuser bool) (stdout, stderr string, exitcode int, e error) {

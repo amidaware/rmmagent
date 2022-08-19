@@ -97,7 +97,10 @@ func New(logger *logrus.Logger, version string) *Agent {
 		pybin = filepath.Join(pd, "py38-x32", "python.exe")
 	}
 
-	ac := NewAgentConfig()
+	ac, err := NewAgentConfig()
+	if err != nil {
+		logger.Fatalln(err)
+	}
 
 	headers := make(map[string]string)
 	if len(ac.Token) > 0 {

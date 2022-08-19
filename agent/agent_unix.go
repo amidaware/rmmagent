@@ -131,7 +131,7 @@ func (a *Agent) osString() string {
 	return fmt.Sprintf("%s %s %s %s", strings.Title(h.Platform), h.PlatformVersion, h.KernelArch, h.KernelVersion)
 }
 
-func NewAgentConfig() *rmm.AgentConfig {
+func NewAgentConfig() (*rmm.AgentConfig, error) {
 	viper.SetConfigName("tacticalagent")
 	viper.SetConfigType("json")
 	viper.AddConfigPath("/etc/")
@@ -139,7 +139,7 @@ func NewAgentConfig() *rmm.AgentConfig {
 	err := viper.ReadInConfig()
 
 	if err != nil {
-		return &rmm.AgentConfig{}
+		return &rmm.AgentConfig{}, err
 	}
 
 	agentpk := viper.GetString("agentpk")
@@ -159,7 +159,7 @@ func NewAgentConfig() *rmm.AgentConfig {
 		NatsProxyPort:    viper.GetString("natsproxyport"),
 		NatsStandardPort: viper.GetString("natsstandardport"),
 	}
-	return ret
+	return ret, nil
 }
 
 func (a *Agent) RunScript(code string, shell string, args []string, timeout int, runasuser bool) (stdout, stderr string, exitcode int, e error) {
