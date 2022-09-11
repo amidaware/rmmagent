@@ -205,6 +205,7 @@ type CmdOptions struct {
 	IsScript     bool
 	IsExecutable bool
 	Detached     bool
+	Env          []string
 }
 
 func (a *Agent) NewCMDOpts() *CmdOptions {
@@ -228,11 +229,16 @@ func (a *Agent) CmdV2(c *CmdOptions) CmdStatus {
 	// have a child process that is in a different process group so that
 	// parent terminating doesn't kill child
 	if c.Detached {
-		cmdOptions.BeforeExec = []func(cmd *exec.Cmd){
-			func(cmd *exec.Cmd) {
-				cmd.SysProcAttr = SetDetached()
-			},
-		}
+		cmdOptions.BeforeExec = append(cmdOptions.BeforeExec, func(cmd *exec.Cmd) {
+			cmd.SysProcAttr = SetDetached()
+		})
+	}
+
+	if len(c.Env) > 0 {
+		cmdOptions.BeforeExec = append(cmdOptions.BeforeExec, func(cmd *exec.Cmd) {
+			cmd.Env = os.Environ()
+			cmd.Env = append(cmd.Env, c.Env...)
+		})
 	}
 
 	var envCmd *gocmd.Cmd
