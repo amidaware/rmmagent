@@ -51,8 +51,6 @@ func createAgentConfig(baseurl, agentid, apiurl, token, agentpk, cert, proxy, me
 	}
 }
 
-func (a *Agent) addDefenderExlusions() {}
-
 func DisableSleepHibernate() {}
 
 func EnablePing() {}

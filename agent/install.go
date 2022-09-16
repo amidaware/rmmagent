@@ -245,9 +245,6 @@ func (a *Agent) Install(i *Installer) {
 			a.installerMsg(out.ErrorMsg, "error", i.Silent)
 		}
 
-		a.Logger.Infoln("Adding windows defender exclusions")
-		a.addDefenderExlusions()
-
 		if i.Power {
 			a.Logger.Infoln("Disabling sleep/hibernate...")
 			DisableSleepHibernate()
