@@ -12,6 +12,7 @@ https://license.tacticalrmm.com
 package agent
 
 import (
+	"runtime"
 	"sync"
 	"time"
 
@@ -27,11 +28,13 @@ func (a *Agent) RunAsService() {
 }
 
 func (a *Agent) AgentSvc() {
-	go a.GetPython(false)
+	if runtime.GOOS == "windows" {
+		go a.GetPython(false)
 
-	err := createWinTempDir()
-	if err != nil {
-		a.Logger.Errorln("AgentSvc() createWinTempDir():", err)
+		err := createWinTempDir()
+		if err != nil {
+			a.Logger.Errorln("AgentSvc() createWinTempDir():", err)
+		}
 	}
 	a.RunMigrations()
 
@@ -53,8 +56,10 @@ func (a *Agent) AgentSvc() {
 	go a.SyncMeshNodeID()
 
 	time.Sleep(time.Duration(randRange(1, 3)) * time.Second)
-	a.AgentStartup()
-	a.SendSoftware()
+	if runtime.GOOS == "windows" {
+		a.AgentStartup()
+		a.SendSoftware()
+	}
 
 	checkInHelloTicker := time.NewTicker(time.Duration(randRange(30, 60)) * time.Second)
 	checkInAgentInfoTicker := time.NewTicker(time.Duration(randRange(200, 400)) * time.Second)

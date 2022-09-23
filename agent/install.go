@@ -140,34 +140,57 @@ func (a *Agent) Install(i *Installer) {
 		installerMeshSystemEXE = a.MeshSystemEXE
 	}
 
-	var meshNodeID string
+	var meshNodeID, meshOutput string
 
-	if runtime.GOOS == "windows" && !i.NoMesh {
-		mesh := filepath.Join(a.ProgramDir, a.MeshInstaller)
-		if i.LocalMesh == "" {
+	if !i.NoMesh && runtime.GOOS != "linux" {
+		switch runtime.GOOS {
+		case "windows":
+			meshOutput = filepath.Join(a.ProgramDir, a.MeshInstaller)
+		case "darwin":
+			tmp, err := createTmpFile()
+			if err != nil {
+				a.Logger.Fatalln("Failed to create mesh temp file", err)
+			}
+			meshOutput = tmp.Name()
+			os.Chmod(meshOutput, 0755)
+			defer os.Remove(meshOutput)
+			defer os.Remove(meshOutput + ".msh")
+		}
+
+		if runtime.GOOS == "windows" && i.LocalMesh != "" {
+			err := copyFile(i.LocalMesh, meshOutput)
+			if err != nil {
+				a.installerMsg(err.Error(), "error", i.Silent)
+			}
+		} else {
 			a.Logger.Infoln("Downloading mesh agent...")
 			payload := map[string]string{"goarch": a.GoArch, "plat": a.Platform}
-			r, err := rClient.R().SetBody(payload).SetOutput(mesh).Post(fmt.Sprintf("%s/api/v3/meshexe/", baseURL))
+			r, err := rClient.R().SetBody(payload).SetOutput(meshOutput).Post(fmt.Sprintf("%s/api/v3/meshexe/", baseURL))
 			if err != nil {
 				a.installerMsg(fmt.Sprintf("Failed to download mesh agent: %s", err.Error()), "error", i.Silent)
 			}
 			if r.StatusCode() != 200 {
 				a.installerMsg(fmt.Sprintf("Unable to download the mesh agent from the RMM. %s", r.String()), "error", i.Silent)
 			}
-		} else {
-			err := copyFile(i.LocalMesh, mesh)
-			if err != nil {
-				a.installerMsg(err.Error(), "error", i.Silent)
-			}
 		}
 
 		a.Logger.Infoln("Installing mesh agent...")
-		a.Logger.Debugln("Mesh agent:", mesh)
+		a.Logger.Debugln("Mesh agent:", meshOutput)
 		time.Sleep(1 * time.Second)
 
-		meshNodeID, err = a.installMesh(mesh, installerMeshSystemEXE, i.Proxy)
-		if err != nil {
-			a.installerMsg(fmt.Sprintf("Failed to install mesh agent: %s", err.Error()), "error", i.Silent)
+		if runtime.GOOS == "windows" {
+			meshNodeID, err = a.installMesh(meshOutput, installerMeshSystemEXE, i.Proxy)
+			if err != nil {
+				a.installerMsg(fmt.Sprintf("Failed to install mesh agent: %s", err.Error()), "error", i.Silent)
+			}
+		} else {
+			opts := a.NewCMDOpts()
+			opts.Command = fmt.Sprintf("%s -install", meshOutput)
+			out := a.CmdV2(opts)
+			if out.Status.Exit != 0 {
+				a.Logger.Fatalln("Error installing mesh agent:", out.Stderr)
+			}
+			fmt.Println(out.Stdout)
 		}
 	}
 
@@ -218,6 +241,47 @@ func (a *Agent) Install(i *Installer) {
 	time.Sleep(3 * time.Second)
 	// check in once
 	a.DoNatsCheckIn()
+
+	if runtime.GOOS == "darwin" {
+		os.MkdirAll(nixAgentDir, 0755)
+		self, _ := os.Executable()
+		copyFile(self, nixAgentBin)
+		os.Chmod(nixAgentBin, 0755)
+		svc := fmt.Sprintf(`
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+	<dict>
+		<key>Label</key>
+		<string>%s</string>
+
+		<key>ServiceDescription</key>
+        <string>TacticalAgent Service</string>
+
+		<key>ProgramArguments</key>
+		<array>
+			<string>%s</string>
+			<string>-m</string>
+			<string>svc</string>
+		</array>
+
+		<key>WorkingDirectory</key>
+		<string>%s/</string>
+
+		<key>RunAtLoad</key>
+		<true/>
+
+		<key>KeepAlive</key>
+		<true/>
+	</dict>
+</plist>
+`, macPlistName, nixAgentBin, nixAgentDir)
+
+		os.WriteFile(macPlistPath, []byte(svc), 0644)
+		opts := a.NewCMDOpts()
+		opts.Command = fmt.Sprintf("launchctl bootstrap system %s", macPlistPath)
+		a.CmdV2(opts)
+	}
 
 	if runtime.GOOS == "windows" {
 		// send software api

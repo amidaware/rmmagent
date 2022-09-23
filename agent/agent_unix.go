@@ -50,7 +50,7 @@ func (a *Agent) GetDisks() []trmm.Disk {
 	}
 
 	for _, p := range partitions {
-		if strings.Contains(p.Device, "dev/loop") {
+		if strings.Contains(p.Device, "dev/loop") || strings.Contains(p.Device, "devfs") {
 			continue
 		}
 		usage, err := disk.Usage(p.Mountpoint)
@@ -283,7 +283,7 @@ func (a *Agent) AgentUpdate(url, inno, version string) {
 		}
 	}
 
-	if a.seEnforcing() {
+	if runtime.GOOS == "linux" && a.seEnforcing() {
 		se := a.NewCMDOpts()
 		se.Command = fmt.Sprintf("restorecon -rv %s", self)
 		out := a.CmdV2(se)
@@ -292,7 +292,15 @@ func (a *Agent) AgentUpdate(url, inno, version string) {
 
 	opts := a.NewCMDOpts()
 	opts.Detached = true
-	opts.Command = "systemctl restart tacticalagent.service"
+	switch runtime.GOOS {
+	case "linux":
+		opts.Command = "systemctl restart tacticalagent.service"
+	case "darwin":
+		opts.Command = "launchctl kickstart -k system/tacticalagent"
+	default:
+		return
+	}
+
 	a.CmdV2(opts)
 }
 
@@ -310,7 +318,9 @@ func (a *Agent) AgentUninstall(code string) {
 	opts := a.NewCMDOpts()
 	opts.IsScript = true
 	opts.Shell = f.Name()
-	opts.Args = []string{"uninstall"}
+	if runtime.GOOS == "linux" {
+		opts.Args = []string{"uninstall"}
+	}
 	opts.Detached = true
 	a.CmdV2(opts)
 }
@@ -354,7 +364,15 @@ func (a *Agent) getMeshNodeID() (string, error) {
 func (a *Agent) RecoverMesh() {
 	a.Logger.Infoln("Attempting mesh recovery")
 	opts := a.NewCMDOpts()
-	opts.Command = "systemctl restart meshagent.service"
+	def := "systemctl restart meshagent.service"
+	switch runtime.GOOS {
+	case "linux":
+		opts.Command = def
+	case "darwin":
+		opts.Command = "launchctl kickstart -k system/meshagent"
+	default:
+		opts.Command = def
+	}
 	a.CmdV2(opts)
 	a.SyncMeshNodeID()
 }
@@ -413,18 +431,25 @@ func (a *Agent) GetWMIInfo() map[string]interface{} {
 	wmiInfo["make_model"] = ""
 	chassis, err := ghw.Chassis(ghw.WithDisableWarnings())
 	if err != nil {
-		a.Logger.Errorln("ghw.Chassis()", err)
+		a.Logger.Debugln("ghw.Chassis()", err)
 	} else {
 		if chassis.Vendor != "" || chassis.Version != "" {
 			wmiInfo["make_model"] = fmt.Sprintf("%s %s", chassis.Vendor, chassis.Version)
 		}
 	}
 
+	if runtime.GOOS == "darwin" {
+		opts := a.NewCMDOpts()
+		opts.Command = "sysctl hw.model"
+		out := a.CmdV2(opts)
+		wmiInfo["make_model"] = strings.ReplaceAll(out.Stdout, "hw.model: ", "")
+	}
+
 	// gfx cards
 
 	gpu, err := ghw.GPU(ghw.WithDisableWarnings())
 	if err != nil {
-		a.Logger.Errorln("ghw.GPU()", err)
+		a.Logger.Debugln("ghw.GPU()", err)
 	} else {
 		for _, i := range gpu.GraphicsCards {
 			if i.DeviceInfo != nil {

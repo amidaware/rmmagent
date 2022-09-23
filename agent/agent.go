@@ -76,6 +76,12 @@ const (
 	winExeName    = "tacticalrmm.exe"
 	winSvcName    = "tacticalrmm"
 	meshSvcName   = "mesh agent"
+	etcConfig     = "/etc/tacticalagent"
+	nixAgentDir   = "/opt/tacticalagent"
+	nixAgentBin   = nixAgentDir + "/tacticalagent"
+	macPlistPath  = "/Library/LaunchDaemons/tacticalagent.plist"
+	macPlistName  = "tacticalagent"
+	macMeshSvcDir = "/usr/local/mesh_services"
 )
 
 var winTempDir = filepath.Join(os.Getenv("PROGRAMDATA"), "TacticalRMM")
@@ -120,18 +126,19 @@ func New(logger *logrus.Logger, version string) *Agent {
 	}
 
 	var MeshSysExe string
-	if len(ac.CustomMeshDir) > 0 {
-		MeshSysExe = filepath.Join(ac.CustomMeshDir, "MeshAgent.exe")
-	} else {
-		MeshSysExe = filepath.Join(os.Getenv("ProgramFiles"), "Mesh Agent", "MeshAgent.exe")
-	}
-
-	if runtime.GOOS == "linux" {
+	switch runtime.GOOS {
+	case "windows":
+		if len(ac.CustomMeshDir) > 0 {
+			MeshSysExe = filepath.Join(ac.CustomMeshDir, "MeshAgent.exe")
+		} else {
+			MeshSysExe = filepath.Join(os.Getenv("ProgramFiles"), "Mesh Agent", "MeshAgent.exe")
+		}
+	case "linux":
 		MeshSysExe = "/opt/tacticalmesh/meshagent"
-	}
-
-	if runtime.GOOS == "darwin" {
-		MeshSysExe = "/usr/local/mesh_services/meshagent/meshagent_osx64"
+	case "darwin":
+		MeshSysExe = "/usr/local/mesh_services/meshagent/meshagent"
+	default:
+		MeshSysExe = "/opt/tacticalmesh/meshagent"
 	}
 
 	svcConf := &service.Config{
