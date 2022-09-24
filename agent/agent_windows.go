@@ -653,18 +653,6 @@ func (a *Agent) AgentUninstall(code string) {
 	cmd.Start()
 }
 
-func (a *Agent) addDefenderExlusions() {
-	code := fmt.Sprintf(`
-Add-MpPreference -ExclusionPath '%s\*'
-Add-MpPreference -ExclusionPath '%s\*'
-Add-MpPreference -ExclusionPath '%s\*'
-`, winTempDir, a.ProgramDir, winMeshDir)
-	_, _, _, err := a.RunScript(code, "powershell", []string{}, 20, false)
-	if err != nil {
-		a.Logger.Debugln(err)
-	}
-}
-
 // RunMigrations cleans up unused stuff from older agents
 func (a *Agent) RunMigrations() {
 	for _, i := range []string{"nssm.exe", "nssm-x86.exe"} {

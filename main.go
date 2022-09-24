@@ -25,7 +25,7 @@ import (
 )
 
 var (
-	version = "2.3.1"
+	version = "2.4.0"
 	log     = logrus.New()
 	logFile *os.File
 )
@@ -185,7 +185,7 @@ func setupLogging(level, to *string) {
 		switch runtime.GOOS {
 		case "windows":
 			logFile, _ = os.OpenFile(filepath.Join(os.Getenv("ProgramFiles"), "TacticalAgent", "agent.log"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0664)
-		case "linux":
+		default:
 			logFile, _ = os.OpenFile(filepath.Join("/var/log/", "tacticalagent.log"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0664)
 		}
 		log.SetOutput(logFile)
