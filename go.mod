@@ -13,7 +13,7 @@ require (
 	github.com/nats-io/nats-server/v2 v2.9.3 // indirect
 	github.com/nats-io/nats.go v1.18.0
 	github.com/rickb777/date v1.19.1
-	github.com/shirou/gopsutil/v3 v3.22.8
+	github.com/shirou/gopsutil/v3 v3.22.9
 	github.com/sirupsen/logrus v1.9.0
 	github.com/ugorji/go/codec v1.2.7
 	github.com/wh1te909/go-win64api v0.0.0-20210906074314-ab23795a6ae5
