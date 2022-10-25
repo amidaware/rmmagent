@@ -185,7 +185,7 @@ func (a *Agent) Install(i *Installer) {
 			}
 		} else {
 			opts := a.NewCMDOpts()
-			opts.Command = fmt.Sprintf("%s -install", meshOutput)
+			opts.Command = fmt.Sprintf("%s -install --installPath=%s", meshOutput, nixMeshDir)
 			out := a.CmdV2(opts)
 			if out.Status.Exit != 0 {
 				a.Logger.Fatalln("Error installing mesh agent:", out.Stderr)

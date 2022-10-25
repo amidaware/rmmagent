@@ -68,7 +68,8 @@ func (a *Agent) checkExistingAndRemove(silent bool) {
 			a.CmdV2(opts)
 		}
 
-		os.RemoveAll(macMeshSvcDir)
+		os.RemoveAll(defaultMacMeshSvcDir)
+		os.RemoveAll(nixMeshDir)
 		os.Remove(etcConfig)
 		os.RemoveAll(nixAgentDir)
 		os.Remove(macPlistPath)
