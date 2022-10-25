@@ -10,16 +10,16 @@ require (
 	github.com/go-resty/resty/v2 v2.7.0
 	github.com/gonutz/w32/v2 v2.4.0
 	github.com/iamacarpet/go-win64api v0.0.0-20220531131246-e84054eb584d
-	github.com/nats-io/nats-server/v2 v2.9.1 // indirect
-	github.com/nats-io/nats.go v1.17.0
+	github.com/nats-io/nats-server/v2 v2.9.3 // indirect
+	github.com/nats-io/nats.go v1.18.0
 	github.com/rickb777/date v1.19.1
-	github.com/shirou/gopsutil/v3 v3.22.8
+	github.com/shirou/gopsutil/v3 v3.22.9
 	github.com/sirupsen/logrus v1.9.0
 	github.com/ugorji/go/codec v1.2.7
 	github.com/wh1te909/go-win64api v0.0.0-20210906074314-ab23795a6ae5
 	github.com/wh1te909/trmm-shared v0.0.0-20220227075846-f9f757361139
 	golang.org/x/net v0.0.0-20220706163947-c90051bbdb60 // indirect
-	golang.org/x/sys v0.0.0-20220919091848-fb04ddd9f9c8
+	golang.org/x/sys v0.0.0-20220928140112-f11e5e49a4ec
 )
 
 require (
@@ -30,7 +30,7 @@ require (
 require (
 	github.com/fourcorelabs/wintoken v1.0.0
 	github.com/jaypipes/ghw v0.9.0
-	github.com/kardianos/service v1.2.1
+	github.com/kardianos/service v1.2.2
 	github.com/spf13/viper v1.13.0
 )
 
@@ -67,7 +67,7 @@ require (
 	github.com/tklauser/go-sysconf v0.3.10 // indirect
 	github.com/tklauser/numcpus v0.5.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
-	golang.org/x/crypto v0.0.0-20220919173607-35f4265a4bc0 // indirect
+	golang.org/x/crypto v0.0.0-20220926161630-eccd6366d1be // indirect
 	golang.org/x/sync v0.0.0-20220601150217-0de741cfad7f // indirect
 	golang.org/x/text v0.3.7 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
