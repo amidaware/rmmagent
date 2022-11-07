@@ -13,8 +13,6 @@ package agent
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 
 	rmm "github.com/amidaware/rmmagent/shared"
@@ -76,17 +74,6 @@ func (a *Agent) KillHungUpdates() {
 		if strings.Contains(p.Exe, "tacticalagent-v") {
 			a.Logger.Debugln("killing process", p.Exe)
 			KillProc(int32(p.PID))
-		}
-	}
-
-	err = os.Chdir(a.ProgramDir)
-	if err == nil {
-		files, err := filepath.Glob("is-*.tmp")
-		if err == nil {
-			for _, f := range files {
-				a.Logger.Debugln("KillHungUpdates() Removing file:", f)
-				os.Remove(f)
-			}
 		}
 	}
 }
