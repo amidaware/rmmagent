@@ -154,7 +154,7 @@ func New(logger *logrus.Logger, version string) *Agent {
 		Option: service.KeyValue{
 			"StartType":              "automatic",
 			"OnFailure":              "restart",
-			"OnFailureDelayDuration": "5s",
+			"OnFailureDelayDuration": "12s",
 			"OnFailureResetPeriod":   10,
 		},
 	}

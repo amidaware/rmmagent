@@ -479,6 +479,7 @@ func (a *Agent) RunRPC() {
 					atomic.StoreUint32(&agentUpdateLocker, 0)
 					nc.Flush()
 					nc.Close()
+					a.ControlService(winSvcName, "stop")
 					os.Exit(0)
 				}
 			}(payload)
