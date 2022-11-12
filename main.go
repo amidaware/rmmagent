@@ -51,9 +51,6 @@ func main() {
 	meshDir := flag.String("meshdir", "", "Path to custom meshcentral dir")
 	meshNodeID := flag.String("meshnodeid", "", "Mesh Node ID")
 	cert := flag.String("cert", "", "Path to domain CA .pem")
-	updateurl := flag.String("updateurl", "", "Download link to updater")
-	inno := flag.String("inno", "", "Inno setup file")
-	updatever := flag.String("updatever", "", "Update version")
 	silent := flag.Bool("silent", false, "Do not popup any message boxes during installation")
 	proxy := flag.String("proxy", "", "Use a http proxy")
 	flag.Parse()
@@ -127,12 +124,6 @@ func main() {
 			return
 		}
 		a.RunTask(*taskPK)
-	case "update":
-		if *updateurl == "" || *inno == "" || *updatever == "" {
-			updateUsage()
-			return
-		}
-		a.AgentUpdate(*updateurl, *inno, *updatever)
 	case "install":
 		if runtime.GOOS != "windows" {
 			u, err := user.Current()
@@ -145,7 +136,6 @@ func main() {
 		}
 
 		if *api == "" || *clientID == 0 || *siteID == 0 || *token == "" {
-			installUsage()
 			return
 		}
 		a.Install(&agent.Installer{
@@ -190,15 +180,4 @@ func setupLogging(level, to *string) {
 		}
 		log.SetOutput(logFile)
 	}
-}
-
-func installUsage() {
-	exe, _ := os.Executable()
-	u := fmt.Sprintf(`Usage: %s -m install -api <https://api.example.com> -client-id X -site-id X -auth <TOKEN>`, exe)
-	fmt.Println(u)
-}
-
-func updateUsage() {
-	u := `Usage: tacticalrmm.exe -m update -updateurl https://example.com/tacticalagent-vX.X.X.exe -inno tacticalagent-vX.X.X.exe -updatever 1.1.1`
-	fmt.Println(u)
 }
