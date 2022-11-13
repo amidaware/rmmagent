@@ -154,7 +154,7 @@ func New(logger *logrus.Logger, version string) *Agent {
 		Option: service.KeyValue{
 			"StartType":              "automatic",
 			"OnFailure":              "restart",
-			"OnFailureDelayDuration": "5s",
+			"OnFailureDelayDuration": "12s",
 			"OnFailureResetPeriod":   10,
 		},
 	}
@@ -426,7 +426,7 @@ func (a *Agent) GetUninstallExe() string {
 
 func (a *Agent) CleanupAgentUpdates() {
 	// TODO remove a.ProgramDir, updates are now in winTempDir
-	dirs := [2]string{winTempDir, a.ProgramDir}
+	dirs := [3]string{winTempDir, os.Getenv("TMP"), a.ProgramDir}
 	for _, dir := range dirs {
 		err := os.Chdir(dir)
 		if err != nil {
@@ -435,7 +435,7 @@ func (a *Agent) CleanupAgentUpdates() {
 		}
 
 		// TODO winagent-v* is deprecated
-		globs := [2]string{"tacticalagent-v*", "winagent-v*"}
+		globs := [3]string{"tacticalagent-v*", "is-*.tmp", "winagent-v*"}
 		for _, glob := range globs {
 			files, err := filepath.Glob(glob)
 			if err == nil {
