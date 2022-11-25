@@ -82,7 +82,7 @@ func NewAgentConfig() *rmm.AgentConfig {
 	}
 }
 
-func (a *Agent) RunScript(code string, shell string, args []string, timeout int, runasuser bool) (stdout, stderr string, exitcode int, e error) {
+func (a *Agent) RunScript(code string, shell string, args []string, timeout int, runasuser bool, envs []string) (stdout, stderr string, exitcode int, e error) {
 
 	content := []byte(code)
 
@@ -157,6 +157,11 @@ func (a *Agent) RunScript(code string, shell string, args []string, timeout int,
 	}
 	cmd.Stdout = &outb
 	cmd.Stderr = &errb
+
+	if len(envs) > 0 {
+		cmd.Env = os.Environ()
+		cmd.Env = append(cmd.Env, envs...)
+	}
 
 	if cmdErr := cmd.Start(); cmdErr != nil {
 		a.Logger.Debugln(cmdErr)

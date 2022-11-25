@@ -141,9 +141,10 @@ type AssignedTask struct {
 }
 
 type Script struct {
-	Shell     string `json:"shell"`
-	Code      string `json:"code"`
-	RunAsUser bool   `json:"run_as_user"`
+	Shell     string   `json:"shell"`
+	Code      string   `json:"code"`
+	RunAsUser bool     `json:"run_as_user"`
+	Env       []string `json:"env"`
 }
 
 type CheckInfo struct {
@@ -190,6 +191,7 @@ type TaskAction struct {
 	Args       []string `json:"script_args"`
 	Timeout    int      `json:"timeout"`
 	RunAsUser  bool     `json:"run_as_user"`
+	Env        []string `json:"env"`
 }
 
 type AutomatedTask struct {
