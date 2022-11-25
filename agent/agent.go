@@ -400,13 +400,25 @@ func (a *Agent) SyncMeshNodeID() {
 
 func (a *Agent) setupNatsOptions() []nats.Option {
 	opts := make([]nats.Option, 0)
-	opts = append(opts, nats.Name("TacticalRMM"))
+	opts = append(opts, nats.Name(a.AgentID))
 	opts = append(opts, nats.UserInfo(a.AgentID, a.Token))
 	opts = append(opts, nats.ReconnectWait(time.Second*5))
 	opts = append(opts, nats.RetryOnFailedConnect(true))
 	opts = append(opts, nats.MaxReconnects(-1))
 	opts = append(opts, nats.ReconnectBufSize(-1))
 	opts = append(opts, nats.ProxyPath(a.NatsProxyPath))
+	opts = append(opts, nats.DisconnectErrHandler(func(nc *nats.Conn, err error) {
+		a.Logger.Debugln("NATS disconnected:", err)
+		a.Logger.Debugf("%+v\n", nc.Statistics)
+	}))
+	opts = append(opts, nats.ReconnectHandler(func(nc *nats.Conn) {
+		a.Logger.Debugln("NATS reconnected")
+		a.Logger.Debugf("%+v\n", nc.Statistics)
+	}))
+	opts = append(opts, nats.ErrorHandler(func(nc *nats.Conn, sub *nats.Subscription, err error) {
+		a.Logger.Debugln("NATS error:", err)
+		a.Logger.Debugf("%+v\n", sub)
+	}))
 	return opts
 }
 
