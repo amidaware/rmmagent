@@ -89,6 +89,7 @@ const (
 var winTempDir = filepath.Join(os.Getenv("PROGRAMDATA"), "TacticalRMM")
 var winMeshDir = filepath.Join(os.Getenv("PROGRAMFILES"), "Mesh Agent")
 var natsCheckin = []string{"agent-hello", "agent-agentinfo", "agent-disks", "agent-winsvc", "agent-publicip", "agent-wmi"}
+var limitNatsData = []string{"agent-winsvc", "agent-wmi"}
 
 func New(logger *logrus.Logger, version string) *Agent {
 	host, _ := ps.Host()

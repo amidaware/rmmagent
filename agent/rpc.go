@@ -51,14 +51,17 @@ var (
 
 func (a *Agent) RunRPC() {
 	a.Logger.Infoln("Agent service started")
-	go a.RunAsService()
-	var wg sync.WaitGroup
-	wg.Add(1)
+
 	opts := a.setupNatsOptions()
 	nc, err := nats.Connect(a.NatsServer, opts...)
 	if err != nil {
 		a.Logger.Fatalln("RunRPC() nats.Connect()", err)
 	}
+
+	go a.RunAsService(nc)
+
+	var wg sync.WaitGroup
+	wg.Add(1)
 
 	nc.Subscribe(a.AgentID, func(msg *nats.Msg) {
 		var payload *NatsMsg
