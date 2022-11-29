@@ -55,6 +55,8 @@ func (a *Agent) RunRPC() {
 
 	opts := a.setupNatsOptions()
 	nc, err := nats.Connect(a.NatsServer, opts...)
+	a.Logger.Debugf("%+v\n", nc)
+	a.Logger.Debugf("%+v\n", nc.Opts)
 	if err != nil {
 		a.Logger.Fatalln("RunRPC() nats.Connect()", err)
 	}

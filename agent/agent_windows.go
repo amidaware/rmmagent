@@ -65,6 +65,8 @@ func NewAgentConfig() *rmm.AgentConfig {
 	natsProxyPath, _, _ := k.GetStringValue("NatsProxyPath")
 	natsProxyPort, _, _ := k.GetStringValue("NatsProxyPort")
 	natsStandardPort, _, _ := k.GetStringValue("NatsStandardPort")
+	natsPingInterval, _, _ := k.GetStringValue("NatsPingInterval")
+	npi, _ := strconv.Atoi(natsPingInterval)
 
 	return &rmm.AgentConfig{
 		BaseURL:          baseurl,
@@ -79,6 +81,7 @@ func NewAgentConfig() *rmm.AgentConfig {
 		NatsProxyPath:    natsProxyPath,
 		NatsProxyPort:    natsProxyPort,
 		NatsStandardPort: natsStandardPort,
+		NatsPingInterval: npi,
 	}
 }
 

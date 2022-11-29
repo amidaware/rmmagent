@@ -158,6 +158,7 @@ func NewAgentConfig() *rmm.AgentConfig {
 		NatsProxyPath:    viper.GetString("natsproxypath"),
 		NatsProxyPort:    viper.GetString("natsproxyport"),
 		NatsStandardPort: viper.GetString("natsstandardport"),
+		NatsPingInterval: viper.GetInt("natspinginterval"),
 	}
 	return ret
 }
