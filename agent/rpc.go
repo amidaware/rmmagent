@@ -41,7 +41,7 @@ type NatsMsg struct {
 	ID              int               `json:"id"`
 	Code            string            `json:"code"`
 	RunAsUser       bool              `json:"run_as_user"`
-	Env             []string          `json:"env"`
+	EnvVars         []string          `json:"env_vars"`
 }
 
 var (
@@ -262,7 +262,7 @@ func (a *Agent) RunRPC() {
 				var resultData rmm.RunScriptResp
 				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
 				start := time.Now()
-				stdout, stderr, retcode, err := a.RunScript(p.Data["code"], p.Data["shell"], p.ScriptArgs, p.Timeout, p.RunAsUser, p.Env)
+				stdout, stderr, retcode, err := a.RunScript(p.Data["code"], p.Data["shell"], p.ScriptArgs, p.Timeout, p.RunAsUser, p.EnvVars)
 				resultData.ExecTime = time.Since(start).Seconds()
 				resultData.ID = p.ID
 
@@ -292,7 +292,7 @@ func (a *Agent) RunRPC() {
 				var retData rmm.RunScriptResp
 				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
 				start := time.Now()
-				stdout, stderr, retcode, err := a.RunScript(p.Data["code"], p.Data["shell"], p.ScriptArgs, p.Timeout, p.RunAsUser, p.Env)
+				stdout, stderr, retcode, err := a.RunScript(p.Data["code"], p.Data["shell"], p.ScriptArgs, p.Timeout, p.RunAsUser, p.EnvVars)
 
 				retData.ExecTime = time.Since(start).Seconds()
 				if err != nil {

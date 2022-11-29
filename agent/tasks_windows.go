@@ -59,7 +59,7 @@ func (a *Agent) RunTask(id int) error {
 
 		action_start := time.Now()
 		if action.ActionType == "script" {
-			stdout, stderr, retcode, err := a.RunScript(action.Code, action.Shell, action.Args, action.Timeout, action.RunAsUser, action.Env)
+			stdout, stderr, retcode, err := a.RunScript(action.Code, action.Shell, action.Args, action.Timeout, action.RunAsUser, action.EnvVars)
 
 			if err != nil {
 				a.Logger.Debugln(err)

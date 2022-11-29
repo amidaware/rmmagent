@@ -221,7 +221,7 @@ type CmdOptions struct {
 	IsScript     bool
 	IsExecutable bool
 	Detached     bool
-	Env          []string
+	EnvVars      []string
 }
 
 func (a *Agent) NewCMDOpts() *CmdOptions {
@@ -250,10 +250,10 @@ func (a *Agent) CmdV2(c *CmdOptions) CmdStatus {
 		})
 	}
 
-	if len(c.Env) > 0 {
+	if len(c.EnvVars) > 0 {
 		cmdOptions.BeforeExec = append(cmdOptions.BeforeExec, func(cmd *exec.Cmd) {
 			cmd.Env = os.Environ()
-			cmd.Env = append(cmd.Env, c.Env...)
+			cmd.Env = append(cmd.Env, c.EnvVars...)
 		})
 	}
 
