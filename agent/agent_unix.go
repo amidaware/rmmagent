@@ -163,7 +163,7 @@ func NewAgentConfig() *rmm.AgentConfig {
 	return ret
 }
 
-func (a *Agent) RunScript(code string, shell string, args []string, timeout int, runasuser bool) (stdout, stderr string, exitcode int, e error) {
+func (a *Agent) RunScript(code string, shell string, args []string, timeout int, runasuser bool, envVars []string) (stdout, stderr string, exitcode int, e error) {
 	code = removeWinNewLines(code)
 	content := []byte(code)
 
@@ -193,6 +193,7 @@ func (a *Agent) RunScript(code string, shell string, args []string, timeout int,
 	opts.IsScript = true
 	opts.Shell = f.Name()
 	opts.Args = args
+	opts.EnvVars = envVars
 	opts.Timeout = time.Duration(timeout)
 	out := a.CmdV2(opts)
 	retError := ""
