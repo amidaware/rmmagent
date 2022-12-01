@@ -425,12 +425,12 @@ func (a *Agent) setupNatsOptions() []nats.Option {
 	opts = append(opts, nats.ProxyPath(a.NatsProxyPath))
 	opts = append(opts, nats.ReconnectJitter(500*time.Millisecond, 4*time.Second))
 	opts = append(opts, nats.DisconnectErrHandler(func(nc *nats.Conn, err error) {
-		a.Logger.Errorln("NATS disconnected:", err)
-		a.Logger.Errorf("%+v\n", nc.Statistics)
+		a.Logger.Debugln("NATS disconnected:", err)
+		a.Logger.Debugf("%+v\n", nc.Statistics)
 	}))
 	opts = append(opts, nats.ReconnectHandler(func(nc *nats.Conn) {
-		a.Logger.Infoln("NATS reconnected")
-		a.Logger.Infof("%+v\n", nc.Statistics)
+		a.Logger.Debugln("NATS reconnected")
+		a.Logger.Debugf("%+v\n", nc.Statistics)
 	}))
 	opts = append(opts, nats.ErrorHandler(func(nc *nats.Conn, sub *nats.Subscription, err error) {
 		a.Logger.Errorln("NATS error:", err)
