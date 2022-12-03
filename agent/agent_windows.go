@@ -863,6 +863,43 @@ func (a *Agent) InstallService() error {
 	return service.Control(s, "install")
 }
 
+func (a *Agent) GetAgentCheckInConfig(ret AgentCheckInConfig) AgentCheckInConfig {
+	// if local config present, overwrite
+	k, err := registry.OpenKey(registry.LOCAL_MACHINE, `SOFTWARE\TacticalRMM`, registry.ALL_ACCESS)
+	if err == nil {
+		if checkInHello, _, err := k.GetStringValue("CheckInHello"); err == nil {
+			ret.Hello = regRangeToInt(checkInHello)
+		}
+		if checkInAgentInfo, _, err := k.GetStringValue("CheckInAgentInfo"); err == nil {
+			ret.AgentInfo = regRangeToInt(checkInAgentInfo)
+		}
+		if checkInWinSvc, _, err := k.GetStringValue("CheckInWinSvc"); err == nil {
+			ret.WinSvc = regRangeToInt(checkInWinSvc)
+		}
+		if checkInPubIP, _, err := k.GetStringValue("CheckInPubIP"); err == nil {
+			ret.PubIP = regRangeToInt(checkInPubIP)
+		}
+		if checkInDisks, _, err := k.GetStringValue("CheckInDisks"); err == nil {
+			ret.Disks = regRangeToInt(checkInDisks)
+		}
+		if checkInSW, _, err := k.GetStringValue("CheckInSW"); err == nil {
+			ret.SW = regRangeToInt(checkInSW)
+		}
+		if checkInWMI, _, err := k.GetStringValue("CheckInWMI"); err == nil {
+			ret.WMI = regRangeToInt(checkInWMI)
+		}
+		if checkInSyncMesh, _, err := k.GetStringValue("CheckInSyncMesh"); err == nil {
+			ret.SyncMesh = regRangeToInt(checkInSyncMesh)
+		}
+		if checkInLimitData, _, err := k.GetStringValue("CheckInLimitData"); err == nil {
+			if checkInLimitData == "true" {
+				ret.LimitData = true
+			}
+		}
+	}
+	return ret
+}
+
 // TODO add to stub
 func (a *Agent) NixMeshNodeID() string {
 	return "not implemented"

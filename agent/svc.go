@@ -55,7 +55,8 @@ func (a *Agent) AgentSvc(nc *nats.Conn) {
 	a.Logger.Debugf("AgentSvc() sleeping for %v seconds", sleepDelay)
 	time.Sleep(time.Duration(sleepDelay) * time.Second)
 
-	conf := a.GetAgentCheckInConfig()
+	conf := a.GetAgentCheckInConfig(a.GetCheckInConfFromAPI())
+	a.Logger.Debugf("+%v\n", conf)
 	for _, s := range natsCheckin {
 		if conf.LimitData && stringInSlice(s, limitNatsData) {
 			continue
@@ -113,7 +114,7 @@ func (a *Agent) AgentStartup() {
 	}
 }
 
-func (a *Agent) GetAgentCheckInConfig() AgentCheckInConfig {
+func (a *Agent) GetCheckInConfFromAPI() AgentCheckInConfig {
 	ret := AgentCheckInConfig{}
 	url := fmt.Sprintf("/api/v3/%s/config/", a.AgentID)
 	r, err := a.rClient.R().SetResult(&AgentCheckInConfig{}).Get(url)
@@ -128,17 +129,16 @@ func (a *Agent) GetAgentCheckInConfig() AgentCheckInConfig {
 		ret.WMI = randRange(3000, 4000)
 		ret.SyncMesh = randRange(800, 1200)
 		ret.LimitData = false
-		return ret
+	} else {
+		ret.Hello = r.Result().(*AgentCheckInConfig).Hello
+		ret.AgentInfo = r.Result().(*AgentCheckInConfig).AgentInfo
+		ret.WinSvc = r.Result().(*AgentCheckInConfig).WinSvc
+		ret.PubIP = r.Result().(*AgentCheckInConfig).PubIP
+		ret.Disks = r.Result().(*AgentCheckInConfig).Disks
+		ret.SW = r.Result().(*AgentCheckInConfig).SW
+		ret.WMI = r.Result().(*AgentCheckInConfig).WMI
+		ret.SyncMesh = r.Result().(*AgentCheckInConfig).SyncMesh
+		ret.LimitData = r.Result().(*AgentCheckInConfig).LimitData
 	}
-	ret.Hello = r.Result().(*AgentCheckInConfig).Hello
-	ret.AgentInfo = r.Result().(*AgentCheckInConfig).AgentInfo
-	ret.WinSvc = r.Result().(*AgentCheckInConfig).WinSvc
-	ret.PubIP = r.Result().(*AgentCheckInConfig).PubIP
-	ret.Disks = r.Result().(*AgentCheckInConfig).Disks
-	ret.SW = r.Result().(*AgentCheckInConfig).SW
-	ret.WMI = r.Result().(*AgentCheckInConfig).WMI
-	ret.SyncMesh = r.Result().(*AgentCheckInConfig).SyncMesh
-	ret.LimitData = r.Result().(*AgentCheckInConfig).LimitData
-	a.Logger.Debugf("%+v\n", r)
 	return ret
 }

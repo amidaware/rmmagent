@@ -493,6 +493,9 @@ func (a *Agent) GetWMIInfo() map[string]interface{} {
 }
 
 // windows only below TODO add into stub file
+func (a *Agent) GetAgentCheckInConfig(ret AgentCheckInConfig) AgentCheckInConfig {
+	return ret
+}
 
 func (a *Agent) PlatVer() (string, error) { return "", nil }
 

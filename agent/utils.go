@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"runtime"
 	goDebug "runtime/debug"
+	"strconv"
 	"strings"
 	"time"
 
@@ -330,4 +331,11 @@ func stringInSlice(a string, list []string) bool {
 		}
 	}
 	return false
+}
+
+func regRangeToInt(s string) int {
+	split := strings.Split(s, ",")
+	min, _ := strconv.Atoi(split[0])
+	max, _ := strconv.Atoi(split[1])
+	return randRange(min, max)
 }
