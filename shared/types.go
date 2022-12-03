@@ -163,6 +163,7 @@ type Check struct {
 	Disk             string         `json:"disk"`
 	IP               string         `json:"ip"`
 	ScriptArgs       []string       `json:"script_args"`
+	EnvVars          []string       `json:"env_vars"`
 	Timeout          int            `json:"timeout"`
 	ServiceName      string         `json:"svc_name"`
 	PassStartPending bool           `json:"pass_if_start_pending"`
