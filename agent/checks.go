@@ -169,7 +169,7 @@ type ScriptCheckResult struct {
 // ScriptCheck runs either bat, powershell or python script
 func (a *Agent) ScriptCheck(data rmm.Check, r *resty.Client) {
 	start := time.Now()
-	stdout, stderr, retcode, _ := a.RunScript(data.Script.Code, data.Script.Shell, data.ScriptArgs, data.Timeout, data.Script.RunAsUser)
+	stdout, stderr, retcode, _ := a.RunScript(data.Script.Code, data.Script.Shell, data.ScriptArgs, data.Timeout, data.Script.RunAsUser, data.EnvVars)
 
 	payload := ScriptCheckResult{
 		ID:      data.CheckPK,

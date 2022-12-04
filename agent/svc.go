@@ -12,6 +12,7 @@ https://license.tacticalrmm.com
 package agent
 
 import (
+	"fmt"
 	"runtime"
 	"sync"
 	"time"
@@ -19,15 +20,27 @@ import (
 	nats "github.com/nats-io/nats.go"
 )
 
-func (a *Agent) RunAsService() {
+func (a *Agent) RunAsService(nc *nats.Conn) {
 	var wg sync.WaitGroup
 	wg.Add(1)
-	go a.AgentSvc()
+	go a.AgentSvc(nc)
 	go a.CheckRunner()
 	wg.Wait()
 }
 
-func (a *Agent) AgentSvc() {
+type AgentCheckInConfig struct {
+	Hello     int  `json:"checkin_hello"`
+	AgentInfo int  `json:"checkin_agentinfo"`
+	WinSvc    int  `json:"checkin_winsvc"`
+	PubIP     int  `json:"checkin_pubip"`
+	Disks     int  `json:"checkin_disks"`
+	SW        int  `json:"checkin_sw"`
+	WMI       int  `json:"checkin_wmi"`
+	SyncMesh  int  `json:"checkin_syncmesh"`
+	LimitData bool `json:"limit_data"`
+}
+
+func (a *Agent) AgentSvc(nc *nats.Conn) {
 	if runtime.GOOS == "windows" {
 		go a.GetPython(false)
 
@@ -38,37 +51,37 @@ func (a *Agent) AgentSvc() {
 	}
 	a.RunMigrations()
 
-	sleepDelay := randRange(14, 22)
+	sleepDelay := randRange(7, 25)
 	a.Logger.Debugf("AgentSvc() sleeping for %v seconds", sleepDelay)
 	time.Sleep(time.Duration(sleepDelay) * time.Second)
 
-	opts := a.setupNatsOptions()
-	nc, err := nats.Connect(a.NatsServer, opts...)
-	if err != nil {
-		a.Logger.Fatalln("AgentSvc() nats.Connect()", err)
-	}
-
+	conf := a.GetAgentCheckInConfig(a.GetCheckInConfFromAPI())
+	a.Logger.Debugf("+%v\n", conf)
 	for _, s := range natsCheckin {
-		a.NatsMessage(nc, s)
-		time.Sleep(time.Duration(randRange(100, 400)) * time.Millisecond)
+		if conf.LimitData && stringInSlice(s, limitNatsData) {
+			continue
+		} else {
+			a.NatsMessage(nc, s)
+			time.Sleep(time.Duration(randRange(100, 400)) * time.Millisecond)
+		}
 	}
 
 	go a.SyncMeshNodeID()
 
 	time.Sleep(time.Duration(randRange(1, 3)) * time.Second)
-	if runtime.GOOS == "windows" {
+	if runtime.GOOS == "windows" && !conf.LimitData {
 		a.AgentStartup()
 		a.SendSoftware()
 	}
 
-	checkInHelloTicker := time.NewTicker(time.Duration(randRange(30, 60)) * time.Second)
-	checkInAgentInfoTicker := time.NewTicker(time.Duration(randRange(200, 400)) * time.Second)
-	checkInWinSvcTicker := time.NewTicker(time.Duration(randRange(2400, 3000)) * time.Second)
-	checkInPubIPTicker := time.NewTicker(time.Duration(randRange(300, 500)) * time.Second)
-	checkInDisksTicker := time.NewTicker(time.Duration(randRange(1000, 2000)) * time.Second)
-	checkInSWTicker := time.NewTicker(time.Duration(randRange(2800, 3500)) * time.Second)
-	checkInWMITicker := time.NewTicker(time.Duration(randRange(3000, 4000)) * time.Second)
-	syncMeshTicker := time.NewTicker(time.Duration(randRange(800, 1200)) * time.Second)
+	checkInHelloTicker := time.NewTicker(time.Duration(conf.Hello) * time.Second)
+	checkInAgentInfoTicker := time.NewTicker(time.Duration(conf.AgentInfo) * time.Second)
+	checkInWinSvcTicker := time.NewTicker(time.Duration(conf.WinSvc) * time.Second)
+	checkInPubIPTicker := time.NewTicker(time.Duration(conf.PubIP) * time.Second)
+	checkInDisksTicker := time.NewTicker(time.Duration(conf.Disks) * time.Second)
+	checkInSWTicker := time.NewTicker(time.Duration(conf.SW) * time.Second)
+	checkInWMITicker := time.NewTicker(time.Duration(conf.WMI) * time.Second)
+	syncMeshTicker := time.NewTicker(time.Duration(conf.SyncMesh) * time.Second)
 
 	for {
 		select {
@@ -99,4 +112,33 @@ func (a *Agent) AgentStartup() {
 	if err != nil {
 		a.Logger.Debugln("AgentStartup()", err)
 	}
+}
+
+func (a *Agent) GetCheckInConfFromAPI() AgentCheckInConfig {
+	ret := AgentCheckInConfig{}
+	url := fmt.Sprintf("/api/v3/%s/config/", a.AgentID)
+	r, err := a.rClient.R().SetResult(&AgentCheckInConfig{}).Get(url)
+	if err != nil {
+		a.Logger.Debugln("GetAgentCheckInConfig()", err)
+		ret.Hello = randRange(30, 60)
+		ret.AgentInfo = randRange(200, 400)
+		ret.WinSvc = randRange(2400, 3000)
+		ret.PubIP = randRange(300, 500)
+		ret.Disks = randRange(1000, 2000)
+		ret.SW = randRange(2800, 3500)
+		ret.WMI = randRange(3000, 4000)
+		ret.SyncMesh = randRange(800, 1200)
+		ret.LimitData = false
+	} else {
+		ret.Hello = r.Result().(*AgentCheckInConfig).Hello
+		ret.AgentInfo = r.Result().(*AgentCheckInConfig).AgentInfo
+		ret.WinSvc = r.Result().(*AgentCheckInConfig).WinSvc
+		ret.PubIP = r.Result().(*AgentCheckInConfig).PubIP
+		ret.Disks = r.Result().(*AgentCheckInConfig).Disks
+		ret.SW = r.Result().(*AgentCheckInConfig).SW
+		ret.WMI = r.Result().(*AgentCheckInConfig).WMI
+		ret.SyncMesh = r.Result().(*AgentCheckInConfig).SyncMesh
+		ret.LimitData = r.Result().(*AgentCheckInConfig).LimitData
+	}
+	return ret
 }

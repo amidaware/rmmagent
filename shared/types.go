@@ -45,6 +45,7 @@ type AgentConfig struct {
 	NatsProxyPath    string
 	NatsProxyPort    string
 	NatsStandardPort string
+	NatsPingInterval int
 }
 
 type RunScriptResp struct {
@@ -141,9 +142,10 @@ type AssignedTask struct {
 }
 
 type Script struct {
-	Shell     string `json:"shell"`
-	Code      string `json:"code"`
-	RunAsUser bool   `json:"run_as_user"`
+	Shell     string   `json:"shell"`
+	Code      string   `json:"code"`
+	RunAsUser bool     `json:"run_as_user"`
+	EnvVars   []string `json:"env_vars"`
 }
 
 type CheckInfo struct {
@@ -161,6 +163,7 @@ type Check struct {
 	Disk             string         `json:"disk"`
 	IP               string         `json:"ip"`
 	ScriptArgs       []string       `json:"script_args"`
+	EnvVars          []string       `json:"env_vars"`
 	Timeout          int            `json:"timeout"`
 	ServiceName      string         `json:"svc_name"`
 	PassStartPending bool           `json:"pass_if_start_pending"`
@@ -190,6 +193,7 @@ type TaskAction struct {
 	Args       []string `json:"script_args"`
 	Timeout    int      `json:"timeout"`
 	RunAsUser  bool     `json:"run_as_user"`
+	EnvVars    []string `json:"env_vars"`
 }
 
 type AutomatedTask struct {
