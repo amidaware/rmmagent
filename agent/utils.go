@@ -20,6 +20,7 @@ import (
 	"math/rand"
 	"net"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	goDebug "runtime/debug"
@@ -338,4 +339,20 @@ func regRangeToInt(s string) int {
 	min, _ := strconv.Atoi(split[0])
 	max, _ := strconv.Atoi(split[1])
 	return randRange(min, max)
+}
+
+func getPowershellExe() string {
+	powershell, err := exec.LookPath("powershell.exe")
+	if err != nil || powershell == "" {
+		return filepath.Join(os.Getenv("WINDIR"), `System32\WindowsPowerShell\v1.0\powershell.exe`)
+	}
+	return powershell
+}
+
+func getCMDExe() string {
+	cmdExe, err := exec.LookPath("cmd.exe")
+	if err != nil || cmdExe == "" {
+		return filepath.Join(os.Getenv("WINDIR"), `System32\cmd.exe`)
+	}
+	return cmdExe
 }
