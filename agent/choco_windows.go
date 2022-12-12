@@ -12,6 +12,9 @@ https://license.tacticalrmm.com
 package agent
 
 import (
+	"os"
+	"os/exec"
+	"path/filepath"
 	"time"
 
 	rmm "github.com/amidaware/rmmagent/shared"
@@ -59,7 +62,14 @@ func (a *Agent) InstallChoco() {
 }
 
 func (a *Agent) InstallWithChoco(name string) (string, error) {
-	out, err := CMD("choco.exe", []string{"install", name, "--yes", "--force", "--force-dependencies", "--no-progress"}, 1200, false)
+	var exe string
+	choco, err := exec.LookPath("choco.exe")
+	if err != nil || choco == "" {
+		exe = filepath.Join(os.Getenv("PROGRAMDATA"), `chocolatey\bin\choco.exe`)
+	} else {
+		exe = choco
+	}
+	out, err := CMD(exe, []string{"install", name, "--yes", "--force", "--force-dependencies", "--no-progress"}, 1200, false)
 	if err != nil {
 		a.Logger.Errorln(err)
 		return err.Error(), err
