@@ -61,7 +61,7 @@ func DoPing(host string) (PingResponse, error) {
 	}
 
 	pinger.Count = 3
-	pinger.Size = 24
+	pinger.Size = 548
 	pinger.Interval = time.Second
 	pinger.Timeout = 5 * time.Second
 	pinger.SetPrivileged(true)
