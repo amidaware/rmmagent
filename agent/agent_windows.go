@@ -132,7 +132,7 @@ func (a *Agent) RunScript(code string, shell string, args []string, timeout int,
 
 	switch shell {
 	case "powershell":
-		exe = "Powershell"
+		exe = getPowershellExe()
 		cmdArgs = []string{"-NonInteractive", "-NoProfile", "-ExecutionPolicy", "Bypass", tmpfn.Name()}
 	case "python":
 		exe = a.PyBin
@@ -260,23 +260,25 @@ func CMDShell(shell string, cmdArgs []string, command string, timeout int, detac
 	defer cancel()
 
 	sysProcAttr := &windows.SysProcAttr{}
+	cmdExe := getCMDExe()
+	powershell := getPowershellExe()
 
 	if len(cmdArgs) > 0 && command == "" {
 		switch shell {
 		case "cmd":
 			cmdArgs = append([]string{"/C"}, cmdArgs...)
-			cmd = exec.Command("cmd.exe", cmdArgs...)
+			cmd = exec.Command(cmdExe, cmdArgs...)
 		case "powershell":
 			cmdArgs = append([]string{"-NonInteractive", "-NoProfile"}, cmdArgs...)
-			cmd = exec.Command("powershell.exe", cmdArgs...)
+			cmd = exec.Command(powershell, cmdArgs...)
 		}
 	} else {
 		switch shell {
 		case "cmd":
-			cmd = exec.Command("cmd.exe")
-			sysProcAttr.CmdLine = fmt.Sprintf("cmd.exe /C %s", command)
+			cmd = exec.Command(cmdExe)
+			sysProcAttr.CmdLine = fmt.Sprintf("%s /C %s", cmdExe, command)
 		case "powershell":
-			cmd = exec.Command("Powershell", "-NonInteractive", "-NoProfile", command)
+			cmd = exec.Command(powershell, "-NonInteractive", "-NoProfile", command)
 		}
 	}
 

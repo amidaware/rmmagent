@@ -418,6 +418,7 @@ func (a *Agent) setupNatsOptions() []nats.Option {
 	opts = append(opts, nats.UserInfo(a.AgentID, a.Token))
 	opts = append(opts, nats.ReconnectWait(time.Duration(reconnectWait)*time.Second))
 	opts = append(opts, nats.RetryOnFailedConnect(true))
+	opts = append(opts, nats.IgnoreAuthErrorAbort())
 	opts = append(opts, nats.PingInterval(time.Duration(a.NatsPingInterval)*time.Second))
 	opts = append(opts, nats.Compression(a.NatsWSCompression))
 	opts = append(opts, nats.MaxReconnects(-1))

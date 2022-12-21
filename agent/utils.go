@@ -20,6 +20,7 @@ import (
 	"math/rand"
 	"net"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	goDebug "runtime/debug"
@@ -60,7 +61,7 @@ func DoPing(host string) (PingResponse, error) {
 	}
 
 	pinger.Count = 3
-	pinger.Size = 24
+	pinger.Size = 548
 	pinger.Interval = time.Second
 	pinger.Timeout = 5 * time.Second
 	pinger.SetPrivileged(true)
@@ -338,4 +339,20 @@ func regRangeToInt(s string) int {
 	min, _ := strconv.Atoi(split[0])
 	max, _ := strconv.Atoi(split[1])
 	return randRange(min, max)
+}
+
+func getPowershellExe() string {
+	powershell, err := exec.LookPath("powershell.exe")
+	if err != nil || powershell == "" {
+		return filepath.Join(os.Getenv("WINDIR"), `System32\WindowsPowerShell\v1.0\powershell.exe`)
+	}
+	return powershell
+}
+
+func getCMDExe() string {
+	cmdExe, err := exec.LookPath("cmd.exe")
+	if err != nil || cmdExe == "" {
+		return filepath.Join(os.Getenv("WINDIR"), `System32\cmd.exe`)
+	}
+	return cmdExe
 }
