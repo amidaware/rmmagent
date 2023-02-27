@@ -492,19 +492,6 @@ func (a *Agent) GetWMIInfo() map[string]interface{} {
 	return wmiInfo
 }
 
-func tmpNoExec() bool {
-	var stat syscall.Statfs_t
-	var noexec bool
-
-	tmpdir := os.TempDir()
-	if err := syscall.Statfs(tmpdir, &stat); err == nil {
-		if stat.Flags&syscall.MS_NOEXEC != 0 {
-			noexec = true
-		}
-	}
-	return noexec
-}
-
 func createNixTmpFile() (*os.File, error) {
 	var f *os.File
 	noexec := tmpNoExec()
