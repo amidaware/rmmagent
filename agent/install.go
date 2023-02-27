@@ -147,7 +147,7 @@ func (a *Agent) Install(i *Installer) {
 		case "windows":
 			meshOutput = filepath.Join(a.ProgramDir, a.MeshInstaller)
 		case "darwin":
-			tmp, err := createTmpFile()
+			tmp, err := createNixTmpFile()
 			if err != nil {
 				a.Logger.Fatalln("Failed to create mesh temp file", err)
 			}
