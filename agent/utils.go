@@ -26,6 +26,7 @@ import (
 	goDebug "runtime/debug"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	ps "github.com/elastic/go-sysinfo"
@@ -311,8 +312,12 @@ func removeWinNewLines(s string) string {
 
 func createTmpFile() (*os.File, error) {
 	var f *os.File
+	noexec := tmpNoExec()
 	f, err := os.CreateTemp("", "trmm")
-	if err != nil {
+	if err != nil || noexec {
+		if noexec {
+			os.Remove(f.Name())
+		}
 		cwd, err := os.Getwd()
 		if err != nil {
 			return f, err
@@ -355,4 +360,21 @@ func getCMDExe() string {
 		return filepath.Join(os.Getenv("WINDIR"), `System32\cmd.exe`)
 	}
 	return cmdExe
+}
+
+func tmpNoExec() bool {
+	if runtime.GOOS == "windows" {
+		return false
+	}
+
+	var stat syscall.Statfs_t
+	var noexec bool
+
+	tmpdir := os.TempDir()
+	if err := syscall.Statfs(tmpdir, &stat); err == nil {
+		if stat.Flags&syscall.MS_NOEXEC != 0 {
+			noexec = true
+		}
+	}
+	return noexec
 }
