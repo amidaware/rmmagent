@@ -1,6 +1,6 @@
 module github.com/amidaware/rmmagent
 
-go 1.19
+go 1.20
 
 require (
 	github.com/StackExchange/wmi v1.2.1
@@ -10,16 +10,16 @@ require (
 	github.com/go-resty/resty/v2 v2.7.0
 	github.com/gonutz/w32/v2 v2.4.0
 	github.com/iamacarpet/go-win64api v0.0.0-20220531131246-e84054eb584d
-	github.com/nats-io/nats-server/v2 v2.9.14 // indirect
+	github.com/nats-io/nats-server/v2 v2.9.15 // indirect
 	github.com/nats-io/nats.go v1.24.0
 	github.com/rickb777/date v1.19.1
-	github.com/shirou/gopsutil/v3 v3.23.1
+	github.com/shirou/gopsutil/v3 v3.23.2
 	github.com/sirupsen/logrus v1.9.0
-	github.com/ugorji/go/codec v1.2.10
+	github.com/ugorji/go/codec v1.2.11
 	github.com/wh1te909/go-win64api v0.0.0-20210906074314-ab23795a6ae5
 	github.com/wh1te909/trmm-shared v0.0.0-20220227075846-f9f757361139
-	golang.org/x/net v0.5.0 // indirect
-	golang.org/x/sys v0.4.0
+	golang.org/x/net v0.6.0 // indirect
+	golang.org/x/sys v0.5.0
 )
 
 require (
@@ -66,9 +66,9 @@ require (
 	github.com/tklauser/go-sysconf v0.3.11 // indirect
 	github.com/tklauser/numcpus v0.6.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
-	golang.org/x/crypto v0.5.0 // indirect
+	golang.org/x/crypto v0.6.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
-	golang.org/x/text v0.6.0 // indirect
+	golang.org/x/text v0.7.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/toast.v1 v1.0.0-20180812000517-0a84660828b2 // indirect
