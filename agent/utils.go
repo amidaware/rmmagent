@@ -309,22 +309,6 @@ func removeWinNewLines(s string) string {
 	return strings.ReplaceAll(s, "\r\n", "\n")
 }
 
-func createTmpFile() (*os.File, error) {
-	var f *os.File
-	f, err := os.CreateTemp("", "trmm")
-	if err != nil {
-		cwd, err := os.Getwd()
-		if err != nil {
-			return f, err
-		}
-		f, err = os.CreateTemp(cwd, "trmm")
-		if err != nil {
-			return f, err
-		}
-	}
-	return f, nil
-}
-
 func stringInSlice(a string, list []string) bool {
 	for _, b := range list {
 		if b == a {

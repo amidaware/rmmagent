@@ -167,9 +167,9 @@ func (a *Agent) RunScript(code string, shell string, args []string, timeout int,
 	code = removeWinNewLines(code)
 	content := []byte(code)
 
-	f, err := createTmpFile()
+	f, err := createNixTmpFile()
 	if err != nil {
-		a.Logger.Errorln("RunScript createTmpFile()", err)
+		a.Logger.Errorln("RunScript createNixTmpFile()", err)
 		return "", err.Error(), 85, err
 	}
 	defer os.Remove(f.Name())
@@ -226,9 +226,9 @@ func (a *Agent) AgentUpdate(url, inno, version string) {
 		return
 	}
 
-	f, err := createTmpFile()
+	f, err := createNixTmpFile()
 	if err != nil {
-		a.Logger.Errorln("AgentUpdate createTmpFile()", err)
+		a.Logger.Errorln("AgentUpdate createNixTmpFile()", err)
 		return
 	}
 	defer os.Remove(f.Name())
@@ -307,9 +307,9 @@ func (a *Agent) AgentUpdate(url, inno, version string) {
 }
 
 func (a *Agent) AgentUninstall(code string) {
-	f, err := createTmpFile()
+	f, err := createNixTmpFile()
 	if err != nil {
-		a.Logger.Errorln("AgentUninstall createTmpFile():", err)
+		a.Logger.Errorln("AgentUninstall createNixTmpFile():", err)
 		return
 	}
 
@@ -490,6 +490,26 @@ func (a *Agent) GetWMIInfo() map[string]interface{} {
 	}
 
 	return wmiInfo
+}
+
+func createNixTmpFile() (*os.File, error) {
+	var f *os.File
+	noexec := tmpNoExec()
+	f, err := os.CreateTemp("", "trmm")
+	if err != nil || noexec {
+		if noexec {
+			os.Remove(f.Name())
+		}
+		cwd, err := os.Getwd()
+		if err != nil {
+			return f, err
+		}
+		f, err = os.CreateTemp(cwd, "trmm")
+		if err != nil {
+			return f, err
+		}
+	}
+	return f, nil
 }
 
 // windows only below TODO add into stub file
