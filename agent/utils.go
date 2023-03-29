@@ -340,3 +340,28 @@ func getCMDExe() string {
 	}
 	return cmdExe
 }
+
+// more accurate than os.Getwd()
+func getCwd() (string, error) {
+	self, err := os.Executable()
+	if err != nil {
+		return "", err
+	}
+
+	return filepath.Dir(self), nil
+}
+
+func createNixTmpFile() (*os.File, error) {
+	var f *os.File
+	cwd, err := getCwd()
+	if err != nil {
+		return f, err
+	}
+
+	f, err = os.CreateTemp(cwd, "trmm")
+	if err != nil {
+		return f, err
+	}
+
+	return f, nil
+}

@@ -230,11 +230,9 @@ func (a *Agent) AgentUpdate(url, inno, version string) {
 	cwd := filepath.Dir(self)
 	// create a tmpfile in same location as current binary
 	// avoids issues with /tmp dir and other fs mount issues
-	tmpfile := filepath.Join(cwd, GenerateAgentID())
-
-	f, err := os.Create(tmpfile)
+	f, err := os.CreateTemp(cwd, "trmm")
 	if err != nil {
-		a.Logger.Errorln("AgentUpdate() os.Create(tmpfile)", err)
+		a.Logger.Errorln("AgentUpdate() os.CreateTemp:", err)
 		return
 	}
 	defer os.Remove(f.Name())
@@ -475,26 +473,6 @@ func (a *Agent) GetWMIInfo() map[string]interface{} {
 	}
 
 	return wmiInfo
-}
-
-func createNixTmpFile() (*os.File, error) {
-	var f *os.File
-	noexec := tmpNoExec()
-	f, err := os.CreateTemp("", "trmm")
-	if err != nil || noexec {
-		if noexec {
-			os.Remove(f.Name())
-		}
-		cwd, err := os.Getwd()
-		if err != nil {
-			return f, err
-		}
-		f, err = os.CreateTemp(cwd, "trmm")
-		if err != nil {
-			return f, err
-		}
-	}
-	return f, nil
 }
 
 // windows only below TODO add into stub file
