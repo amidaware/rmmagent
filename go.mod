@@ -4,22 +4,22 @@ go 1.20
 
 require (
 	github.com/StackExchange/wmi v1.2.1
-	github.com/elastic/go-sysinfo v1.9.0
+	github.com/elastic/go-sysinfo v1.10.0
 	github.com/go-ole/go-ole v1.2.6
 	github.com/go-ping/ping v1.1.0
 	github.com/go-resty/resty/v2 v2.7.0
 	github.com/gonutz/w32/v2 v2.4.0
 	github.com/iamacarpet/go-win64api v0.0.0-20220531131246-e84054eb584d
 	github.com/nats-io/nats-server/v2 v2.9.15 // indirect
-	github.com/nats-io/nats.go v1.24.0
+	github.com/nats-io/nats.go v1.25.0
 	github.com/rickb777/date v1.19.1
-	github.com/shirou/gopsutil/v3 v3.23.2
+	github.com/shirou/gopsutil/v3 v3.23.3
 	github.com/sirupsen/logrus v1.9.0
 	github.com/ugorji/go/codec v1.2.11
 	github.com/wh1te909/go-win64api v0.0.0-20210906074314-ab23795a6ae5
 	github.com/wh1te909/trmm-shared v0.0.0-20220227075846-f9f757361139
-	golang.org/x/net v0.6.0 // indirect
-	golang.org/x/sys v0.5.0
+	golang.org/x/net v0.7.0 // indirect
+	golang.org/x/sys v0.6.0
 )
 
 require (
@@ -48,7 +48,7 @@ require (
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
-	github.com/nats-io/nkeys v0.3.0 // indirect
+	github.com/nats-io/nkeys v0.4.4 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
 	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d // indirect
 	github.com/pelletier/go-toml/v2 v2.0.6 // indirect
@@ -58,6 +58,7 @@ require (
 	github.com/rickb777/plural v1.4.1 // indirect
 	github.com/rogpeppe/go-internal v1.8.1 // indirect
 	github.com/scjalliance/comshim v0.0.0-20190308082608-cf06d2532c4e // indirect
+	github.com/shoenig/go-m1cpu v0.1.4 // indirect
 	github.com/spf13/afero v1.9.3 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect

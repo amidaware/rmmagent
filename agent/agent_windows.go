@@ -906,12 +906,3 @@ func (a *Agent) GetAgentCheckInConfig(ret AgentCheckInConfig) AgentCheckInConfig
 func (a *Agent) NixMeshNodeID() string {
 	return "not implemented"
 }
-
-func tmpNoExec() bool {
-	return false
-}
-
-func createNixTmpFile() (*os.File, error) {
-	var f *os.File
-	return f, nil
-}
