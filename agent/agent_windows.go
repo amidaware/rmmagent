@@ -62,6 +62,8 @@ func NewAgentConfig() *rmm.AgentConfig {
 	cert, _, _ := k.GetStringValue("Cert")
 	proxy, _, _ := k.GetStringValue("Proxy")
 	customMeshDir, _, _ := k.GetStringValue("MeshDir")
+	winTmpDir, _, _ := k.GetStringValue("WinTmpDir")
+	winRunAsUserTmpDir, _, _ := k.GetStringValue("WinRunAsUserTmpDir")
 	natsProxyPath, _, _ := k.GetStringValue("NatsProxyPath")
 	natsProxyPort, _, _ := k.GetStringValue("NatsProxyPort")
 	natsStandardPort, _, _ := k.GetStringValue("NatsStandardPort")
@@ -69,19 +71,21 @@ func NewAgentConfig() *rmm.AgentConfig {
 	npi, _ := strconv.Atoi(natsPingInterval)
 
 	return &rmm.AgentConfig{
-		BaseURL:          baseurl,
-		AgentID:          agentid,
-		APIURL:           apiurl,
-		Token:            token,
-		AgentPK:          agentpk,
-		PK:               pk,
-		Cert:             cert,
-		Proxy:            proxy,
-		CustomMeshDir:    customMeshDir,
-		NatsProxyPath:    natsProxyPath,
-		NatsProxyPort:    natsProxyPort,
-		NatsStandardPort: natsStandardPort,
-		NatsPingInterval: npi,
+		BaseURL:            baseurl,
+		AgentID:            agentid,
+		APIURL:             apiurl,
+		Token:              token,
+		AgentPK:            agentpk,
+		PK:                 pk,
+		Cert:               cert,
+		Proxy:              proxy,
+		CustomMeshDir:      customMeshDir,
+		WinTmpDir:          winTmpDir,
+		WinRunAsUserTmpDir: winRunAsUserTmpDir,
+		NatsProxyPath:      natsProxyPath,
+		NatsProxyPort:      natsProxyPort,
+		NatsStandardPort:   natsStandardPort,
+		NatsPingInterval:   npi,
 	}
 }
 
@@ -114,7 +118,13 @@ func (a *Agent) RunScript(code string, shell string, args []string, timeout int,
 		ext = "*.bat"
 	}
 
-	tmpfn, err := ioutil.TempFile(winTempDir, ext)
+	tmpDir := a.WinTmpDir
+
+	if runasuser {
+		tmpDir = a.WinRunAsUserTmpDir
+	}
+
+	tmpfn, err := ioutil.TempFile(tmpDir, ext)
 	if err != nil {
 		a.Logger.Errorln(err)
 		return "", err.Error(), 85, err
@@ -133,7 +143,7 @@ func (a *Agent) RunScript(code string, shell string, args []string, timeout int,
 	switch shell {
 	case "powershell":
 		exe = getPowershellExe()
-		cmdArgs = []string{"-NonInteractive", "-NoProfile", "-ExecutionPolicy", "Bypass", tmpfn.Name()}
+		cmdArgs = []string{"-NonInteractive", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", tmpfn.Name()}
 	case "python":
 		exe = a.PyBin
 		cmdArgs = []string{tmpfn.Name()}
@@ -587,7 +597,8 @@ func (a *Agent) UninstallCleanup() {
 	a.PatchMgmnt(false)
 	a.CleanupAgentUpdates()
 	CleanupSchedTasks()
-	os.RemoveAll(winTempDir)
+	os.RemoveAll(a.WinTmpDir)
+	os.RemoveAll(a.WinRunAsUserTmpDir)
 }
 
 func (a *Agent) AgentUpdate(url, inno, version string) {
@@ -595,7 +606,7 @@ func (a *Agent) AgentUpdate(url, inno, version string) {
 	a.KillHungUpdates()
 	time.Sleep(1 * time.Second)
 	a.CleanupAgentUpdates()
-	updater := filepath.Join(winTempDir, inno)
+	updater := filepath.Join(a.WinTmpDir, inno)
 	a.Logger.Infof("Agent updating from %s to %s", a.Version, version)
 	a.Logger.Debugln("Downloading agent update from", url)
 
@@ -618,7 +629,7 @@ func (a *Agent) AgentUpdate(url, inno, version string) {
 		return
 	}
 
-	innoLogFile := filepath.Join(winTempDir, fmt.Sprintf("tacticalagent_update_v%s.txt", version))
+	innoLogFile := filepath.Join(a.WinTmpDir, fmt.Sprintf("tacticalagent_update_v%s.txt", version))
 
 	args := []string{"/C", updater, "/VERYSILENT", fmt.Sprintf("/LOG=%s", innoLogFile)}
 	cmd := exec.Command("cmd.exe", args...)
