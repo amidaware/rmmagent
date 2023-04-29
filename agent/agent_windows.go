@@ -601,7 +601,7 @@ func (a *Agent) UninstallCleanup() {
 	os.RemoveAll(a.WinRunAsUserTmpDir)
 }
 
-func (a *Agent) AgentUpdate(url, inno, version string) {
+func (a *Agent) AgentUpdate(url, inno, version string) error {
 	time.Sleep(time.Duration(randRange(1, 15)) * time.Second)
 	a.KillHungUpdates()
 	time.Sleep(1 * time.Second)
@@ -620,13 +620,11 @@ func (a *Agent) AgentUpdate(url, inno, version string) {
 	r, err := rClient.R().SetOutput(updater).Get(url)
 	if err != nil {
 		a.Logger.Errorln(err)
-		CMD("net", []string{"start", winSvcName}, 10, false)
-		return
+		return err
 	}
 	if r.IsError() {
 		a.Logger.Errorln("Download failed with status code", r.StatusCode())
-		CMD("net", []string{"start", winSvcName}, 10, false)
-		return
+		return err
 	}
 
 	innoLogFile := filepath.Join(a.WinTmpDir, fmt.Sprintf("tacticalagent_update_v%s.txt", version))
@@ -638,6 +636,7 @@ func (a *Agent) AgentUpdate(url, inno, version string) {
 	}
 	cmd.Start()
 	time.Sleep(1 * time.Second)
+	return nil
 }
 
 func (a *Agent) osString() string {

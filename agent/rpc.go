@@ -481,7 +481,11 @@ func (a *Agent) RunRPC() {
 				} else {
 					ret.Encode("ok")
 					msg.Respond(resp)
-					a.AgentUpdate(p.Data["url"], p.Data["inno"], p.Data["version"])
+					err := a.AgentUpdate(p.Data["url"], p.Data["inno"], p.Data["version"])
+					if err != nil {
+						atomic.StoreUint32(&agentUpdateLocker, 0)
+						return
+					}
 					atomic.StoreUint32(&agentUpdateLocker, 0)
 					nc.Flush()
 					nc.Close()
