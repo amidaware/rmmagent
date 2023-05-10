@@ -40,37 +40,39 @@ import (
 
 // Agent struct
 type Agent struct {
-	Hostname          string
-	Arch              string
-	AgentID           string
-	BaseURL           string
-	ApiURL            string
-	Token             string
-	AgentPK           int
-	Cert              string
-	ProgramDir        string
-	EXE               string
-	SystemDrive       string
-	MeshInstaller     string
-	MeshSystemEXE     string
-	MeshSVC           string
-	PyBin             string
-	Headers           map[string]string
-	Logger            *logrus.Logger
-	Version           string
-	Debug             bool
-	rClient           *resty.Client
-	Proxy             string
-	LogTo             string
-	LogFile           *os.File
-	Platform          string
-	GoArch            string
-	ServiceConfig     *service.Config
-	NatsServer        string
-	NatsProxyPath     string
-	NatsProxyPort     string
-	NatsPingInterval  int
-	NatsWSCompression bool
+	Hostname           string
+	Arch               string
+	AgentID            string
+	BaseURL            string
+	ApiURL             string
+	Token              string
+	AgentPK            int
+	Cert               string
+	ProgramDir         string
+	EXE                string
+	SystemDrive        string
+	WinTmpDir          string
+	WinRunAsUserTmpDir string
+	MeshInstaller      string
+	MeshSystemEXE      string
+	MeshSVC            string
+	PyBin              string
+	Headers            map[string]string
+	Logger             *logrus.Logger
+	Version            string
+	Debug              bool
+	rClient            *resty.Client
+	Proxy              string
+	LogTo              string
+	LogFile            *os.File
+	Platform           string
+	GoArch             string
+	ServiceConfig      *service.Config
+	NatsServer         string
+	NatsProxyPath      string
+	NatsProxyPort      string
+	NatsPingInterval   int
+	NatsWSCompression  bool
 }
 
 const (
@@ -88,7 +90,7 @@ const (
 	defaultMacMeshSvcDir = "/usr/local/mesh_services"
 )
 
-var winTempDir = filepath.Join(os.Getenv("PROGRAMDATA"), "TacticalRMM")
+var defaultWinTmpDir = filepath.Join(os.Getenv("PROGRAMDATA"), "TacticalRMM")
 var winMeshDir = filepath.Join(os.Getenv("PROGRAMFILES"), "Mesh Agent")
 var natsCheckin = []string{"agent-hello", "agent-agentinfo", "agent-disks", "agent-winsvc", "agent-publicip", "agent-wmi"}
 var limitNatsData = []string{"agent-winsvc", "agent-wmi"}
@@ -99,6 +101,8 @@ func New(logger *logrus.Logger, version string) *Agent {
 	pd := filepath.Join(os.Getenv("ProgramFiles"), progFilesName)
 	exe := filepath.Join(pd, winExeName)
 	sd := os.Getenv("SystemDrive")
+	winTempDir := defaultWinTmpDir
+	winRunAsUserTmpDir := defaultWinTmpDir
 
 	var pybin string
 	switch runtime.GOARCH {
@@ -128,6 +132,14 @@ func New(logger *logrus.Logger, version string) *Agent {
 	}
 	if len(ac.Cert) > 0 {
 		restyC.SetRootCertificate(ac.Cert)
+	}
+
+	if len(ac.WinTmpDir) > 0 {
+		winTempDir = ac.WinTmpDir
+	}
+
+	if len(ac.WinRunAsUserTmpDir) > 0 {
+		winRunAsUserTmpDir = ac.WinRunAsUserTmpDir
 	}
 
 	var MeshSysExe string
@@ -189,34 +201,36 @@ func New(logger *logrus.Logger, version string) *Agent {
 	}
 
 	return &Agent{
-		Hostname:          info.Hostname,
-		BaseURL:           ac.BaseURL,
-		AgentID:           ac.AgentID,
-		ApiURL:            ac.APIURL,
-		Token:             ac.Token,
-		AgentPK:           ac.PK,
-		Cert:              ac.Cert,
-		ProgramDir:        pd,
-		EXE:               exe,
-		SystemDrive:       sd,
-		MeshInstaller:     "meshagent.exe",
-		MeshSystemEXE:     MeshSysExe,
-		MeshSVC:           meshSvcName,
-		PyBin:             pybin,
-		Headers:           headers,
-		Logger:            logger,
-		Version:           version,
-		Debug:             logger.IsLevelEnabled(logrus.DebugLevel),
-		rClient:           restyC,
-		Proxy:             ac.Proxy,
-		Platform:          runtime.GOOS,
-		GoArch:            runtime.GOARCH,
-		ServiceConfig:     svcConf,
-		NatsServer:        natsServer,
-		NatsProxyPath:     natsProxyPath,
-		NatsProxyPort:     natsProxyPort,
-		NatsPingInterval:  natsPingInterval,
-		NatsWSCompression: natsWsCompression,
+		Hostname:           info.Hostname,
+		BaseURL:            ac.BaseURL,
+		AgentID:            ac.AgentID,
+		ApiURL:             ac.APIURL,
+		Token:              ac.Token,
+		AgentPK:            ac.PK,
+		Cert:               ac.Cert,
+		ProgramDir:         pd,
+		EXE:                exe,
+		SystemDrive:        sd,
+		WinTmpDir:          winTempDir,
+		WinRunAsUserTmpDir: winRunAsUserTmpDir,
+		MeshInstaller:      "meshagent.exe",
+		MeshSystemEXE:      MeshSysExe,
+		MeshSVC:            meshSvcName,
+		PyBin:              pybin,
+		Headers:            headers,
+		Logger:             logger,
+		Version:            version,
+		Debug:              logger.IsLevelEnabled(logrus.DebugLevel),
+		rClient:            restyC,
+		Proxy:              ac.Proxy,
+		Platform:           runtime.GOOS,
+		GoArch:             runtime.GOARCH,
+		ServiceConfig:      svcConf,
+		NatsServer:         natsServer,
+		NatsProxyPath:      natsProxyPath,
+		NatsProxyPort:      natsProxyPort,
+		NatsPingInterval:   natsPingInterval,
+		NatsWSCompression:  natsWsCompression,
 	}
 }
 
@@ -457,7 +471,7 @@ func (a *Agent) GetUninstallExe() string {
 
 func (a *Agent) CleanupAgentUpdates() {
 	// TODO remove a.ProgramDir, updates are now in winTempDir
-	dirs := [3]string{winTempDir, os.Getenv("TMP"), a.ProgramDir}
+	dirs := [3]string{a.WinTmpDir, os.Getenv("TMP"), a.ProgramDir}
 	for _, dir := range dirs {
 		err := os.Chdir(dir)
 		if err != nil {
@@ -491,7 +505,7 @@ func (a *Agent) CleanupAgentUpdates() {
 
 func (a *Agent) RunPythonCode(code string, timeout int, args []string) (string, error) {
 	content := []byte(code)
-	tmpfn, _ := ioutil.TempFile(winTempDir, "*.py")
+	tmpfn, _ := ioutil.TempFile(a.WinTmpDir, "*.py")
 	if _, err := tmpfn.Write(content); err != nil {
 		a.Logger.Debugln(err)
 		return "", err
@@ -537,8 +551,8 @@ func (a *Agent) RunPythonCode(code string, timeout int, args []string) (string, 
 }
 
 func createWinTempDir() error {
-	if !trmm.FileExists(winTempDir) {
-		err := os.Mkdir(winTempDir, 0775)
+	if !trmm.FileExists(defaultWinTmpDir) {
+		err := os.Mkdir(defaultWinTmpDir, 0775)
 		if err != nil {
 			return err
 		}

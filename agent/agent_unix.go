@@ -16,6 +16,7 @@ package agent
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -218,12 +219,12 @@ func (a *Agent) seEnforcing() bool {
 	return out.Status.Exit == 0 && strings.Contains(out.Stdout, "Enforcing")
 }
 
-func (a *Agent) AgentUpdate(url, inno, version string) {
+func (a *Agent) AgentUpdate(url, inno, version string) error {
 
 	self, err := os.Executable()
 	if err != nil {
 		a.Logger.Errorln("AgentUpdate() os.Executable():", err)
-		return
+		return err
 	}
 
 	// more reliable method to get current working directory than os.Getwd()
@@ -233,7 +234,7 @@ func (a *Agent) AgentUpdate(url, inno, version string) {
 	f, err := os.CreateTemp(cwd, "trmm")
 	if err != nil {
 		a.Logger.Errorln("AgentUpdate() os.CreateTemp:", err)
-		return
+		return err
 	}
 	defer os.Remove(f.Name())
 
@@ -252,12 +253,12 @@ func (a *Agent) AgentUpdate(url, inno, version string) {
 	if err != nil {
 		a.Logger.Errorln("AgentUpdate() download:", err)
 		f.Close()
-		return
+		return err
 	}
 	if r.IsError() {
 		a.Logger.Errorln("AgentUpdate() status code:", r.StatusCode())
 		f.Close()
-		return
+		return errors.New("err")
 	}
 
 	f.Close()
@@ -265,7 +266,7 @@ func (a *Agent) AgentUpdate(url, inno, version string) {
 	err = os.Rename(f.Name(), self)
 	if err != nil {
 		a.Logger.Errorln("AgentUpdate() os.Rename():", err)
-		return
+		return err
 	}
 
 	if runtime.GOOS == "linux" && a.seEnforcing() {
@@ -283,10 +284,11 @@ func (a *Agent) AgentUpdate(url, inno, version string) {
 	case "darwin":
 		opts.Command = "launchctl kickstart -k system/tacticalagent"
 	default:
-		return
+		return nil
 	}
 
 	a.CmdV2(opts)
+	return nil
 }
 
 func (a *Agent) AgentUninstall(code string) {

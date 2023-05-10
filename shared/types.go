@@ -33,19 +33,21 @@ type ProcessMsg struct {
 }
 
 type AgentConfig struct {
-	BaseURL          string
-	AgentID          string
-	APIURL           string
-	Token            string
-	AgentPK          string
-	PK               int
-	Cert             string
-	Proxy            string
-	CustomMeshDir    string
-	NatsProxyPath    string
-	NatsProxyPort    string
-	NatsStandardPort string
-	NatsPingInterval int
+	BaseURL            string
+	AgentID            string
+	APIURL             string
+	Token              string
+	AgentPK            string
+	PK                 int
+	Cert               string
+	Proxy              string
+	CustomMeshDir      string
+	WinTmpDir          string
+	WinRunAsUserTmpDir string
+	NatsProxyPath      string
+	NatsProxyPort      string
+	NatsStandardPort   string
+	NatsPingInterval   int
 }
 
 type RunScriptResp struct {
