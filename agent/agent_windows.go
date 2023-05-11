@@ -143,7 +143,7 @@ func (a *Agent) RunScript(code string, shell string, args []string, timeout int,
 	switch shell {
 	case "powershell":
 		exe = getPowershellExe()
-		cmdArgs = []string{"-NonInteractive", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", tmpfn.Name()}
+		cmdArgs = []string{"-NonInteractive", "-NoProfile", "-ExecutionPolicy", "Bypass", tmpfn.Name()}
 	case "python":
 		exe = a.PyBin
 		cmdArgs = []string{tmpfn.Name()}
