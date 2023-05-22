@@ -23,6 +23,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"syscall"
 
 	"time"
 
@@ -321,8 +322,21 @@ func (a *Agent) CmdV2(c *CmdOptions) CmdStatus {
 		}
 	}()
 
-	// Run and wait for Cmd to return, discard Status
-	envCmd.Start()
+	// workaround for https://github.com/golang/go/issues/22315
+	for i := 0; i < 5; i++ {
+		<-envCmd.Start()
+
+		<-doneChan
+
+		status := envCmd.Status()
+
+		if errors.Is(status.Error, syscall.ETXTBSY) {
+			a.Logger.Errorln("CmdV2 syscall.ETXTBSY, retrying...")
+			time.Sleep(500 * time.Millisecond)
+		} else {
+			break
+		}
+	}
 
 	go func() {
 		select {
