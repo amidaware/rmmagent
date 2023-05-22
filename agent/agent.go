@@ -16,7 +16,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"math"
 	"os"
 	"os/exec"
@@ -505,7 +504,7 @@ func (a *Agent) CleanupAgentUpdates() {
 
 func (a *Agent) RunPythonCode(code string, timeout int, args []string) (string, error) {
 	content := []byte(code)
-	tmpfn, _ := ioutil.TempFile(a.WinTmpDir, "*.py")
+	tmpfn, _ := os.CreateTemp(a.WinTmpDir, "*.py")
 	if _, err := tmpfn.Write(content); err != nil {
 		a.Logger.Debugln(err)
 		return "", err

@@ -16,7 +16,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -124,7 +123,7 @@ func (a *Agent) RunScript(code string, shell string, args []string, timeout int,
 		tmpDir = a.WinRunAsUserTmpDir
 	}
 
-	tmpfn, err := ioutil.TempFile(tmpDir, ext)
+	tmpfn, err := os.CreateTemp(tmpDir, ext)
 	if err != nil {
 		a.Logger.Errorln(err)
 		return "", err.Error(), 85, err
