@@ -55,6 +55,12 @@ func (a *Agent) AgentSvc(nc *nats.Conn) {
 	a.Logger.Debugf("AgentSvc() sleeping for %v seconds", sleepDelay)
 	time.Sleep(time.Duration(sleepDelay) * time.Second)
 
+	if runtime.GOOS == "windows" {
+		a.KillHungUpdates()
+		time.Sleep(1 * time.Second)
+		a.CleanupAgentUpdates()
+	}
+
 	conf := a.GetAgentCheckInConfig(a.GetCheckInConfFromAPI())
 	a.Logger.Debugf("+%v\n", conf)
 	for _, s := range natsCheckin {

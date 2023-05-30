@@ -16,7 +16,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -124,7 +123,7 @@ func (a *Agent) RunScript(code string, shell string, args []string, timeout int,
 		tmpDir = a.WinRunAsUserTmpDir
 	}
 
-	tmpfn, err := ioutil.TempFile(tmpDir, ext)
+	tmpfn, err := os.CreateTemp(tmpDir, ext)
 	if err != nil {
 		a.Logger.Errorln(err)
 		return "", err.Error(), 85, err
@@ -623,8 +622,9 @@ func (a *Agent) AgentUpdate(url, inno, version string) error {
 		return err
 	}
 	if r.IsError() {
-		a.Logger.Errorln("Download failed with status code", r.StatusCode())
-		return err
+		ret := fmt.Sprintf("Download failed with status code %d", r.StatusCode())
+		a.Logger.Errorln(ret)
+		return errors.New(ret)
 	}
 
 	innoLogFile := filepath.Join(a.WinTmpDir, fmt.Sprintf("tacticalagent_update_v%s.txt", version))

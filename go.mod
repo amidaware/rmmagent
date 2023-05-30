@@ -4,14 +4,14 @@ go 1.20
 
 require (
 	github.com/StackExchange/wmi v1.2.1
-	github.com/elastic/go-sysinfo v1.10.1
+	github.com/elastic/go-sysinfo v1.10.2
 	github.com/go-ole/go-ole v1.2.6
 	github.com/go-ping/ping v1.1.0
 	github.com/go-resty/resty/v2 v2.7.0
 	github.com/gonutz/w32/v2 v2.4.0
 	github.com/iamacarpet/go-win64api v0.0.0-20220531131246-e84054eb584d
-	github.com/nats-io/nats-server/v2 v2.9.16 // indirect
-	github.com/nats-io/nats.go v1.25.0
+	github.com/nats-io/nats-server/v2 v2.9.17 // indirect
+	github.com/nats-io/nats.go v1.26.0
 	github.com/rickb777/date v1.19.1
 	github.com/shirou/gopsutil/v3 v3.23.4
 	github.com/sirupsen/logrus v1.9.0
@@ -44,6 +44,7 @@ require (
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/jaypipes/pcidb v1.0.0 // indirect
 	github.com/joeshaw/multierror v0.0.0-20140124173710-69b34d4ec901 // indirect
+	github.com/klauspost/compress v1.16.5 // indirect
 	github.com/lufia/plan9stats v0.0.0-20220517141722-cf486979b281 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect

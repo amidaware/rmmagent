@@ -16,7 +16,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"math"
 	"os"
 	"os/exec"
@@ -24,6 +23,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"syscall"
 
 	"time"
 
@@ -322,8 +322,21 @@ func (a *Agent) CmdV2(c *CmdOptions) CmdStatus {
 		}
 	}()
 
-	// Run and wait for Cmd to return, discard Status
-	envCmd.Start()
+	// workaround for https://github.com/golang/go/issues/22315
+	for i := 0; i < 5; i++ {
+		<-envCmd.Start()
+
+		<-doneChan
+
+		status := envCmd.Status()
+
+		if errors.Is(status.Error, syscall.ETXTBSY) {
+			a.Logger.Errorln("CmdV2 syscall.ETXTBSY, retrying...")
+			time.Sleep(500 * time.Millisecond)
+		} else {
+			break
+		}
+	}
 
 	go func() {
 		select {
@@ -505,7 +518,7 @@ func (a *Agent) CleanupAgentUpdates() {
 
 func (a *Agent) RunPythonCode(code string, timeout int, args []string) (string, error) {
 	content := []byte(code)
-	tmpfn, _ := ioutil.TempFile(a.WinTmpDir, "*.py")
+	tmpfn, _ := os.CreateTemp(a.WinTmpDir, "*.py")
 	if _, err := tmpfn.Write(content); err != nil {
 		a.Logger.Debugln(err)
 		return "", err
