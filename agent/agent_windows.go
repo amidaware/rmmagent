@@ -622,8 +622,9 @@ func (a *Agent) AgentUpdate(url, inno, version string) error {
 		return err
 	}
 	if r.IsError() {
-		a.Logger.Errorln("Download failed with status code", r.StatusCode())
-		return err
+		ret := fmt.Sprintf("Download failed with status code %d", r.StatusCode())
+		a.Logger.Errorln(ret)
+		return errors.New(ret)
 	}
 
 	innoLogFile := filepath.Join(a.WinTmpDir, fmt.Sprintf("tacticalagent_update_v%s.txt", version))
