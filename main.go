@@ -119,6 +119,8 @@ func main() {
 		a.RunMigrations()
 	case "recovermesh":
 		a.RecoverMesh()
+	case "macventurafix":
+		a.FixVenturaMesh()
 	case "taskrunner":
 		if len(os.Args) < 5 || *taskPK == 0 {
 			return
