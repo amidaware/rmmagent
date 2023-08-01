@@ -273,7 +273,7 @@ func (a *Agent) AgentUpdate(url, inno, version string) error {
 		se := a.NewCMDOpts()
 		se.Command = fmt.Sprintf("restorecon -rv %s", self)
 		out := a.CmdV2(se)
-		a.Logger.Debugln("%+v\n", out)
+		a.Logger.Debugf("%+v\n", out)
 	}
 
 	opts := a.NewCMDOpts()
