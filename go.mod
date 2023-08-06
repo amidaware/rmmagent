@@ -16,7 +16,7 @@ require (
 	github.com/shirou/gopsutil/v3 v3.23.6
 	github.com/sirupsen/logrus v1.9.3
 	github.com/ugorji/go/codec v1.2.11
-	github.com/wh1te909/go-win64api v0.0.0-20210906074314-ab23795a6ae5
+	github.com/wh1te909/go-win64api v0.0.0-20230802051600-21b24f62e846
 	github.com/wh1te909/trmm-shared v0.0.0-20220227075846-f9f757361139
 	golang.org/x/net v0.10.0 // indirect
 	golang.org/x/sys v0.9.0

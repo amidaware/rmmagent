@@ -301,6 +301,8 @@ github.com/ugorji/go/codec v1.2.11 h1:BMaWp1Bb6fHwEtbplGBGJ498wD+LKlNSl25MjdZY4d
 github.com/ugorji/go/codec v1.2.11/go.mod h1:UNopzCgEMSXjBc6AOMqYvWC1ktqTAfzJZUZgYf6w6lg=
 github.com/wh1te909/go-win64api v0.0.0-20210906074314-ab23795a6ae5 h1:8tp/+fGR+qjDQ00vm0ZorHzskquo76MY9/ChmFFunEA=
 github.com/wh1te909/go-win64api v0.0.0-20210906074314-ab23795a6ae5/go.mod h1:qypF+Tf23flzLX5IXuodDb1314BrDrsbwK/OhTh6HBM=
+github.com/wh1te909/go-win64api v0.0.0-20230802051600-21b24f62e846 h1:w/2L2xArf30zPrE/8IsqbKrU1FecRtR68Kbw/jj6ep4=
+github.com/wh1te909/go-win64api v0.0.0-20230802051600-21b24f62e846/go.mod h1:qypF+Tf23flzLX5IXuodDb1314BrDrsbwK/OhTh6HBM=
 github.com/wh1te909/trmm-shared v0.0.0-20220227075846-f9f757361139 h1:PfOl03o+Y+svWrfXAAu1QWUDePu1yqTq0pf4rpnN8eA=
 github.com/wh1te909/trmm-shared v0.0.0-20220227075846-f9f757361139/go.mod h1:ILUz1utl5KgwrxmNHv0RpgMtKeh8gPAABvK2MiXBqv8=
 github.com/yuin/goldmark v1.1.25/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
