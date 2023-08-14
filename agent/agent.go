@@ -104,6 +104,11 @@ func New(logger *logrus.Logger, version string) *Agent {
 	winTempDir := defaultWinTmpDir
 	winRunAsUserTmpDir := defaultWinTmpDir
 
+	hostname, err := os.Hostname()
+	if err != nil {
+		hostname = info.Hostname
+	}
+
 	var pybin string
 	switch runtime.GOARCH {
 	case "amd64":
@@ -201,7 +206,7 @@ func New(logger *logrus.Logger, version string) *Agent {
 	}
 
 	return &Agent{
-		Hostname:           info.Hostname,
+		Hostname:           hostname,
 		BaseURL:            ac.BaseURL,
 		AgentID:            ac.AgentID,
 		ApiURL:             ac.APIURL,
