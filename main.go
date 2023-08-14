@@ -25,7 +25,7 @@ import (
 )
 
 var (
-	version = "2.4.9"
+	version = "2.4.10"
 	log     = logrus.New()
 	logFile *os.File
 )
@@ -119,6 +119,8 @@ func main() {
 		a.RunMigrations()
 	case "recovermesh":
 		a.RecoverMesh()
+	case "macventurafix":
+		a.FixVenturaMesh()
 	case "taskrunner":
 		if len(os.Args) < 5 || *taskPK == 0 {
 			return

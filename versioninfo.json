@@ -3,13 +3,13 @@
         "FileVersion": {
             "Major": 2,
             "Minor": 4,
-            "Patch": 9,
+            "Patch": 10,
             "Build": 0
         },
         "ProductVersion": {
             "Major": 2,
             "Minor": 4,
-            "Patch": 9,
+            "Patch": 10,
             "Build": 0
         },
         "FileFlagsMask": "3f",
@@ -22,14 +22,14 @@
         "Comments": "",
         "CompanyName": "AmidaWare LLC",
         "FileDescription": "Tactical RMM Agent",
-        "FileVersion": "v2.4.9.0",
+        "FileVersion": "v2.4.10.0",
         "InternalName": "tacticalrmm.exe",
         "LegalCopyright": "Copyright (c) 2023 AmidaWare LLC",
         "LegalTrademarks": "",
         "OriginalFilename": "tacticalrmm.exe",
         "PrivateBuild": "",
         "ProductName": "Tactical RMM Agent",
-        "ProductVersion": "v2.4.9.0",
+        "ProductVersion": "v2.4.10.0",
         "SpecialBuild": ""
     },
     "VarFileInfo": {

@@ -128,7 +128,6 @@ func (a *Agent) PublicIP() string {
 
 // GenerateAgentID creates and returns a unique agent id
 func GenerateAgentID() string {
-	rand.Seed(time.Now().UnixNano())
 	letters := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 	b := make([]rune, 40)
 	for i := range b {
@@ -297,7 +296,6 @@ func ByteCountSI(b uint64) string {
 }
 
 func randRange(min, max int) int {
-	rand.Seed(time.Now().UnixNano())
 	return rand.Intn(max-min) + min
 }
 

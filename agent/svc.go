@@ -80,6 +80,10 @@ func (a *Agent) AgentSvc(nc *nats.Conn) {
 		a.SendSoftware()
 	}
 
+	if runtime.GOOS == "darwin" {
+		go a.FixVenturaMesh()
+	}
+
 	checkInHelloTicker := time.NewTicker(time.Duration(conf.Hello) * time.Second)
 	checkInAgentInfoTicker := time.NewTicker(time.Duration(conf.AgentInfo) * time.Second)
 	checkInWinSvcTicker := time.NewTicker(time.Duration(conf.WinSvc) * time.Second)
