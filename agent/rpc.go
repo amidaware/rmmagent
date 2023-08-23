@@ -13,7 +13,7 @@ package agent
 
 import (
 	"fmt"
-	"os"
+	"os"asdf
 	"runtime"
 	"strconv"
 	"sync"
@@ -51,7 +51,7 @@ var (
 )
 
 func (a *Agent) RunRPC() {
-	a.Logger.Infoln("Agent service started")
+	a.Logger.Infoln("Agent service started", a.ApiURL)
 
 	opts := a.setupNatsOptions()
 	nc, err := nats.Connect(a.NatsServer, opts...)
