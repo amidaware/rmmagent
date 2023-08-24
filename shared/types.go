@@ -48,6 +48,7 @@ type AgentConfig struct {
 	NatsProxyPort      string
 	NatsStandardPort   string
 	NatsPingInterval   int
+	Insecure           string
 }
 
 type RunScriptResp struct {

@@ -14,6 +14,7 @@ package agent
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"os"
@@ -68,6 +69,7 @@ func NewAgentConfig() *rmm.AgentConfig {
 	natsStandardPort, _, _ := k.GetStringValue("NatsStandardPort")
 	natsPingInterval, _, _ := k.GetStringValue("NatsPingInterval")
 	npi, _ := strconv.Atoi(natsPingInterval)
+	insecure, _, _ := k.GetStringValue("Insecure")
 
 	return &rmm.AgentConfig{
 		BaseURL:            baseurl,
@@ -85,6 +87,7 @@ func NewAgentConfig() *rmm.AgentConfig {
 		NatsProxyPort:      natsProxyPort,
 		NatsStandardPort:   natsStandardPort,
 		NatsPingInterval:   npi,
+		Insecure:           insecure,
 	}
 }
 
@@ -614,6 +617,12 @@ func (a *Agent) AgentUpdate(url, inno, version string) error {
 	rClient.SetDebug(a.Debug)
 	if len(a.Proxy) > 0 {
 		rClient.SetProxy(a.Proxy)
+	}
+	if a.Insecure {
+		insecureConf := &tls.Config{
+			InsecureSkipVerify: true,
+		}
+		rClient.SetTLSClientConfig(insecureConf)
 	}
 	r, err := rClient.R().SetOutput(updater).Get(url)
 	if err != nil {

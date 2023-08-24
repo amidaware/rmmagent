@@ -16,6 +16,7 @@ package agent
 
 import (
 	"bufio"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"os"
@@ -160,6 +161,7 @@ func NewAgentConfig() *rmm.AgentConfig {
 		NatsProxyPort:    viper.GetString("natsproxyport"),
 		NatsStandardPort: viper.GetString("natsstandardport"),
 		NatsPingInterval: viper.GetInt("natspinginterval"),
+		Insecure:         viper.GetString("insecure"),
 	}
 	return ret
 }
@@ -247,6 +249,12 @@ func (a *Agent) AgentUpdate(url, inno, version string) error {
 	rClient.SetDebug(a.Debug)
 	if len(a.Proxy) > 0 {
 		rClient.SetProxy(a.Proxy)
+	}
+	if a.Insecure {
+		insecureConf := &tls.Config{
+			InsecureSkipVerify: true,
+		}
+		rClient.SetTLSClientConfig(insecureConf)
 	}
 
 	r, err := rClient.R().SetOutput(f.Name()).Get(url)
