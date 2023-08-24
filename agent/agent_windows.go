@@ -161,21 +161,36 @@ func (a *Agent) RunScript(code string, shell string, args []string, timeout int,
 	defer cancel()
 
 	var timedOut = false
+	var token *wintoken.Token
+	var envBlock *uint16
+	usingEnvVars := len(envVars) > 0
 	cmd := exec.Command(exe, cmdArgs...)
 	if runasuser {
-		token, err := wintoken.GetInteractiveToken(wintoken.TokenImpersonation)
+		token, err = wintoken.GetInteractiveToken(wintoken.TokenImpersonation)
 		if err == nil {
 			defer token.Close()
 			cmd.SysProcAttr = &syscall.SysProcAttr{Token: syscall.Token(token.Token()), HideWindow: true}
+
+			if usingEnvVars {
+				envBlock, err = CreateEnvironmentBlock(syscall.Token(token.Token()))
+				if err == nil {
+					defer DestroyEnvironmentBlock(envBlock)
+					userEnv := EnvironmentBlockToSlice(envBlock)
+					cmd.Env = userEnv
+				} else {
+					cmd.Env = os.Environ()
+				}
+			}
 		}
+	} else if usingEnvVars {
+		cmd.Env = os.Environ()
+	}
+
+	if usingEnvVars {
+		cmd.Env = append(cmd.Env, envVars...)
 	}
 	cmd.Stdout = &outb
 	cmd.Stderr = &errb
-
-	if len(envVars) > 0 {
-		cmd.Env = os.Environ()
-		cmd.Env = append(cmd.Env, envVars...)
-	}
 
 	if cmdErr := cmd.Start(); cmdErr != nil {
 		a.Logger.Debugln(cmdErr)
