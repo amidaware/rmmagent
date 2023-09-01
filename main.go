@@ -1,5 +1,5 @@
 /*
-Copyright 2022 AmidaWare LLC.
+Copyright 2023 AmidaWare Inc.
 
 Licensed under the Tactical RMM License Version 1.0 (the “License”).
 You may only use the Licensed Software in accordance with the License.
@@ -25,7 +25,7 @@ import (
 )
 
 var (
-	version = "2.4.11"
+	version = "2.5.0"
 	log     = logrus.New()
 	logFile *os.File
 )
@@ -53,6 +53,8 @@ func main() {
 	cert := flag.String("cert", "", "Path to domain CA .pem")
 	silent := flag.Bool("silent", false, "Do not popup any message boxes during installation")
 	proxy := flag.String("proxy", "", "Use a http proxy")
+	insecure := flag.Bool("insecure", false, "Insecure for testing only")
+	natsport := flag.String("natsport", "", "nats standard port")
 	flag.Parse()
 
 	if *ver {
@@ -141,23 +143,25 @@ func main() {
 			return
 		}
 		a.Install(&agent.Installer{
-			RMM:         *api,
-			ClientID:    *clientID,
-			SiteID:      *siteID,
-			Description: *desc,
-			AgentType:   *atype,
-			Power:       *power,
-			RDP:         *rdp,
-			Ping:        *ping,
-			Token:       *token,
-			LocalMesh:   *localMesh,
-			Cert:        *cert,
-			Proxy:       *proxy,
-			Timeout:     *timeout,
-			Silent:      *silent,
-			NoMesh:      *noMesh,
-			MeshDir:     *meshDir,
-			MeshNodeID:  *meshNodeID,
+			RMM:              *api,
+			ClientID:         *clientID,
+			SiteID:           *siteID,
+			Description:      *desc,
+			AgentType:        *atype,
+			Power:            *power,
+			RDP:              *rdp,
+			Ping:             *ping,
+			Token:            *token,
+			LocalMesh:        *localMesh,
+			Cert:             *cert,
+			Proxy:            *proxy,
+			Timeout:          *timeout,
+			Silent:           *silent,
+			NoMesh:           *noMesh,
+			MeshDir:          *meshDir,
+			MeshNodeID:       *meshNodeID,
+			Insecure:         *insecure,
+			NatsStandardPort: *natsport,
 		})
 	default:
 		agent.ShowStatus(version)

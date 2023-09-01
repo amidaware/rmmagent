@@ -1,5 +1,5 @@
 /*
-Copyright 2022 AmidaWare LLC.
+Copyright 2023 AmidaWare Inc.
 
 Licensed under the Tactical RMM License Version 1.0 (the “License”).
 You may only use the Licensed Software in accordance with the License.
@@ -21,7 +21,7 @@ import (
 	"golang.org/x/sys/windows/registry"
 )
 
-func createAgentConfig(baseurl, agentid, apiurl, token, agentpk, cert, proxy, meshdir string) {
+func createAgentConfig(baseurl, agentid, apiurl, token, agentpk, cert, proxy, meshdir, natsport string, insecure bool) {
 	k, _, err := registry.CreateKey(registry.LOCAL_MACHINE, `SOFTWARE\TacticalRMM`, registry.ALL_ACCESS)
 	if err != nil {
 		log.Fatalln("Error creating registry key:", err)
@@ -71,6 +71,20 @@ func createAgentConfig(baseurl, agentid, apiurl, token, agentpk, cert, proxy, me
 		err = k.SetStringValue("MeshDir", meshdir)
 		if err != nil {
 			log.Fatalln("Error creating MeshDir registry key:", err)
+		}
+	}
+
+	if len(natsport) > 0 {
+		err = k.SetStringValue("NatsStandardPort", natsport)
+		if err != nil {
+			log.Fatalln("Error creating NatsStandardPort registry key:", err)
+		}
+	}
+
+	if insecure {
+		err = k.SetStringValue("Insecure", "true")
+		if err != nil {
+			log.Fatalln("Error creating Insecure registry key:", err)
 		}
 	}
 }

@@ -1,5 +1,5 @@
 /*
-Copyright 2022 AmidaWare LLC.
+Copyright 2023 AmidaWare Inc.
 
 Licensed under the Tactical RMM License Version 1.0 (the “License”).
 You may only use the Licensed Software in accordance with the License.
@@ -12,6 +12,7 @@ https://license.tacticalrmm.com
 package agent
 
 import (
+	"crypto/tls"
 	"fmt"
 	"io"
 	"net/url"
@@ -28,25 +29,27 @@ import (
 )
 
 type Installer struct {
-	Headers     map[string]string
-	RMM         string
-	ClientID    int
-	SiteID      int
-	Description string
-	AgentType   string
-	Power       bool
-	RDP         bool
-	Ping        bool
-	Token       string
-	LocalMesh   string
-	Cert        string
-	Proxy       string
-	Timeout     time.Duration
-	SaltMaster  string
-	Silent      bool
-	NoMesh      bool
-	MeshDir     string
-	MeshNodeID  string
+	Headers          map[string]string
+	RMM              string
+	ClientID         int
+	SiteID           int
+	Description      string
+	AgentType        string
+	Power            bool
+	RDP              bool
+	Ping             bool
+	Token            string
+	LocalMesh        string
+	Cert             string
+	Proxy            string
+	Timeout          time.Duration
+	SaltMaster       string
+	Silent           bool
+	NoMesh           bool
+	MeshDir          string
+	MeshNodeID       string
+	Insecure         bool
+	NatsStandardPort string
 }
 
 func (a *Agent) Install(i *Installer) {
@@ -97,6 +100,14 @@ func (a *Agent) Install(i *Installer) {
 		iClient.SetProxy(i.Proxy)
 	}
 
+	insecureConf := &tls.Config{
+		InsecureSkipVerify: true,
+	}
+
+	if i.Insecure {
+		iClient.SetTLSClientConfig(insecureConf)
+	}
+
 	creds, cerr := iClient.R().Get(fmt.Sprintf("%s/api/v3/installer/", baseURL))
 	if cerr != nil {
 		a.installerMsg(cerr.Error(), "error", i.Silent)
@@ -131,6 +142,10 @@ func (a *Agent) Install(i *Installer) {
 
 	if len(i.Proxy) > 0 {
 		rClient.SetProxy(i.Proxy)
+	}
+
+	if i.Insecure {
+		rClient.SetTLSClientConfig(insecureConf)
 	}
 
 	var installerMeshSystemEXE string
@@ -230,7 +245,7 @@ func (a *Agent) Install(i *Installer) {
 	a.Logger.Debugln("Agent token:", agentToken)
 	a.Logger.Debugln("Agent PK:", agentPK)
 
-	createAgentConfig(baseURL, a.AgentID, i.SaltMaster, agentToken, strconv.Itoa(agentPK), i.Cert, i.Proxy, i.MeshDir)
+	createAgentConfig(baseURL, a.AgentID, i.SaltMaster, agentToken, strconv.Itoa(agentPK), i.Cert, i.Proxy, i.MeshDir, i.NatsStandardPort, i.Insecure)
 	time.Sleep(1 * time.Second)
 	// refresh our agent with new values
 	a = New(a.Logger, a.Version)

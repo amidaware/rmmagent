@@ -1,5 +1,5 @@
 /*
-Copyright 2022 AmidaWare LLC.
+Copyright 2023 AmidaWare Inc.
 
 Licensed under the Tactical RMM License Version 1.0 (the “License”).
 You may only use the Licensed Software in accordance with the License.
@@ -24,11 +24,14 @@ var _ unsafe.Pointer
 var (
 	modadvapi32 = windows.NewLazySystemDLL("advapi32.dll")
 	modkernel32 = windows.NewLazySystemDLL("kernel32.dll")
+	userenv     = windows.NewLazyDLL("userenv.dll")
 
 	procFormatMessageW          = modkernel32.NewProc("FormatMessageW")
 	procGetOldestEventLogRecord = modadvapi32.NewProc("GetOldestEventLogRecord")
 	procLoadLibraryExW          = modkernel32.NewProc("LoadLibraryExW")
 	procReadEventLogW           = modadvapi32.NewProc("ReadEventLogW")
+	procCreateEnvironmentBlock  = userenv.NewProc("CreateEnvironmentBlock")
+	procDestroyEnvironmentBlock = userenv.NewProc("DestroyEnvironmentBlock")
 )
 
 // https://docs.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-eventlogrecord
@@ -113,4 +116,48 @@ func ReadEventLog(eventLog w32.HANDLE, readFlags ReadFlag, recordOffset uint32, 
 		}
 	}
 	return
+}
+
+func CreateEnvironmentBlock(token syscall.Token) (*uint16, error) {
+	var envBlock *uint16
+
+	ret, _, err := procCreateEnvironmentBlock.Call(
+		uintptr(unsafe.Pointer(&envBlock)),
+		uintptr(token),
+		0,
+	)
+	if ret == 0 {
+		return nil, err
+	}
+
+	return envBlock, nil
+}
+
+func DestroyEnvironmentBlock(envBlock *uint16) error {
+	ret, _, err := procDestroyEnvironmentBlock.Call(uintptr(unsafe.Pointer(envBlock)))
+	if ret == 0 {
+		return err
+	}
+	return nil
+}
+
+func EnvironmentBlockToSlice(envBlock *uint16) []string {
+	var envs []string
+
+	for {
+		len := 0
+		for *(*uint16)(unsafe.Pointer(uintptr(unsafe.Pointer(envBlock)) + uintptr(len*2))) != 0 {
+			len++
+		}
+
+		if len == 0 {
+			break
+		}
+
+		env := syscall.UTF16ToString((*[1 << 29]uint16)(unsafe.Pointer(envBlock))[:len])
+		envs = append(envs, env)
+		envBlock = (*uint16)(unsafe.Pointer(uintptr(unsafe.Pointer(envBlock)) + uintptr((len+1)*2)))
+	}
+
+	return envs
 }

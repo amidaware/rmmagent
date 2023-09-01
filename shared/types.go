@@ -1,5 +1,5 @@
 /*
-Copyright 2022 AmidaWare LLC.
+Copyright 2023 AmidaWare Inc.
 
 Licensed under the Tactical RMM License Version 1.0 (the “License”).
 You may only use the Licensed Software in accordance with the License.
@@ -48,6 +48,7 @@ type AgentConfig struct {
 	NatsProxyPort      string
 	NatsStandardPort   string
 	NatsPingInterval   int
+	Insecure           string
 }
 
 type RunScriptResp struct {

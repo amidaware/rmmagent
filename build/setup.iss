@@ -1,6 +1,6 @@
 #define MyAppName "Tactical RMM Agent"
-#define MyAppVersion "2.4.11"
-#define MyAppPublisher "AmidaWare LLC"
+#define MyAppVersion "2.5.0"
+#define MyAppPublisher "AmidaWare Inc"
 #define MyAppURL "https://github.com/amidaware"
 #define MyAppExeName "tacticalrmm.exe"
 #define MESHEXE "meshagent.exe"

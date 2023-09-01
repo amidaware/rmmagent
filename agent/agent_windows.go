@@ -1,5 +1,5 @@
 /*
-Copyright 2022 AmidaWare LLC.
+Copyright 2023 AmidaWare Inc.
 
 Licensed under the Tactical RMM License Version 1.0 (the “License”).
 You may only use the Licensed Software in accordance with the License.
@@ -14,6 +14,7 @@ package agent
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"os"
@@ -68,6 +69,7 @@ func NewAgentConfig() *rmm.AgentConfig {
 	natsStandardPort, _, _ := k.GetStringValue("NatsStandardPort")
 	natsPingInterval, _, _ := k.GetStringValue("NatsPingInterval")
 	npi, _ := strconv.Atoi(natsPingInterval)
+	insecure, _, _ := k.GetStringValue("Insecure")
 
 	return &rmm.AgentConfig{
 		BaseURL:            baseurl,
@@ -85,6 +87,7 @@ func NewAgentConfig() *rmm.AgentConfig {
 		NatsProxyPort:      natsProxyPort,
 		NatsStandardPort:   natsStandardPort,
 		NatsPingInterval:   npi,
+		Insecure:           insecure,
 	}
 }
 
@@ -158,21 +161,36 @@ func (a *Agent) RunScript(code string, shell string, args []string, timeout int,
 	defer cancel()
 
 	var timedOut = false
+	var token *wintoken.Token
+	var envBlock *uint16
+	usingEnvVars := len(envVars) > 0
 	cmd := exec.Command(exe, cmdArgs...)
 	if runasuser {
-		token, err := wintoken.GetInteractiveToken(wintoken.TokenImpersonation)
+		token, err = wintoken.GetInteractiveToken(wintoken.TokenImpersonation)
 		if err == nil {
 			defer token.Close()
 			cmd.SysProcAttr = &syscall.SysProcAttr{Token: syscall.Token(token.Token()), HideWindow: true}
+
+			if usingEnvVars {
+				envBlock, err = CreateEnvironmentBlock(syscall.Token(token.Token()))
+				if err == nil {
+					defer DestroyEnvironmentBlock(envBlock)
+					userEnv := EnvironmentBlockToSlice(envBlock)
+					cmd.Env = userEnv
+				} else {
+					cmd.Env = os.Environ()
+				}
+			}
 		}
+	} else if usingEnvVars {
+		cmd.Env = os.Environ()
+	}
+
+	if usingEnvVars {
+		cmd.Env = append(cmd.Env, envVars...)
 	}
 	cmd.Stdout = &outb
 	cmd.Stderr = &errb
-
-	if len(envVars) > 0 {
-		cmd.Env = os.Environ()
-		cmd.Env = append(cmd.Env, envVars...)
-	}
 
 	if cmdErr := cmd.Start(); cmdErr != nil {
 		a.Logger.Debugln(cmdErr)
@@ -614,6 +632,12 @@ func (a *Agent) AgentUpdate(url, inno, version string) error {
 	rClient.SetDebug(a.Debug)
 	if len(a.Proxy) > 0 {
 		rClient.SetProxy(a.Proxy)
+	}
+	if a.Insecure {
+		insecureConf := &tls.Config{
+			InsecureSkipVerify: true,
+		}
+		rClient.SetTLSClientConfig(insecureConf)
 	}
 	r, err := rClient.R().SetOutput(updater).Get(url)
 	if err != nil {

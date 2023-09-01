@@ -1,5 +1,5 @@
 /*
-Copyright 2022 AmidaWare LLC.
+Copyright 2023 AmidaWare Inc.
 
 Licensed under the Tactical RMM License Version 1.0 (the “License”).
 You may only use the Licensed Software in accordance with the License.
@@ -14,6 +14,7 @@ package agent
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"math"
@@ -73,6 +74,7 @@ type Agent struct {
 	NatsProxyPort      string
 	NatsPingInterval   int
 	NatsWSCompression  bool
+	Insecure           bool
 }
 
 const (
@@ -125,12 +127,20 @@ func New(logger *logrus.Logger, version string) *Agent {
 		headers["Authorization"] = fmt.Sprintf("Token %s", ac.Token)
 	}
 
+	insecure := ac.Insecure == "true"
+
 	restyC := resty.New()
 	restyC.SetBaseURL(ac.BaseURL)
 	restyC.SetCloseConnection(true)
 	restyC.SetHeaders(headers)
 	restyC.SetTimeout(15 * time.Second)
 	restyC.SetDebug(logger.IsLevelEnabled(logrus.DebugLevel))
+	if insecure {
+		insecureConf := &tls.Config{
+			InsecureSkipVerify: true,
+		}
+		restyC.SetTLSClientConfig(insecureConf)
+	}
 
 	if len(ac.Proxy) > 0 {
 		restyC.SetProxy(ac.Proxy)
@@ -236,6 +246,7 @@ func New(logger *logrus.Logger, version string) *Agent {
 		NatsProxyPort:      natsProxyPort,
 		NatsPingInterval:   natsPingInterval,
 		NatsWSCompression:  natsWsCompression,
+		Insecure:           insecure,
 	}
 }
 
@@ -477,6 +488,12 @@ func (a *Agent) setupNatsOptions() []nats.Option {
 		a.Logger.Errorln("NATS error:", err)
 		a.Logger.Errorf("%+v\n", sub)
 	}))
+	if a.Insecure {
+		insecureConf := &tls.Config{
+			InsecureSkipVerify: true,
+		}
+		opts = append(opts, nats.Secure(insecureConf))
+	}
 	return opts
 }
 
