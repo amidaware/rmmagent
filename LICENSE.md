@@ -1,6 +1,6 @@
 ### Tactical RMM License Version 1.0
 
-Text of license:&emsp;&emsp;&emsp;Copyright © 2022 AmidaWare Inc.  All rights reserved.<br>
+Text of license:&emsp;&emsp;&emsp;Copyright © 2023 AmidaWare Inc.  All rights reserved.<br>
 &emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&nbsp;Amending the text of this license is not permitted.
 
 Trade Mark:&emsp;&emsp;&emsp;&emsp;"Tactical RMM" is a trade mark of AmidaWare Inc.
@@ -38,7 +38,7 @@ If a derivative work is created which is based on or otherwise incorporates all 
 ### 4. Copyright Notice
 The following copyright notice shall be included in all copies of the Licensed Software:
 
-&emsp;&emsp;&emsp;Copyright © 2022 AmidaWare Inc.
+&emsp;&emsp;&emsp;Copyright © 2023 AmidaWare Inc.
 
 &emsp;&emsp;&emsp;Licensed under the Tactical RMM License Version 1.0 (the “License”).<br>
 &emsp;&emsp;&emsp;You may only use the Licensed Software in accordance with the License.<br>
