@@ -20,11 +20,11 @@
     },
     "StringFileInfo": {
         "Comments": "",
-        "CompanyName": "AmidaWare LLC",
+        "CompanyName": "AmidaWare Inc",
         "FileDescription": "Tactical RMM Agent",
         "FileVersion": "v2.4.11.0",
         "InternalName": "tacticalrmm.exe",
-        "LegalCopyright": "Copyright (c) 2023 AmidaWare LLC",
+        "LegalCopyright": "Copyright (c) 2023 AmidaWare Inc",
         "LegalTrademarks": "",
         "OriginalFilename": "tacticalrmm.exe",
         "PrivateBuild": "",
