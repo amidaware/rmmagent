@@ -194,10 +194,49 @@ func (a *Agent) RunScript(code string, shell string, args []string, timeout int,
 
 	opts := a.NewCMDOpts()
 	opts.IsScript = true
-	opts.Shell = f.Name()
-	opts.Args = args
+	switch shell {
+	case "nushell":
+		// FIXME: Make this dynamic and use /opt/tacticalagent/bin/nu
+		opts.Shell = "/usr/local/bin/nu"
+		opts.Args = append([]string{
+			"--no-config-file",
+			f.Name(),
+		},
+			args...)
+
+	case "deno":
+		// FIXME: Make this dynamic and use /opt/tacticalagent/bin/nu
+		opts.Shell = "/usr/local/bin/deno"
+		opts.Args = []string{
+			"run",
+			"--no-prompt",
+		}
+
+		// Search the environment variables for DENO_PERMISSIONS and use that to set permissions for the script.
+		// https://docs.deno.com/runtime/manual/basics/permissions#permissions-list
+		// DENO_PERMISSIONS is not an official environment variable.
+		// https://docs.deno.com/runtime/manual/basics/env_variables
+		// TODO: Remove DENO_PERMISSIONS from the environment variables.
+		for _, v := range envVars {
+			if strings.HasPrefix(v, "DENO_PERMISSIONS=") {
+				permissions := strings.Split(v, "=")[1]
+				opts.Args = append(opts.Args, strings.Split(permissions, " ")...)
+			}
+		}
+
+		// Can't append a variadic slice after a string arg.
+		// https://pkg.go.dev/builtin#append
+		opts.Args = append(opts.Args, f.Name())
+		opts.Args = append(opts.Args, args...)
+
+	default:
+		opts.Shell = f.Name()
+		opts.Args = args
+	}
+
 	opts.EnvVars = envVars
 	opts.Timeout = time.Duration(timeout)
+	a.Logger.Debugln("RunScript(): ", opts.Shell, opts.Args)
 	out := a.CmdV2(opts)
 	retError := ""
 	if out.Status.Error != nil {

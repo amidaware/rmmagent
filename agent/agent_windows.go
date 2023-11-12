@@ -118,6 +118,10 @@ func (a *Agent) RunScript(code string, shell string, args []string, timeout int,
 		ext = "*.py"
 	case "cmd":
 		ext = "*.bat"
+	case "nushell":
+		ext = "*.nu"
+	case "deno":
+		ext = "*.ts"
 	}
 
 	tmpDir := a.WinTmpDir
@@ -150,6 +154,10 @@ func (a *Agent) RunScript(code string, shell string, args []string, timeout int,
 		exe = a.PyBin
 		cmdArgs = []string{tmpfn.Name()}
 	case "cmd":
+		exe = tmpfn.Name()
+	case "nushell":
+		exe = tmpfn.Name()
+	case "deno":
 		exe = tmpfn.Name()
 	}
 
