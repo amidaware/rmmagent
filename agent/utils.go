@@ -12,8 +12,10 @@ https://license.tacticalrmm.com
 package agent
 
 import (
+	"archive/tar"
 	"archive/zip"
 	"bytes"
+	"compress/gzip"
 	"fmt"
 	"io"
 	"math"
@@ -21,6 +23,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"runtime"
 	goDebug "runtime/debug"
@@ -278,6 +281,70 @@ func Unzip(src, dest string) error {
 		}
 	}
 	return nil
+}
+
+// ExtractTarGz extracts a tar.gz file to the specified directory.
+// Returns the extracted directory name.
+// https://stackoverflow.com/questions/57639648/how-to-decompress-tar-gz-file-in-go
+func (a *Agent) ExtractTarGz(targz string, destDir string) (extractedDir string, err error) {
+	gzipStream, err := os.Open(targz)
+	if err != nil {
+		a.Logger.Errorln("ExtractTarGz(): Open() failed:", err.Error())
+		return "", err
+	}
+
+	uncompressedStream, err := gzip.NewReader(gzipStream)
+	if err != nil {
+		a.Logger.Errorln("ExtractTarGz(): NewReader() failed:", err.Error())
+		return "", err
+	}
+
+	extractedDir = ""
+	tarReader := tar.NewReader(uncompressedStream)
+	for true {
+		header, err := tarReader.Next()
+
+		if err == io.EOF {
+			break
+		}
+
+		if err != nil {
+			a.Logger.Errorln("ExtractTarGz(): Next() failed:", err.Error())
+			return "", err
+		}
+
+		switch header.Typeflag {
+		case tar.TypeDir:
+			if err := os.MkdirAll(path.Join(destDir, header.Name), 0755); err != nil {
+				a.Logger.Errorln("ExtractTarGz(): Mkdir() failed:", err.Error())
+				return "", err
+			}
+			if extractedDir == "" {
+				extractedDir = header.Name
+			}
+		case tar.TypeReg:
+			outFile, err := os.Create(path.Join(destDir, header.Name))
+			if err != nil {
+				a.Logger.Errorln("ExtractTarGz(): Create() failed:", err.Error())
+				return "", err
+			}
+			if _, err := io.Copy(outFile, tarReader); err != nil {
+				a.Logger.Errorln("ExtractTarGz(): Copy() failed:", err.Error())
+				return "", err
+			}
+			err = outFile.Close()
+			if err != nil {
+				a.Logger.Errorln("ExtractTarGz(): Close() failed:", err.Error())
+				return "", err
+			}
+
+		default:
+			a.Logger.Errorln("ExtractTarGz(): Unknown type: %s in %s", header.Typeflag, header.Name)
+			return "", err
+		}
+
+	}
+	return extractedDir, nil
 }
 
 // https://yourbasic.org/golang/formatting-byte-size-to-human-readable-format/

@@ -49,6 +49,9 @@ func (a *Agent) AgentSvc(nc *nats.Conn) {
 			a.Logger.Errorln("AgentSvc() createWinTempDir():", err)
 		}
 	}
+	a.GetNushell(false)
+	a.GetDeno(false)
+
 	a.RunMigrations()
 
 	sleepDelay := randRange(7, 25)

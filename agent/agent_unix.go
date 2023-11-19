@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -196,31 +197,42 @@ func (a *Agent) RunScript(code string, shell string, args []string, timeout int,
 	opts.IsScript = true
 	switch shell {
 	case "nushell":
-		// FIXME: Make this dynamic and use /opt/tacticalagent/bin/nu
-		opts.Shell = "/usr/local/bin/nu"
+		opts.Shell = a.NuBin
 		opts.Args = append([]string{
 			"--no-config-file",
 			f.Name(),
 		},
 			args...)
+		if !trmm.FileExists(a.NuBin) {
+			a.Logger.Errorln("RunScript(): Executable does not exist. Install Nu and try again:", a.NuBin)
+			err := errors.New("File Not Found: " + a.NuBin)
+			return "", err.Error(), 85, err
+		}
 
 	case "deno":
-		// FIXME: Make this dynamic and use /opt/tacticalagent/bin/nu
-		opts.Shell = "/usr/local/bin/deno"
+		opts.Shell = a.DenoBin
 		opts.Args = []string{
 			"run",
 			"--no-prompt",
+		}
+		if !trmm.FileExists(a.DenoBin) {
+			a.Logger.Errorln("RunScript(): Executable does not exist. Install deno and try again:", a.DenoBin)
+			err := errors.New("File Not Found: " + a.DenoBin)
+			return "", err.Error(), 85, err
 		}
 
 		// Search the environment variables for DENO_PERMISSIONS and use that to set permissions for the script.
 		// https://docs.deno.com/runtime/manual/basics/permissions#permissions-list
 		// DENO_PERMISSIONS is not an official environment variable.
 		// https://docs.deno.com/runtime/manual/basics/env_variables
-		// TODO: Remove DENO_PERMISSIONS from the environment variables.
-		for _, v := range envVars {
+		for i, v := range envVars {
 			if strings.HasPrefix(v, "DENO_PERMISSIONS=") {
 				permissions := strings.Split(v, "=")[1]
 				opts.Args = append(opts.Args, strings.Split(permissions, " ")...)
+				// Remove the DENO_PERMISSIONS variable from the environment variables slice.
+				// It's possible more variables may exist with the same prefix.
+				envVars = append(envVars[:i], envVars[i+1:]...)
+				break
 			}
 		}
 
@@ -236,7 +248,7 @@ func (a *Agent) RunScript(code string, shell string, args []string, timeout int,
 
 	opts.EnvVars = envVars
 	opts.Timeout = time.Duration(timeout)
-	a.Logger.Debugln("RunScript(): ", opts.Shell, opts.Args)
+	a.Logger.Debugln("RunScript():", opts.Shell, opts.Args)
 	out := a.CmdV2(opts)
 	retError := ""
 	if out.Status.Error != nil {
@@ -540,6 +552,235 @@ func (a *Agent) RunMigrations() {}
 func GetServiceStatus(name string) (string, error) { return "", nil }
 
 func (a *Agent) GetPython(force bool) {}
+
+// GetNushell will download nushell from GitHub and install (copy) it to nixAgentBinDir
+func (a *Agent) GetNushell(force bool) {
+	if trmm.FileExists(a.NuBin) {
+		if force {
+			err := os.Remove(a.NuBin)
+			if err != nil {
+				a.Logger.Errorln("GetNushell(): Error removing nu binary:", err)
+				return
+			}
+		} else {
+			return
+		}
+	}
+
+	if !trmm.FileExists(nixAgentBinDir) {
+		err := os.MkdirAll(nixAgentBinDir, 0755)
+		if err != nil {
+			a.Logger.Errorln("GetNushell(): Error creating nixAgentBinDir:", err)
+			return
+		}
+	}
+
+	var (
+		assetName    string
+		url          string
+		targzDirName string
+	)
+
+	switch runtime.GOOS {
+	case "darwin":
+		switch runtime.GOARCH {
+		case "arm64":
+			// https://github.com/nushell/nushell/releases/download/0.87.0/nu-0.87.0-aarch64-darwin-full.tar.gz
+			assetName = fmt.Sprintf("nu-%s-aarch64-darwin-full.tar.gz", nuVersion)
+		default:
+			a.Logger.Debugln("GetNushell(): Unsupported architecture and OS:", runtime.GOARCH, runtime.GOOS)
+			return
+		}
+	case "linux":
+		switch runtime.GOARCH {
+		case "amd64":
+			// https://github.com/nushell/nushell/releases/download/0.87.0/nu-0.87.0-x86_64-linux-musl-full.tar.gz
+			assetName = fmt.Sprintf("nu-%s-x86_64-linux-musl-full.tar.gz", nuVersion)
+		case "arm64":
+			// https://github.com/nushell/nushell/releases/download/0.87.0/nu-0.87.0-aarch64-linux-gnu-full.tar.gz
+			assetName = fmt.Sprintf("nu-%s-aarch64-linux-gnu-full.tar.gz", nuVersion)
+		default:
+			a.Logger.Debugln("GetNushell(): Unsupported architecture and OS:", runtime.GOARCH, runtime.GOOS)
+			return
+		}
+	default:
+		a.Logger.Debugln("GetNushell(): Unsupported OS:", runtime.GOOS)
+		return
+	}
+	url = fmt.Sprintf("https://github.com/nushell/nushell/releases/download/%s/%s", nuVersion, assetName)
+	a.Logger.Debugln("GetNushell(): Nu download url:", url)
+
+	tmpDir, err := os.MkdirTemp("", "trmm")
+	if err != nil {
+		a.Logger.Errorln("GetNushell(): Error creating temp directory:", err)
+		return
+	}
+	defer func(path string) {
+		err := os.RemoveAll(path)
+		if err != nil {
+			a.Logger.Errorln("GetNushell(): Error removing temp directory:", err)
+		}
+	}(tmpDir)
+
+	tmpAssetName := filepath.Join(tmpDir, assetName)
+	a.Logger.Debugln("GetNushell(): tmpAssetName:", tmpAssetName)
+
+	rClient := resty.New()
+	rClient.SetTimeout(20 * time.Minute)
+	rClient.SetRetryCount(10)
+	rClient.SetRetryWaitTime(1 * time.Minute)
+	rClient.SetRetryMaxWaitTime(15 * time.Minute)
+	if len(a.Proxy) > 0 {
+		rClient.SetProxy(a.Proxy)
+	}
+
+	r, err := rClient.R().SetOutput(tmpAssetName).Get(url)
+	if err != nil {
+		a.Logger.Errorln("GetNushell(): Unable to download nu from github.", err)
+		return
+	}
+	if r.IsError() {
+		a.Logger.Errorln("GetNushell(): Unable to download nu from github. Status code", r.StatusCode())
+		return
+	}
+
+	targzDirName, err = a.ExtractTarGz(tmpAssetName, tmpDir)
+	if err != nil {
+		a.Logger.Errorln("GetNushell(): Failed to extract downloaded tar.gz file:", err)
+		return
+	}
+
+	err = copyFile(path.Join(tmpDir, targzDirName, "nu"), a.NuBin)
+	if err != nil {
+		a.Logger.Errorln("GetNushell(): Failed to copy nu file to install dir:", err)
+		return
+	}
+
+	err = os.Chmod(a.NuBin, 0755)
+	if err != nil {
+		a.Logger.Errorln("GetNushell(): Failed to chmod nu binary:", err)
+		return
+	}
+
+}
+
+// GetDeno will download deno from GitHub and install (copy) it to nixAgentBinDir
+func (a *Agent) GetDeno(force bool) {
+	if trmm.FileExists(a.DenoBin) {
+		if force {
+			err := os.Remove(a.DenoBin)
+			if err != nil {
+				a.Logger.Errorln("GetDeno(): Error removing deno binary:", err)
+				return
+			}
+		} else {
+			return
+		}
+	}
+
+	if !trmm.FileExists(nixAgentBinDir) {
+		err := os.MkdirAll(nixAgentBinDir, 0755)
+		if err != nil {
+			a.Logger.Errorln("GetDeno(): Error creating nixAgentBinDir:", err)
+			return
+		}
+	}
+
+	var (
+		assetName string
+		url       string
+	)
+
+	switch runtime.GOOS {
+	case "darwin":
+		switch runtime.GOARCH {
+		case "arm64":
+			// https://github.com/denoland/deno/releases/download/v1.38.2/deno-aarch64-apple-darwin.zip
+			assetName = fmt.Sprintf("deno-aarch64-apple-darwin.zip")
+		case "amd64":
+			// https://github.com/denoland/deno/releases/download/v1.38.2/deno-x86_64-apple-darwin.zip
+			assetName = fmt.Sprintf("deno-x86_64-apple-darwin.zip")
+		default:
+			a.Logger.Debugln("GetDeno(): Unsupported architecture and OS:", runtime.GOARCH, runtime.GOOS)
+			return
+		}
+	case "linux":
+		switch runtime.GOARCH {
+		case "amd64":
+			// https://github.com/denoland/deno/releases/download/v1.38.2/deno-x86_64-unknown-linux-gnu.zip
+			assetName = fmt.Sprintf("deno-x86_64-unknown-linux-gnu.zip")
+		default:
+			a.Logger.Debugln("GetDeno(): Unsupported architecture and OS:", runtime.GOARCH, runtime.GOOS)
+			return
+		}
+	default:
+		a.Logger.Debugln("GetDeno(): Unsupported OS:", runtime.GOOS)
+		return
+	}
+	url = fmt.Sprintf("https://github.com/denoland/deno/releases/download/%s/%s", denoVersion, assetName)
+	a.Logger.Debugln("GetDeno(): Deno download url:", url)
+
+	tmpDir, err := os.MkdirTemp("", "trmm")
+	if err != nil {
+		a.Logger.Errorln("GetDeno(): Error creating temp directory:", err)
+		return
+	}
+	defer func(path string) {
+		err := os.RemoveAll(path)
+		if err != nil {
+			a.Logger.Errorln("GetDeno(): Error removing temp directory:", err)
+		}
+	}(tmpDir)
+
+	tmpAssetName := filepath.Join(tmpDir, assetName)
+	a.Logger.Debugln("GetDeno(): tmpAssetName:", tmpAssetName)
+
+	if !trmm.FileExists(nixAgentBinDir) {
+		err = os.MkdirAll(nixAgentBinDir, 0755)
+		if err != nil {
+			a.Logger.Errorln("GetDeno(): Error creating nixAgentBinDir:", err)
+			return
+		}
+	}
+
+	rClient := resty.New()
+	rClient.SetTimeout(20 * time.Minute)
+	rClient.SetRetryCount(10)
+	rClient.SetRetryWaitTime(1 * time.Minute)
+	rClient.SetRetryMaxWaitTime(15 * time.Minute)
+	if len(a.Proxy) > 0 {
+		rClient.SetProxy(a.Proxy)
+	}
+
+	r, err := rClient.R().SetOutput(tmpAssetName).Get(url)
+	if err != nil {
+		a.Logger.Errorln("GetDeno(): Unable to download deno from github.", err)
+		return
+	}
+	if r.IsError() {
+		a.Logger.Errorln("GetDeno(): Unable to download deno from github. Status code", r.StatusCode())
+		return
+	}
+
+	err = Unzip(tmpAssetName, tmpDir)
+	if err != nil {
+		a.Logger.Errorln("GetDeno(): Failed to unzip downloaded zip file:", err)
+		return
+	}
+
+	err = copyFile(path.Join(tmpDir, "deno"), a.DenoBin)
+	if err != nil {
+		a.Logger.Errorln("GetDeno(): Failed to copy deno file to install dir:", err)
+		return
+	}
+
+	err = os.Chmod(a.DenoBin, 0755)
+	if err != nil {
+		a.Logger.Errorln("GetDeno(): Failed to chmod deno binary:", err)
+		return
+	}
+
+}
 
 type SchedTask struct{ Name string }
 

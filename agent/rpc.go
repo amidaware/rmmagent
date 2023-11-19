@@ -437,6 +437,10 @@ func (a *Agent) RunRPC() {
 			}()
 		case "installpython":
 			go a.GetPython(true)
+		case "installnushell":
+			go a.GetNushell(true)
+		case "installdeno":
+			go a.GetDeno(true)
 		case "installchoco":
 			go a.InstallChoco()
 		case "installwithchoco":

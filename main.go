@@ -117,6 +117,10 @@ func main() {
 		fmt.Println(a.PublicIP())
 	case "getpython":
 		a.GetPython(true)
+	case "getdeno":
+		a.GetDeno(true)
+	case "getnushell":
+		a.GetNushell(true)
 	case "runmigrations":
 		a.RunMigrations()
 	case "recovermesh":
