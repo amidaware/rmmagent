@@ -180,6 +180,10 @@ func (a *Agent) CreateSchedTask(st SchedTask) (bool, error) {
 			Enabled:       st.Enabled,
 			StartBoundary: now,
 		}
+	} else if st.Trigger == "runonce" {
+		tasktrigger = taskmaster.TaskTrigger{
+			Enabled:       st.Enabled,
+		}
 	} else {
 		tasktrigger = taskmaster.TaskTrigger{
 			Enabled:       st.Enabled,
@@ -201,9 +205,9 @@ func (a *Agent) CreateSchedTask(st SchedTask) (bool, error) {
 
 	switch st.Trigger {
 	case "runonce":
-		trigger = taskmaster.TimeTrigger{
+		trigger = taskmaster.RegistrationTrigger{
 			TaskTrigger: tasktrigger,
-			RandomDelay: st.RandomDelay,
+			Delay: st.RandomDelay,
 		}
 
 	case "daily":
