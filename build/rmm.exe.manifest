@@ -3,7 +3,7 @@
   <assemblyIdentity
     type="win32"
     name="TacticalRMM"
-    version="2.5.0.0"
+    version="2.6.0.0"
     processorArchitecture="*"/>
  <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
    <security>

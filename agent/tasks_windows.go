@@ -175,12 +175,17 @@ func (a *Agent) CreateSchedTask(st SchedTask) (bool, error) {
 	var tasktrigger taskmaster.TaskTrigger
 
 	var now = time.Now()
-	if st.Trigger == "manual" {
+	switch st.Trigger {
+	case "manual":
 		tasktrigger = taskmaster.TaskTrigger{
 			Enabled:       st.Enabled,
 			StartBoundary: now,
 		}
-	} else {
+	case "onboarding":
+		tasktrigger = taskmaster.TaskTrigger{
+			Enabled: st.Enabled,
+		}
+	default:
 		tasktrigger = taskmaster.TaskTrigger{
 			Enabled:       st.Enabled,
 			StartBoundary: time.Date(st.StartYear, st.StartMonth, st.StartDay, st.StartHour, st.StartMinute, 0, 0, now.Location()),
@@ -204,6 +209,11 @@ func (a *Agent) CreateSchedTask(st SchedTask) (bool, error) {
 		trigger = taskmaster.TimeTrigger{
 			TaskTrigger: tasktrigger,
 			RandomDelay: st.RandomDelay,
+		}
+	case "onboarding":
+		trigger = taskmaster.RegistrationTrigger{
+			TaskTrigger: tasktrigger,
+			Delay:       st.RandomDelay,
 		}
 
 	case "daily":
