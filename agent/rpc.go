@@ -26,22 +26,24 @@ import (
 )
 
 type NatsMsg struct {
-	Func            string            `json:"func"`
-	Timeout         int               `json:"timeout"`
-	Data            map[string]string `json:"payload"`
-	ScriptArgs      []string          `json:"script_args"`
-	ProcPID         int32             `json:"procpid"`
-	TaskPK          int               `json:"taskpk"`
-	ScheduledTask   SchedTask         `json:"schedtaskpayload"`
-	RecoveryCommand string            `json:"recoverycommand"`
-	UpdateGUIDs     []string          `json:"guids"`
-	ChocoProgName   string            `json:"choco_prog_name"`
-	PendingActionPK int               `json:"pending_action_pk"`
-	PatchMgmt       bool              `json:"patch_mgmt"`
-	ID              int               `json:"id"`
-	Code            string            `json:"code"`
-	RunAsUser       bool              `json:"run_as_user"`
-	EnvVars         []string          `json:"env_vars"`
+	Func                   string            `json:"func"`
+	Timeout                int               `json:"timeout"`
+	Data                   map[string]string `json:"payload"`
+	ScriptArgs             []string          `json:"script_args"`
+	ProcPID                int32             `json:"procpid"`
+	TaskPK                 int               `json:"taskpk"`
+	ScheduledTask          SchedTask         `json:"schedtaskpayload"`
+	RecoveryCommand        string            `json:"recoverycommand"`
+	UpdateGUIDs            []string          `json:"guids"`
+	ChocoProgName          string            `json:"choco_prog_name"`
+	PendingActionPK        int               `json:"pending_action_pk"`
+	PatchMgmt              bool              `json:"patch_mgmt"`
+	ID                     int               `json:"id"`
+	Code                   string            `json:"code"`
+	RunAsUser              bool              `json:"run_as_user"`
+	EnvVars                []string          `json:"env_vars"`
+	NushellEnableConfig    bool              `json:"nushell_enable_config"`
+	DenoDefaultPermissions string            `json:"deno_default_permissions"`
 }
 
 var (
@@ -264,7 +266,7 @@ func (a *Agent) RunRPC() {
 				var resultData rmm.RunScriptResp
 				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
 				start := time.Now()
-				stdout, stderr, retcode, err := a.RunScript(p.Data["code"], p.Data["shell"], p.ScriptArgs, p.Timeout, p.RunAsUser, p.EnvVars)
+				stdout, stderr, retcode, err := a.RunScript(p.Data["code"], p.Data["shell"], p.ScriptArgs, p.Timeout, p.RunAsUser, p.EnvVars, p.NushellEnableConfig, p.DenoDefaultPermissions)
 				resultData.ExecTime = time.Since(start).Seconds()
 				resultData.ID = p.ID
 
@@ -294,7 +296,7 @@ func (a *Agent) RunRPC() {
 				var retData rmm.RunScriptResp
 				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
 				start := time.Now()
-				stdout, stderr, retcode, err := a.RunScript(p.Data["code"], p.Data["shell"], p.ScriptArgs, p.Timeout, p.RunAsUser, p.EnvVars)
+				stdout, stderr, retcode, err := a.RunScript(p.Data["code"], p.Data["shell"], p.ScriptArgs, p.Timeout, p.RunAsUser, p.EnvVars, p.NushellEnableConfig, p.DenoDefaultPermissions)
 
 				retData.ExecTime = time.Since(start).Seconds()
 				if err != nil {
@@ -438,9 +440,9 @@ func (a *Agent) RunRPC() {
 		case "installpython":
 			go a.GetPython(true)
 		case "installnushell":
-			go a.GetNushell(true)
+			go a.InstallNushell(true)
 		case "installdeno":
-			go a.GetDeno(true)
+			go a.InstallDeno(true)
 		case "installchoco":
 			go a.InstallChoco()
 		case "installwithchoco":

@@ -92,7 +92,7 @@ func NewAgentConfig() *rmm.AgentConfig {
 	}
 }
 
-func (a *Agent) RunScript(code string, shell string, args []string, timeout int, runasuser bool, envVars []string) (stdout, stderr string, exitcode int, e error) {
+func (a *Agent) RunScript(code string, shell string, args []string, timeout int, runasuser bool, envVars []string, nushellEnableConfig bool, denoDefaultPermissions string) (stdout, stderr string, exitcode int, e error) {
 
 	content := []byte(code)
 
@@ -158,7 +158,18 @@ func (a *Agent) RunScript(code string, shell string, args []string, timeout int,
 		exe = tmpfn.Name()
 	case "nushell":
 		exe = a.NuBin
-		cmdArgs = []string{"--no-config-file", tmpfn.Name()}
+		var nushellArgs []string
+		if nushellEnableConfig {
+			nushellArgs = []string{
+				"--config",
+				path.Join(a.ProgramDir, "etc", "nushell", "config.nu"),
+				"--env-config",
+				path.Join(a.ProgramDir, "etc", "nushell", "env.nu"),
+			}
+		} else {
+			nushellArgs = []string{"--no-config-file"}
+		}
+		cmdArgs = append(nushellArgs, tmpfn.Name())
 		if !trmm.FileExists(a.NuBin) {
 			a.Logger.Errorln("RunScript(): Executable does not exist. Install Nu and try again:", a.NuBin)
 			err := errors.New("File Not Found: " + a.NuBin)
@@ -177,6 +188,8 @@ func (a *Agent) RunScript(code string, shell string, args []string, timeout int,
 		// https://docs.deno.com/runtime/manual/basics/permissions#permissions-list
 		// DENO_PERMISSIONS is not an official environment variable.
 		// https://docs.deno.com/runtime/manual/basics/env_variables
+		// DENO_DEFAULT_PERMISSIONS is used if not found in the environment variables.
+		found := false
 		for i, v := range envVars {
 			if strings.HasPrefix(v, "DENO_PERMISSIONS=") {
 				permissions := strings.Split(v, "=")[1]
@@ -184,12 +197,13 @@ func (a *Agent) RunScript(code string, shell string, args []string, timeout int,
 				// Remove the DENO_PERMISSIONS variable from the environment variables slice.
 				// It's possible more variables may exist with the same prefix.
 				envVars = append(envVars[:i], envVars[i+1:]...)
+				found = true
 				break
 			}
 		}
-
-		// Can't append a variadic slice after a string arg.
-		// https://pkg.go.dev/builtin#append
+		if !found && denoDefaultPermissions != "" {
+			cmdArgs = append(cmdArgs, strings.Split(denoDefaultPermissions, " ")...)
+		}
 		cmdArgs = append(cmdArgs, tmpfn.Name())
 
 	}
@@ -879,14 +893,20 @@ func (a *Agent) GetPython(force bool) {
 	}
 }
 
-// GetNushell will download nushell from GitHub and install (copy) it to ProgramDir\bin, where ProgramDir is
+// InstallNushell will download nushell from GitHub and install (copy) it to ProgramDir\bin, where ProgramDir is
 // initialized to C:\Program Files\TacticalAgent
-func (a *Agent) GetNushell(force bool) {
+func (a *Agent) InstallNushell(force bool) {
+	conf := a.GetAgentCheckInConfig(a.GetCheckInConfFromAPI())
+	if !conf.InstallNushell {
+		return
+	}
+
 	if trmm.FileExists(a.NuBin) {
 		if force {
+			a.Logger.Debugln(a.NuBin, "InstallNushell(): Forced install. Removing nu.exe binary.")
 			err := os.Remove(a.NuBin)
 			if err != nil {
-				a.Logger.Errorln("GetNushell(): Error removing nu binary:", err)
+				a.Logger.Errorln("InstallNushell(): Error removing nu.exe binary:", err)
 				return
 			}
 		} else {
@@ -898,8 +918,47 @@ func (a *Agent) GetNushell(force bool) {
 	if !trmm.FileExists(programBinDir) {
 		err := os.MkdirAll(programBinDir, 0755)
 		if err != nil {
-			a.Logger.Errorln("GetNushell(): Error creating Program Files bin folder:", err)
+			a.Logger.Errorln("InstallNushell(): Error creating Program Files bin folder:", err)
 			return
+		}
+	}
+
+	if conf.NushellEnableConfig {
+		// Create 0-byte config files for Nushell
+		nushellPath := path.Join(a.ProgramDir, "etc", "nushell")
+		nushellConfig := path.Join(nushellPath, "config.nu")
+		nushellEnv := path.Join(nushellPath, "env.nu")
+		if !trmm.FileExists(nushellPath) {
+			err := os.MkdirAll(nushellPath, 0755)
+			if err != nil {
+				a.Logger.Errorln("InstallNushell(): Error creating Program Files/nushell:", err)
+				return
+			}
+		}
+
+		if !trmm.FileExists(nushellConfig) {
+			_, err := os.Create(nushellConfig)
+			if err != nil {
+				a.Logger.Errorln("InstallNushell(): Error creating nushell config.nu:", err)
+				return
+			}
+			err = os.Chmod(nushellConfig, 0744)
+			if err != nil {
+				a.Logger.Errorln("InstallNushell(): Error changing permissions for nushell config.nu:", err)
+				return
+			}
+		}
+		if !trmm.FileExists(nushellEnv) {
+			_, err := os.Create(nushellEnv)
+			if err != nil {
+				a.Logger.Errorln("InstallNushell(): Error creating nushell env.nu:", err)
+				return
+			}
+			err = os.Chmod(nushellEnv, 0744)
+			if err != nil {
+				a.Logger.Errorln("InstallNushell(): Error changing permissions for nushell env.nu:", err)
+				return
+			}
 		}
 	}
 
@@ -908,40 +967,47 @@ func (a *Agent) GetNushell(force bool) {
 		url       string
 	)
 
-	switch runtime.GOOS {
-	case "windows":
-		switch runtime.GOARCH {
-		case "amd64":
-			// https://github.com/nushell/nushell/releases/download/0.87.0/nu-0.87.0-x86_64-windows-msvc-full.zip
-			assetName = fmt.Sprintf("nu-%s-x86_64-windows-msvc-full.zip", nuVersion)
-		case "arm64":
-			// https://github.com/nushell/nushell/releases/download/0.87.0/nu-0.87.0-aarch64-windows-msvc-full.zip
-			assetName = fmt.Sprintf("nu-%s-aarch64-windows-msvc-full.zip", nuVersion)
+	if conf.InstallNushellUrl != "" {
+		url = conf.InstallNushellUrl
+		url = strings.Replace(url, "{OS}", runtime.GOOS, -1)
+		url = strings.Replace(url, "{ARCH}", runtime.GOARCH, -1)
+		url = strings.Replace(url, "{VERSION}", conf.InstallNushellVersion, -1)
+	} else {
+		switch runtime.GOOS {
+		case "windows":
+			switch runtime.GOARCH {
+			case "amd64":
+				// https://github.com/nushell/nushell/releases/download/0.87.0/nu-0.87.0-x86_64-windows-msvc-full.zip
+				assetName = fmt.Sprintf("nu-%s-x86_64-windows-msvc-full.zip", conf.InstallNushellVersion)
+			case "arm64":
+				// https://github.com/nushell/nushell/releases/download/0.87.0/nu-0.87.0-aarch64-windows-msvc-full.zip
+				assetName = fmt.Sprintf("nu-%s-aarch64-windows-msvc-full.zip", conf.InstallNushellVersion)
+			default:
+				a.Logger.Debugln("InstallNushell(): Unsupported architecture and OS:", runtime.GOARCH, runtime.GOOS)
+				return
+			}
 		default:
-			a.Logger.Debugln("GetNushell(): Unsupported architecture and OS:", runtime.GOARCH, runtime.GOOS)
+			a.Logger.Debugln("InstallNushell(): Unsupported OS:", runtime.GOOS)
 			return
 		}
-	default:
-		a.Logger.Debugln("GetNushell(): Unsupported OS:", runtime.GOOS)
-		return
+		url = fmt.Sprintf("https://github.com/nushell/nushell/releases/download/%s/%s", conf.InstallNushellVersion, assetName)
 	}
-	url = fmt.Sprintf("https://github.com/nushell/nushell/releases/download/%s/%s", nuVersion, assetName)
-	a.Logger.Debugln("GetNushell(): Nu download url:", url)
+	a.Logger.Debugln("InstallNushell(): Nu download url:", url)
 
 	tmpDir, err := os.MkdirTemp("", "trmm")
 	if err != nil {
-		a.Logger.Errorln("GetNushell(): Error creating temp directory:", err)
+		a.Logger.Errorln("InstallNushell(): Error creating temp directory:", err)
 		return
 	}
 	defer func(path string) {
 		err := os.RemoveAll(path)
 		if err != nil {
-			a.Logger.Errorln("GetNushell(): Error removing temp directory:", err)
+			a.Logger.Errorln("InstallNushell(): Error removing temp directory:", err)
 		}
 	}(tmpDir)
 
 	tmpAssetName := filepath.Join(tmpDir, assetName)
-	a.Logger.Debugln("GetNushell(): tmpAssetName:", tmpAssetName)
+	a.Logger.Debugln("InstallNushell(): tmpAssetName:", tmpAssetName)
 
 	rClient := resty.New()
 	rClient.SetTimeout(20 * time.Minute)
@@ -954,35 +1020,50 @@ func (a *Agent) GetNushell(force bool) {
 
 	r, err := rClient.R().SetOutput(tmpAssetName).Get(url)
 	if err != nil {
-		a.Logger.Errorln("GetNushell(): Unable to download nu from github.", err)
+		a.Logger.Errorln("InstallNushell(): Unable to download nu:", err)
 		return
 	}
 	if r.IsError() {
-		a.Logger.Errorln("GetNushell(): Unable to download nu from github. Status code", r.StatusCode())
+		a.Logger.Errorln("InstallNushell(): Unable to download nu. Status code:", r.StatusCode())
 		return
 	}
 
-	err = Unzip(tmpAssetName, tmpDir)
-	if err != nil {
-		a.Logger.Errorln("GetNushell(): Failed to unzip downloaded zip file:", err)
-		return
-	}
+	if conf.InstallNushellUrl != "" {
+		// InstallNushellUrl is not compressed.
+		err = copyFile(path.Join(tmpDir, tmpAssetName), a.NuBin)
+		if err != nil {
+			a.Logger.Errorln("InstallNushell(): Failed to copy nu file to install dir:", err)
+			return
+		}
+	} else {
+		err = Unzip(tmpAssetName, tmpDir)
+		if err != nil {
+			a.Logger.Errorln("InstallNushell(): Failed to unzip downloaded zip file:", err)
+			return
+		}
 
-	err = copyFile(path.Join(tmpDir, "nu.exe"), a.NuBin)
-	if err != nil {
-		a.Logger.Errorln("GetNushell(): Failed to copy nu.exe file to install dir:", err)
-		return
+		err = copyFile(path.Join(tmpDir, "nu.exe"), a.NuBin)
+		if err != nil {
+			a.Logger.Errorln("InstallNushell(): Failed to copy nu.exe file to install dir:", err)
+			return
+		}
 	}
 
 }
 
-// GetDeno will download deno from GitHub and install (copy) it to nixAgentBinDir
-func (a *Agent) GetDeno(force bool) {
+// InstallDeno will download deno from GitHub and install (copy) it to ProgramDir\bin, where ProgramDir is
+// initialized to C:\Program Files\TacticalAgent
+func (a *Agent) InstallDeno(force bool) {
+	conf := a.GetAgentCheckInConfig(a.GetCheckInConfFromAPI())
+	if !conf.InstallDeno {
+		return
+	}
+
 	if trmm.FileExists(a.DenoBin) {
 		if force {
 			err := os.Remove(a.DenoBin)
 			if err != nil {
-				a.Logger.Errorln("GetDeno(): Error removing deno binary:", err)
+				a.Logger.Errorln("InstallDeno(): Error removing deno binary:", err)
 				return
 			}
 		} else {
@@ -994,7 +1075,7 @@ func (a *Agent) GetDeno(force bool) {
 	if !trmm.FileExists(programBinDir) {
 		err := os.MkdirAll(programBinDir, 0755)
 		if err != nil {
-			a.Logger.Errorln("GetDeno(): Error creating Program Files bin folder:", err)
+			a.Logger.Errorln("InstallDeno(): Error creating Program Files bin folder:", err)
 			return
 		}
 	}
@@ -1004,45 +1085,44 @@ func (a *Agent) GetDeno(force bool) {
 		url       string
 	)
 
-	switch runtime.GOOS {
-	case "windows":
-		switch runtime.GOARCH {
-		case "amd64":
-			// https://github.com/denoland/deno/releases/download/v1.38.2/deno-x86_64-pc-windows-msvc.zip
-			assetName = fmt.Sprintf("deno-x86_64-pc-windows-msvc.zip")
+	if conf.InstallDenoUrl != "" {
+		url = conf.InstallDenoUrl
+		url = strings.Replace(url, "{OS}", runtime.GOOS, -1)
+		url = strings.Replace(url, "{ARCH}", runtime.GOARCH, -1)
+		url = strings.Replace(url, "{VERSION}", conf.InstallDenoVersion, -1)
+	} else {
+		switch runtime.GOOS {
+		case "windows":
+			switch runtime.GOARCH {
+			case "amd64":
+				// https://github.com/denoland/deno/releases/download/v1.38.2/deno-x86_64-pc-windows-msvc.zip
+				assetName = fmt.Sprintf("deno-x86_64-pc-windows-msvc.zip")
+			default:
+				a.Logger.Debugln("InstallDeno(): Unsupported architecture and OS:", runtime.GOARCH, runtime.GOOS)
+				return
+			}
 		default:
-			a.Logger.Debugln("GetDeno(): Unsupported architecture and OS:", runtime.GOARCH, runtime.GOOS)
+			a.Logger.Debugln("InstallDeno(): Unsupported OS:", runtime.GOOS)
 			return
 		}
-	default:
-		a.Logger.Debugln("GetDeno(): Unsupported OS:", runtime.GOOS)
-		return
+		url = fmt.Sprintf("https://github.com/denoland/deno/releases/download/%s/%s", conf.InstallDenoVersion, assetName)
 	}
-	url = fmt.Sprintf("https://github.com/denoland/deno/releases/download/%s/%s", denoVersion, assetName)
-	a.Logger.Debugln("GetDeno(): Deno download url:", url)
+	a.Logger.Debugln("InstallDeno(): Deno download url:", url)
 
 	tmpDir, err := os.MkdirTemp("", "trmm")
 	if err != nil {
-		a.Logger.Errorln("GetDeno(): Error creating temp directory:", err)
+		a.Logger.Errorln("InstallDeno(): Error creating temp directory:", err)
 		return
 	}
 	defer func(path string) {
 		err := os.RemoveAll(path)
 		if err != nil {
-			a.Logger.Errorln("GetDeno(): Error removing temp directory:", err)
+			a.Logger.Errorln("InstallDeno(): Error removing temp directory:", err)
 		}
 	}(tmpDir)
 
 	tmpAssetName := filepath.Join(tmpDir, assetName)
-	a.Logger.Debugln("GetDeno(): tmpAssetName:", tmpAssetName)
-
-	if !trmm.FileExists(nixAgentBinDir) {
-		err = os.MkdirAll(nixAgentBinDir, 0755)
-		if err != nil {
-			a.Logger.Errorln("GetDeno(): Error creating nixAgentBinDir:", err)
-			return
-		}
-	}
+	a.Logger.Debugln("InstallDeno(): tmpAssetName:", tmpAssetName)
 
 	rClient := resty.New()
 	rClient.SetTimeout(20 * time.Minute)
@@ -1055,24 +1135,34 @@ func (a *Agent) GetDeno(force bool) {
 
 	r, err := rClient.R().SetOutput(tmpAssetName).Get(url)
 	if err != nil {
-		a.Logger.Errorln("GetDeno(): Unable to download deno from github.", err)
+		a.Logger.Errorln("InstallDeno(): Unable to download deno:", err)
 		return
 	}
 	if r.IsError() {
-		a.Logger.Errorln("GetDeno(): Unable to download deno from github. Status code", r.StatusCode())
+		a.Logger.Errorln("InstallDeno(): Unable to download deno. Status code:", r.StatusCode())
 		return
 	}
 
-	err = Unzip(tmpAssetName, tmpDir)
-	if err != nil {
-		a.Logger.Errorln("GetDeno(): Failed to unzip downloaded zip file:", err)
-		return
-	}
+	if conf.InstallDenoUrl != "" {
+		// InstallDenoUrl is not compressed.
+		err = copyFile(path.Join(tmpDir, tmpAssetName), a.DenoBin)
+		if err != nil {
+			a.Logger.Errorln("InstallDeno(): Failed to copy deno file to install dir:", err)
+			return
+		}
+	} else {
+		// GitHub asset is zip compressed.
+		err = Unzip(tmpAssetName, tmpDir)
+		if err != nil {
+			a.Logger.Errorln("InstallDeno(): Failed to unzip downloaded zip file:", err)
+			return
+		}
 
-	err = copyFile(path.Join(tmpDir, "deno.exe"), a.DenoBin)
-	if err != nil {
-		a.Logger.Errorln("GetDeno(): Failed to copy deno.exe file to install dir:", err)
-		return
+		err = copyFile(path.Join(tmpDir, "deno.exe"), a.DenoBin)
+		if err != nil {
+			a.Logger.Errorln("InstallDeno(): Failed to copy deno.exe file to install dir:", err)
+			return
+		}
 	}
 
 }

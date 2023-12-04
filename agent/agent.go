@@ -89,12 +89,11 @@ const (
 	nixMeshDir           = "/opt/tacticalmesh"
 	nixAgentBin          = nixAgentDir + "/tacticalagent"
 	nixAgentBinDir       = nixAgentDir + "/bin"
+	nixAgentEtcDir       = nixAgentDir + "/etc"
 	nixMeshAgentBin      = nixMeshDir + "/meshagent"
 	macPlistPath         = "/Library/LaunchDaemons/tacticalagent.plist"
 	macPlistName         = "tacticalagent"
 	defaultMacMeshSvcDir = "/usr/local/mesh_services"
-	nuVersion            = "0.87.0"
-	denoVersion          = "v1.38.2"
 )
 
 var defaultWinTmpDir = filepath.Join(os.Getenv("PROGRAMDATA"), "TacticalRMM")

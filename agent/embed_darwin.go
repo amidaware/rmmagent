@@ -20,5 +20,5 @@ import _ "embed"
 var ventura_mesh_fix string
 
 func (a *Agent) FixVenturaMesh() {
-	a.RunScript(ventura_mesh_fix, "foo", []string{}, 45, false, []string{})
+	a.RunScript(ventura_mesh_fix, "foo", []string{}, 45, false, []string{}, false, "")
 }
