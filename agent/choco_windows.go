@@ -59,6 +59,15 @@ func (a *Agent) InstallChoco() {
 
 	result.Installed = true
 	a.rClient.R().SetBody(result).Post(url)
+	
+	if result.Installed {
+		restartScript := "Restart-Service -Name 'tacticalrmm'"
+		_, _, exitcode, err := a.RunScript(restartScript, "powershell", []string{}, 60, false, []string{})
+		if err != nil || exitcode != 0 {
+			a.Logger.Debugln("Failed to restart TRMM agent service:", err)
+			// Handle the error or log it as required
+		}
+	}
 }
 
 func (a *Agent) InstallWithChoco(name string) (string, error) {
