@@ -306,7 +306,8 @@ func (a *Agent) CmdV2(c *CmdOptions) CmdStatus {
 	} else if c.IsExecutable {
 		envCmd = gocmd.NewCmdOptions(cmdOptions, c.Shell, c.Command) // c.Shell: bin + c.Command: args as one string
 	} else {
-		envCmd = gocmd.NewCmdOptions(cmdOptions, c.Shell, "-c", c.Command) // /bin/bash -c 'ls -l /var/log/...'
+		commandArray := append(strings.Fields(c.Shell), "-c", c.Command)
+		envCmd = gocmd.NewCmdOptions(cmdOptions, commandArray[0], commandArray[1:]...) // /bin/bash -c 'ls -l /var/log/...'
 	}
 
 	var stdoutBuf bytes.Buffer
