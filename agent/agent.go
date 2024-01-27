@@ -436,7 +436,7 @@ func (a *Agent) ForceKillMesh() {
 	}
 
 	for _, pid := range pids {
-		a.Logger.Debugln("Killing mesh process with pid %d", pid)
+		a.Logger.Debugln("Killing mesh process with pid:", pid)
 		if err := KillProc(int32(pid)); err != nil {
 			a.Logger.Debugln(err)
 		}
