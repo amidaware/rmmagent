@@ -311,6 +311,15 @@ func removeNewlines(s string) string {
 	return strings.ReplaceAll(s, "\n", "")
 }
 
+func contains(s string, substrs []string) bool {
+	for _, substr := range substrs {
+		if strings.Contains(s, substr) {
+			return true
+		}
+	}
+	return false
+}
+
 func stringInSlice(a string, list []string) bool {
 	for _, b := range list {
 		if b == a {

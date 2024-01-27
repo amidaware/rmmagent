@@ -395,11 +395,12 @@ func (a *Agent) GetWMIInfo() map[string]interface{} {
 
 	// disks
 	block, err := ghw.Block(ghw.WithDisableWarnings())
+	ignore := []string{"ram", "loop"}
 	if err != nil {
 		a.Logger.Errorln("ghw.Block()", err)
 	} else {
 		for _, disk := range block.Disks {
-			if disk.IsRemovable || strings.Contains(disk.Name, "ram") {
+			if disk.IsRemovable || contains(disk.Name, ignore) {
 				continue
 			}
 			ret := fmt.Sprintf("%s %s %s %s %s %s", disk.Vendor, disk.Model, disk.StorageController, disk.DriveType, disk.Name, ByteCountSI(disk.SizeBytes))
