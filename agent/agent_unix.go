@@ -395,11 +395,12 @@ func (a *Agent) GetWMIInfo() map[string]interface{} {
 
 	// disks
 	block, err := ghw.Block(ghw.WithDisableWarnings())
+	ignore := []string{"ram", "loop"}
 	if err != nil {
 		a.Logger.Errorln("ghw.Block()", err)
 	} else {
 		for _, disk := range block.Disks {
-			if disk.IsRemovable || strings.Contains(disk.Name, "ram") {
+			if disk.IsRemovable || contains(disk.Name, ignore) {
 				continue
 			}
 			ret := fmt.Sprintf("%s %s %s %s %s %s", disk.Vendor, disk.Model, disk.StorageController, disk.DriveType, disk.Name, ByteCountSI(disk.SizeBytes))
@@ -470,6 +471,30 @@ func (a *Agent) GetWMIInfo() map[string]interface{} {
 				}
 			}
 		}
+	}
+
+	switch runtime.GOOS {
+	case "linux":
+		baseboard, err := ghw.Baseboard()
+		if err != nil {
+			a.Logger.Debugln("ghw.Baseboard()", err)
+			wmiInfo["serialnumber"] = "n/a"
+		} else {
+			wmiInfo["serialnumber"] = baseboard.SerialNumber
+		}
+	case "darwin":
+		opts := a.NewCMDOpts()
+		serialCmd := `ioreg -l | grep IOPlatformSerialNumber | grep -o '"IOPlatformSerialNumber" = "[^"]*"' | awk -F'"' '{print $4}'`
+		opts.Command = serialCmd
+		out := a.CmdV2(opts)
+		if out.Status.Error != nil {
+			a.Logger.Debugln("ioreg get serial number: ", out.Status.Error.Error())
+			wmiInfo["serialnumber"] = "n/a"
+		} else {
+			wmiInfo["serialnumber"] = removeNewlines(out.Stdout)
+		}
+	default:
+		wmiInfo["serialnumber"] = "n/a"
 	}
 
 	if len(cpus) == 0 {

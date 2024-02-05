@@ -14,11 +14,11 @@ jobs:
     name: Run tests
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - uses: actions/setup-go@v4
+      - uses: actions/setup-go@v5
         with:
-          go-version: '1.20.11'
+          go-version: '1.20.13'
 
       - name: Ensure linux agent compiles
         run: |
