@@ -17,7 +17,6 @@ import (
 	"io"
 	"net/url"
 	"os"
-	"path"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -306,7 +305,7 @@ func (a *Agent) Install(i *Installer) {
 	}
 
 	if runtime.GOOS == "windows" {
-		os.MkdirAll(path.Join(a.ProgramDir, "bin"), 0755)
+		os.MkdirAll(filepath.Join(a.ProgramDir, "bin"), 0755)
 
 		// send software api
 		a.SendSoftware()
