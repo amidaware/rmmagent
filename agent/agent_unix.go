@@ -20,7 +20,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -201,9 +200,9 @@ func (a *Agent) RunScript(code string, shell string, args []string, timeout int,
 		if nushellEnableConfig {
 			nushellArgs = []string{
 				"--config",
-				path.Join(nixAgentEtcDir, "nushell", "config.nu"),
+				filepath.Join(nixAgentEtcDir, "nushell", "config.nu"),
 				"--env-config",
-				path.Join(nixAgentEtcDir, "nushell", "env.nu"),
+				filepath.Join(nixAgentEtcDir, "nushell", "env.nu"),
 			}
 		} else {
 			nushellArgs = []string{"--no-config-file"}
@@ -606,9 +605,9 @@ func (a *Agent) InstallNushell(force bool) {
 
 	if conf.NushellEnableConfig {
 		// Create 0-byte config files for Nushell
-		nushellPath := path.Join(nixAgentEtcDir, "nushell")
-		nushellConfig := path.Join(nushellPath, "config.nu")
-		nushellEnv := path.Join(nushellPath, "env.nu")
+		nushellPath := filepath.Join(nixAgentEtcDir, "nushell")
+		nushellConfig := filepath.Join(nushellPath, "config.nu")
+		nushellEnv := filepath.Join(nushellPath, "env.nu")
 		if !trmm.FileExists(nushellPath) {
 			err := os.MkdirAll(nushellPath, 0755)
 			if err != nil {
@@ -721,7 +720,7 @@ func (a *Agent) InstallNushell(force bool) {
 
 	if conf.InstallNushellUrl != "" {
 		// InstallNushellUrl is not compressed.
-		err = copyFile(path.Join(tmpDir, tmpAssetName), a.NuBin)
+		err = copyFile(filepath.Join(tmpDir, tmpAssetName), a.NuBin)
 		if err != nil {
 			a.Logger.Errorln("InstallNushell(): Failed to copy nu file to install dir:", err)
 			return
@@ -734,7 +733,7 @@ func (a *Agent) InstallNushell(force bool) {
 			return
 		}
 
-		err = copyFile(path.Join(tmpDir, targzDirName, "nu"), a.NuBin)
+		err = copyFile(filepath.Join(tmpDir, targzDirName, "nu"), a.NuBin)
 		if err != nil {
 			a.Logger.Errorln("InstallNushell(): Failed to copy nu file to install dir:", err)
 			return
@@ -854,7 +853,7 @@ func (a *Agent) InstallDeno(force bool) {
 
 	if conf.InstallDenoUrl != "" {
 		// InstallDenoUrl is not compressed.
-		err = copyFile(path.Join(tmpDir, tmpAssetName), a.DenoBin)
+		err = copyFile(filepath.Join(tmpDir, tmpAssetName), a.DenoBin)
 		if err != nil {
 			a.Logger.Errorln("InstallDeno(): Failed to copy deno file to install dir:", err)
 			return
@@ -867,7 +866,7 @@ func (a *Agent) InstallDeno(force bool) {
 			return
 		}
 
-		err = copyFile(path.Join(tmpDir, "deno"), a.DenoBin)
+		err = copyFile(filepath.Join(tmpDir, "deno"), a.DenoBin)
 		if err != nil {
 			a.Logger.Errorln("InstallDeno(): Failed to copy deno file to install dir:", err)
 			return

@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -162,9 +161,9 @@ func (a *Agent) RunScript(code string, shell string, args []string, timeout int,
 		if nushellEnableConfig {
 			nushellArgs = []string{
 				"--config",
-				path.Join(a.ProgramDir, "etc", "nushell", "config.nu"),
+				filepath.Join(a.ProgramDir, "etc", "nushell", "config.nu"),
 				"--env-config",
-				path.Join(a.ProgramDir, "etc", "nushell", "env.nu"),
+				filepath.Join(a.ProgramDir, "etc", "nushell", "env.nu"),
 			}
 		} else {
 			nushellArgs = []string{"--no-config-file"}
@@ -914,7 +913,7 @@ func (a *Agent) InstallNushell(force bool) {
 		}
 	}
 
-	programBinDir := path.Join(a.ProgramDir, "bin")
+	programBinDir := filepath.Join(a.ProgramDir, "bin")
 	if !trmm.FileExists(programBinDir) {
 		err := os.MkdirAll(programBinDir, 0755)
 		if err != nil {
@@ -925,9 +924,9 @@ func (a *Agent) InstallNushell(force bool) {
 
 	if conf.NushellEnableConfig {
 		// Create 0-byte config files for Nushell
-		nushellPath := path.Join(a.ProgramDir, "etc", "nushell")
-		nushellConfig := path.Join(nushellPath, "config.nu")
-		nushellEnv := path.Join(nushellPath, "env.nu")
+		nushellPath := filepath.Join(a.ProgramDir, "etc", "nushell")
+		nushellConfig := filepath.Join(nushellPath, "config.nu")
+		nushellEnv := filepath.Join(nushellPath, "env.nu")
 		if !trmm.FileExists(nushellPath) {
 			err := os.MkdirAll(nushellPath, 0755)
 			if err != nil {
@@ -1030,7 +1029,7 @@ func (a *Agent) InstallNushell(force bool) {
 
 	if conf.InstallNushellUrl != "" {
 		// InstallNushellUrl is not compressed.
-		err = copyFile(path.Join(tmpDir, tmpAssetName), a.NuBin)
+		err = copyFile(filepath.Join(tmpDir, tmpAssetName), a.NuBin)
 		if err != nil {
 			a.Logger.Errorln("InstallNushell(): Failed to copy nu file to install dir:", err)
 			return
@@ -1042,7 +1041,7 @@ func (a *Agent) InstallNushell(force bool) {
 			return
 		}
 
-		err = copyFile(path.Join(tmpDir, "nu.exe"), a.NuBin)
+		err = copyFile(filepath.Join(tmpDir, "nu.exe"), a.NuBin)
 		if err != nil {
 			a.Logger.Errorln("InstallNushell(): Failed to copy nu.exe file to install dir:", err)
 			return
@@ -1071,7 +1070,7 @@ func (a *Agent) InstallDeno(force bool) {
 		}
 	}
 
-	programBinDir := path.Join(a.ProgramDir, "bin")
+	programBinDir := filepath.Join(a.ProgramDir, "bin")
 	if !trmm.FileExists(programBinDir) {
 		err := os.MkdirAll(programBinDir, 0755)
 		if err != nil {
@@ -1145,7 +1144,7 @@ func (a *Agent) InstallDeno(force bool) {
 
 	if conf.InstallDenoUrl != "" {
 		// InstallDenoUrl is not compressed.
-		err = copyFile(path.Join(tmpDir, tmpAssetName), a.DenoBin)
+		err = copyFile(filepath.Join(tmpDir, tmpAssetName), a.DenoBin)
 		if err != nil {
 			a.Logger.Errorln("InstallDeno(): Failed to copy deno file to install dir:", err)
 			return
@@ -1158,7 +1157,7 @@ func (a *Agent) InstallDeno(force bool) {
 			return
 		}
 
-		err = copyFile(path.Join(tmpDir, "deno.exe"), a.DenoBin)
+		err = copyFile(filepath.Join(tmpDir, "deno.exe"), a.DenoBin)
 		if err != nil {
 			a.Logger.Errorln("InstallDeno(): Failed to copy deno.exe file to install dir:", err)
 			return

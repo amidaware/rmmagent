@@ -23,7 +23,6 @@ import (
 	"net"
 	"os"
 	"os/exec"
-	"path"
 	"path/filepath"
 	"runtime"
 	goDebug "runtime/debug"
@@ -315,7 +314,7 @@ func (a *Agent) ExtractTarGz(targz string, destDir string) (extractedDir string,
 
 		switch header.Typeflag {
 		case tar.TypeDir:
-			if err := os.MkdirAll(path.Join(destDir, header.Name), 0755); err != nil {
+			if err := os.MkdirAll(filepath.Join(destDir, header.Name), 0755); err != nil {
 				a.Logger.Errorln("ExtractTarGz(): Mkdir() failed:", err.Error())
 				return "", err
 			}
@@ -323,7 +322,7 @@ func (a *Agent) ExtractTarGz(targz string, destDir string) (extractedDir string,
 				extractedDir = header.Name
 			}
 		case tar.TypeReg:
-			outFile, err := os.Create(path.Join(destDir, header.Name))
+			outFile, err := os.Create(filepath.Join(destDir, header.Name))
 			if err != nil {
 				a.Logger.Errorln("ExtractTarGz(): Create() failed:", err.Error())
 				return "", err
