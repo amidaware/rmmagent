@@ -350,7 +350,7 @@ func (a *Agent) RunRPC() {
 					CMD("shutdown.exe", []string{"/s", "/t", "5", "/f"}, 15, false)
 				} else {
 					opts := a.NewCMDOpts()
-					opts.Command = "shutdown"
+					opts.Command = "shutdown -h now"
 					a.CmdV2(opts)
 				}
 			}()
