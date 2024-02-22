@@ -341,6 +341,22 @@ func (a *Agent) RunRPC() {
 				msg.Respond(resp)
 			}()
 
+		case "shutdown":
+			go func() {
+				a.Logger.Debugln("Scheduling immediate shutdown")
+				var resp []byte
+				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
+				ret.Encode("ok")
+				msg.Respond(resp)
+				if runtime.GOOS == "windows" {
+					CMD("shutdown.exe", []string{"/s", "/t", "5", "/f"}, 15, false)
+				} else {
+					opts := a.NewCMDOpts()
+					opts.Command = "shutdown -h now"
+					a.CmdV2(opts)
+				}
+			}()
+			
 		case "rebootnow":
 			go func() {
 				a.Logger.Debugln("Scheduling immediate reboot")
