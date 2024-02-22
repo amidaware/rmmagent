@@ -157,29 +157,31 @@ type CheckInfo struct {
 }
 
 type Check struct {
-	Script           Script         `json:"script"`
-	AssignedTasks    []AssignedTask `json:"assigned_tasks"`
-	CheckPK          int            `json:"id"`
-	CheckType        string         `json:"check_type"`
-	Status           string         `json:"status"`
-	Threshold        int            `json:"threshold"`
-	Disk             string         `json:"disk"`
-	IP               string         `json:"ip"`
-	ScriptArgs       []string       `json:"script_args"`
-	EnvVars          []string       `json:"env_vars"`
-	Timeout          int            `json:"timeout"`
-	ServiceName      string         `json:"svc_name"`
-	PassStartPending bool           `json:"pass_if_start_pending"`
-	PassNotExist     bool           `json:"pass_if_svc_not_exist"`
-	RestartIfStopped bool           `json:"restart_if_stopped"`
-	LogName          string         `json:"log_name"`
-	EventID          int            `json:"event_id"`
-	EventIDWildcard  bool           `json:"event_id_is_wildcard"`
-	EventType        string         `json:"event_type"`
-	EventSource      string         `json:"event_source"`
-	EventMessage     string         `json:"event_message"`
-	FailWhen         string         `json:"fail_when"`
-	SearchLastDays   int            `json:"search_last_days"`
+	Script                 Script         `json:"script"`
+	AssignedTasks          []AssignedTask `json:"assigned_tasks"`
+	CheckPK                int            `json:"id"`
+	CheckType              string         `json:"check_type"`
+	Status                 string         `json:"status"`
+	Threshold              int            `json:"threshold"`
+	Disk                   string         `json:"disk"`
+	IP                     string         `json:"ip"`
+	ScriptArgs             []string       `json:"script_args"`
+	EnvVars                []string       `json:"env_vars"`
+	NushellEnableConfig    bool           `json:"nushell_enable_config"`
+	DenoDefaultPermissions string         `json:"deno_default_permissions"`
+	Timeout                int            `json:"timeout"`
+	ServiceName            string         `json:"svc_name"`
+	PassStartPending       bool           `json:"pass_if_start_pending"`
+	PassNotExist           bool           `json:"pass_if_svc_not_exist"`
+	RestartIfStopped       bool           `json:"restart_if_stopped"`
+	LogName                string         `json:"log_name"`
+	EventID                int            `json:"event_id"`
+	EventIDWildcard        bool           `json:"event_id_is_wildcard"`
+	EventType              string         `json:"event_type"`
+	EventSource            string         `json:"event_source"`
+	EventMessage           string         `json:"event_message"`
+	FailWhen               string         `json:"fail_when"`
+	SearchLastDays         int            `json:"search_last_days"`
 }
 
 type AllChecks struct {
@@ -188,15 +190,17 @@ type AllChecks struct {
 }
 
 type TaskAction struct {
-	ActionType string   `json:"type"`
-	Command    string   `json:"command"`
-	Shell      string   `json:"shell"`
-	ScriptName string   `json:"script_name"`
-	Code       string   `json:"code"`
-	Args       []string `json:"script_args"`
-	Timeout    int      `json:"timeout"`
-	RunAsUser  bool     `json:"run_as_user"`
-	EnvVars    []string `json:"env_vars"`
+	ActionType             string   `json:"type"`
+	Command                string   `json:"command"`
+	Shell                  string   `json:"shell"`
+	ScriptName             string   `json:"script_name"`
+	Code                   string   `json:"code"`
+	Args                   []string `json:"script_args"`
+	Timeout                int      `json:"timeout"`
+	RunAsUser              bool     `json:"run_as_user"`
+	EnvVars                []string `json:"env_vars"`
+	NushellEnableConfig    bool     `json:"nushell_enable_config"`
+	DenoDefaultPermissions string   `json:"deno_default_permissions"`
 }
 
 type AutomatedTask struct {

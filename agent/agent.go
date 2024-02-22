@@ -58,6 +58,8 @@ type Agent struct {
 	MeshSystemEXE      string
 	MeshSVC            string
 	PyBin              string
+	NuBin              string
+	DenoBin            string
 	Headers            map[string]string
 	Logger             *logrus.Logger
 	Version            string
@@ -86,6 +88,8 @@ const (
 	nixAgentDir          = "/opt/tacticalagent"
 	nixMeshDir           = "/opt/tacticalmesh"
 	nixAgentBin          = nixAgentDir + "/tacticalagent"
+	nixAgentBinDir       = nixAgentDir + "/bin"
+	nixAgentEtcDir       = nixAgentDir + "/etc"
 	nixMeshAgentBin      = nixMeshDir + "/meshagent"
 	macPlistPath         = "/Library/LaunchDaemons/tacticalagent.plist"
 	macPlistName         = "tacticalagent"
@@ -117,6 +121,22 @@ func New(logger *logrus.Logger, version string) *Agent {
 		pybin = filepath.Join(pd, "py38-x64", "python.exe")
 	case "386":
 		pybin = filepath.Join(pd, "py38-x32", "python.exe")
+	}
+
+	var nuBin string
+	switch runtime.GOOS {
+	case "windows":
+		nuBin = filepath.Join(pd, "bin", "nu.exe")
+	default:
+		nuBin = filepath.Join(nixAgentBinDir, "nu")
+	}
+
+	var denoBin string
+	switch runtime.GOOS {
+	case "windows":
+		denoBin = filepath.Join(pd, "bin", "deno.exe")
+	default:
+		denoBin = filepath.Join(nixAgentBinDir, "deno")
 	}
 
 	ac := NewAgentConfig()
@@ -232,6 +252,8 @@ func New(logger *logrus.Logger, version string) *Agent {
 		MeshSystemEXE:      MeshSysExe,
 		MeshSVC:            meshSvcName,
 		PyBin:              pybin,
+		NuBin:              nuBin,
+		DenoBin:            denoBin,
 		Headers:            headers,
 		Logger:             logger,
 		Version:            version,

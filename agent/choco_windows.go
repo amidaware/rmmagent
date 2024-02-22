@@ -45,7 +45,7 @@ func (a *Agent) InstallChoco() {
 		return
 	}
 
-	_, _, exitcode, err := a.RunScript(string(r.Body()), "powershell", []string{}, 900, false, []string{})
+	_, _, exitcode, err := a.RunScript(string(r.Body()), "powershell", []string{}, 900, false, []string{}, false, "")
 	if err != nil {
 		a.Logger.Debugln(err)
 		a.rClient.R().SetBody(result).Post(url)
