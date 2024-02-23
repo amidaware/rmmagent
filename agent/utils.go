@@ -92,6 +92,7 @@ func DoPing(host string) (PingResponse, error) {
 func (a *Agent) PublicIP() string {
 	a.Logger.Debugln("PublicIP start")
 	client := resty.New()
+	client.SetHeader("User-Agent", a.AgentHeader)
 	client.SetTimeout(4 * time.Second)
 	if len(a.Proxy) > 0 {
 		client.SetProxy(a.Proxy)
