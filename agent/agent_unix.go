@@ -577,6 +577,10 @@ func (a *Agent) GetWMIInfo() map[string]interface{} {
 
 // InstallNushell will download nushell from GitHub and install (copy) it to nixAgentBinDir
 func (a *Agent) InstallNushell(force bool) {
+	sleepDelay := randRange(1, 10)
+	a.Logger.Debugf("InstallNushell() sleeping for %v seconds", sleepDelay)
+	time.Sleep(time.Duration(sleepDelay) * time.Second)
+
 	conf := a.GetAgentCheckInConfig(a.GetCheckInConfFromAPI())
 	if !conf.InstallNushell {
 		return
@@ -650,9 +654,9 @@ func (a *Agent) InstallNushell(force bool) {
 
 	if conf.InstallNushellUrl != "" {
 		url = conf.InstallNushellUrl
-		url = strings.Replace(url, "{OS}", runtime.GOOS, -1)
-		url = strings.Replace(url, "{ARCH}", runtime.GOARCH, -1)
-		url = strings.Replace(url, "{VERSION}", conf.InstallNushellVersion, -1)
+		url = strings.ReplaceAll(url, "{OS}", runtime.GOOS)
+		url = strings.ReplaceAll(url, "{ARCH}", runtime.GOARCH)
+		url = strings.ReplaceAll(url, "{VERSION}", conf.InstallNushellVersion)
 	} else {
 		switch runtime.GOOS {
 		case "darwin":
@@ -684,15 +688,15 @@ func (a *Agent) InstallNushell(force bool) {
 	}
 	a.Logger.Debugln("InstallNushell(): Nu download url:", url)
 
-	tmpDir, err := os.MkdirTemp("", "trmm")
+	tmpDir, err := os.MkdirTemp("", "nutemp")
 	if err != nil {
-		a.Logger.Errorln("InstallNushell(): Error creating temp directory:", err)
+		a.Logger.Errorln("InstallNushell(): Error creating nushell temp directory:", err)
 		return
 	}
 	defer func(path string) {
 		err := os.RemoveAll(path)
 		if err != nil {
-			a.Logger.Errorln("InstallNushell(): Error removing temp directory:", err)
+			a.Logger.Errorln("InstallNushell(): Error removing nushell temp directory:", err)
 		}
 	}(tmpDir)
 
@@ -750,6 +754,10 @@ func (a *Agent) InstallNushell(force bool) {
 
 // InstallDeno will download deno from GitHub and install (copy) it to nixAgentBinDir
 func (a *Agent) InstallDeno(force bool) {
+	sleepDelay := randRange(1, 10)
+	a.Logger.Debugf("InstallDeno() sleeping for %v seconds", sleepDelay)
+	time.Sleep(time.Duration(sleepDelay) * time.Second)
+
 	conf := a.GetAgentCheckInConfig(a.GetCheckInConfFromAPI())
 	if !conf.InstallDeno {
 		return
@@ -783,19 +791,19 @@ func (a *Agent) InstallDeno(force bool) {
 
 	if conf.InstallDenoUrl != "" {
 		url = conf.InstallDenoUrl
-		url = strings.Replace(url, "{OS}", runtime.GOOS, -1)
-		url = strings.Replace(url, "{ARCH}", runtime.GOARCH, -1)
-		url = strings.Replace(url, "{VERSION}", conf.InstallDenoVersion, -1)
+		url = strings.ReplaceAll(url, "{OS}", runtime.GOOS)
+		url = strings.ReplaceAll(url, "{ARCH}", runtime.GOARCH)
+		url = strings.ReplaceAll(url, "{VERSION}", conf.InstallDenoVersion)
 	} else {
 		switch runtime.GOOS {
 		case "darwin":
 			switch runtime.GOARCH {
 			case "arm64":
 				// https://github.com/denoland/deno/releases/download/v1.38.2/deno-aarch64-apple-darwin.zip
-				assetName = fmt.Sprintf("deno-aarch64-apple-darwin.zip")
+				assetName = "deno-aarch64-apple-darwin.zip"
 			case "amd64":
 				// https://github.com/denoland/deno/releases/download/v1.38.2/deno-x86_64-apple-darwin.zip
-				assetName = fmt.Sprintf("deno-x86_64-apple-darwin.zip")
+				assetName = "deno-x86_64-apple-darwin.zip"
 			default:
 				a.Logger.Debugln("InstallDeno(): Unsupported architecture and OS:", runtime.GOARCH, runtime.GOOS)
 				return
@@ -804,7 +812,7 @@ func (a *Agent) InstallDeno(force bool) {
 			switch runtime.GOARCH {
 			case "amd64":
 				// https://github.com/denoland/deno/releases/download/v1.38.2/deno-x86_64-unknown-linux-gnu.zip
-				assetName = fmt.Sprintf("deno-x86_64-unknown-linux-gnu.zip")
+				assetName = "deno-x86_64-unknown-linux-gnu.zip"
 			default:
 				a.Logger.Debugln("InstallDeno(): Unsupported architecture and OS:", runtime.GOARCH, runtime.GOOS)
 				return
@@ -817,15 +825,15 @@ func (a *Agent) InstallDeno(force bool) {
 	}
 	a.Logger.Debugln("InstallDeno(): Deno download url:", url)
 
-	tmpDir, err := os.MkdirTemp("", "trmm")
+	tmpDir, err := os.MkdirTemp("", "denotemp")
 	if err != nil {
-		a.Logger.Errorln("InstallDeno(): Error creating temp directory:", err)
+		a.Logger.Errorln("InstallDeno(): Error creating deno temp directory:", err)
 		return
 	}
 	defer func(path string) {
 		err := os.RemoveAll(path)
 		if err != nil {
-			a.Logger.Errorln("InstallDeno(): Error removing temp directory:", err)
+			a.Logger.Errorln("InstallDeno(): Error removing deno temp directory:", err)
 		}
 	}(tmpDir)
 
