@@ -16,6 +16,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"compress/gzip"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -291,16 +292,18 @@ func (a *Agent) ExtractTarGz(targz string, destDir string) (extractedDir string,
 		a.Logger.Errorln("ExtractTarGz(): Open() failed:", err.Error())
 		return "", err
 	}
+	defer gzipStream.Close()
 
 	uncompressedStream, err := gzip.NewReader(gzipStream)
 	if err != nil {
 		a.Logger.Errorln("ExtractTarGz(): NewReader() failed:", err.Error())
 		return "", err
 	}
+	defer uncompressedStream.Close()
 
 	extractedDir = ""
 	tarReader := tar.NewReader(uncompressedStream)
-	for true {
+	for {
 		header, err := tarReader.Next()
 
 		if err == io.EOF {
@@ -338,8 +341,9 @@ func (a *Agent) ExtractTarGz(targz string, destDir string) (extractedDir string,
 			}
 
 		default:
-			a.Logger.Errorln("ExtractTarGz(): Unknown type: %s in %s", header.Typeflag, header.Name)
-			return "", err
+			errMsg := fmt.Sprintf("ExtractTarGz(): Unknown type: %v in %s", header.Typeflag, header.Name)
+			a.Logger.Errorln(errMsg)
+			return "", errors.New(errMsg)
 		}
 
 	}
