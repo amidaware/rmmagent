@@ -85,10 +85,10 @@ func (a *Agent) AgentSvc(nc *nats.Conn) {
 	// The server conf check is also done in the functions to keep the parameters the same.
 	// Don't force a download when restarting the service.
 	if conf.InstallNushell {
-		a.InstallNushell(false)
+		go a.InstallNushell(false)
 	}
 	if conf.InstallDeno {
-		a.InstallDeno(false)
+		go a.InstallDeno(false)
 	}
 
 	go a.SyncMeshNodeID()
