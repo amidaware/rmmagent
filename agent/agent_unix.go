@@ -37,6 +37,8 @@ import (
 	psHost "github.com/shirou/gopsutil/v3/host"
 	"github.com/spf13/viper"
 	trmm "github.com/wh1te909/trmm-shared"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 func ShowStatus(version string) {
@@ -130,7 +132,8 @@ func (a *Agent) osString() string {
 	if err != nil {
 		return "error getting host info"
 	}
-	return fmt.Sprintf("%s %s %s %s", strings.Title(h.Platform), h.PlatformVersion, h.KernelArch, h.KernelVersion)
+	plat := cases.Title(language.AmericanEnglish).String(h.Platform)
+	return fmt.Sprintf("%s %s %s %s", plat, h.PlatformVersion, h.KernelArch, h.KernelVersion)
 }
 
 func NewAgentConfig() *rmm.AgentConfig {
