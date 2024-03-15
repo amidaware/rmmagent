@@ -10,7 +10,7 @@ require (
 	github.com/go-resty/resty/v2 v2.11.0
 	github.com/gonutz/w32/v2 v2.11.1
 	github.com/iamacarpet/go-win64api v0.0.0-20230324134531-ef6dbdd6db97
-	github.com/nats-io/nats.go v1.32.0
+	github.com/nats-io/nats.go v1.33.1
 	github.com/rickb777/date v1.19.1
 	github.com/shirou/gopsutil/v3 v3.23.12
 	github.com/sirupsen/logrus v1.9.3
