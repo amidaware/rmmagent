@@ -173,7 +173,7 @@ func (a *Agent) RunScript(code string, shell string, args []string, timeout int,
 	code = removeWinNewLines(code)
 	content := []byte(code)
 
-	f, err := createNixTmpFile()
+	f, err := createNixTmpFile(shell)
 	if err != nil {
 		a.Logger.Errorln("RunScript createNixTmpFile()", err)
 		return "", err.Error(), 85, err
