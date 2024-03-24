@@ -260,7 +260,7 @@ func (a *Agent) EventLogCheck(data rmm.Check, r *resty.Client) {
 
 	for _, i := range evtLog {
 		if i.EventType == data.EventType {
-			if !data.EventIDWildcard && !(int(i.EventID) == data.EventID) {
+			if !data.EventIDWildcard && (int(i.EventID) != data.EventID) {
 				continue
 			}
 
