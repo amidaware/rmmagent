@@ -356,7 +356,7 @@ func (a *Agent) RunRPC() {
 					a.CmdV2(opts)
 				}
 			}()
-			
+
 		case "rebootnow":
 			go func() {
 				a.Logger.Debugln("Scheduling immediate reboot")

@@ -14,11 +14,12 @@ package agent
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/amidaware/taskmaster"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/amidaware/taskmaster"
 
 	rmm "github.com/amidaware/rmmagent/shared"
 	"github.com/rickb777/date/period"
