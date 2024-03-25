@@ -25,7 +25,7 @@ import (
 )
 
 var (
-	version = "2.6.2"
+	version = "2.7.0"
 	log     = logrus.New()
 	logFile *os.File
 )
@@ -117,6 +117,10 @@ func main() {
 		fmt.Println(a.PublicIP())
 	case "getpython":
 		a.GetPython(true)
+	case "installdeno":
+		a.InstallDeno(true)
+	case "installnushell":
+		a.InstallNushell(true)
 	case "runmigrations":
 		a.RunMigrations()
 	case "recovermesh":

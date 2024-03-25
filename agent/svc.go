@@ -29,15 +29,23 @@ func (a *Agent) RunAsService(nc *nats.Conn) {
 }
 
 type AgentCheckInConfig struct {
-	Hello     int  `json:"checkin_hello"`
-	AgentInfo int  `json:"checkin_agentinfo"`
-	WinSvc    int  `json:"checkin_winsvc"`
-	PubIP     int  `json:"checkin_pubip"`
-	Disks     int  `json:"checkin_disks"`
-	SW        int  `json:"checkin_sw"`
-	WMI       int  `json:"checkin_wmi"`
-	SyncMesh  int  `json:"checkin_syncmesh"`
-	LimitData bool `json:"limit_data"`
+	Hello                  int    `json:"checkin_hello"`
+	AgentInfo              int    `json:"checkin_agentinfo"`
+	WinSvc                 int    `json:"checkin_winsvc"`
+	PubIP                  int    `json:"checkin_pubip"`
+	Disks                  int    `json:"checkin_disks"`
+	SW                     int    `json:"checkin_sw"`
+	WMI                    int    `json:"checkin_wmi"`
+	SyncMesh               int    `json:"checkin_syncmesh"`
+	LimitData              bool   `json:"limit_data"`
+	InstallNushell         bool   `json:"install_nushell"`
+	InstallNushellVersion  string `json:"install_nushell_version"`
+	InstallNushellUrl      string `json:"install_nushell_url"`
+	NushellEnableConfig    bool   `json:"nushell_enable_config"`
+	InstallDeno            bool   `json:"install_deno"`
+	InstallDenoVersion     string `json:"install_deno_version"`
+	InstallDenoUrl         string `json:"install_deno_url"`
+	DenoDefaultPermissions string `json:"deno_default_permissions"`
 }
 
 func (a *Agent) AgentSvc(nc *nats.Conn) {
@@ -49,6 +57,7 @@ func (a *Agent) AgentSvc(nc *nats.Conn) {
 			a.Logger.Errorln("AgentSvc() createWinTempDir():", err)
 		}
 	}
+
 	a.RunMigrations()
 
 	sleepDelay := randRange(7, 25)
@@ -61,8 +70,9 @@ func (a *Agent) AgentSvc(nc *nats.Conn) {
 		a.CleanupAgentUpdates()
 	}
 
+	// Windows has GetAgentCheckInConfig() while unix has a stub GetAgentCheckInConfig()
 	conf := a.GetAgentCheckInConfig(a.GetCheckInConfFromAPI())
-	a.Logger.Debugf("+%v\n", conf)
+	a.Logger.Debugf("AgentCheckInConf: %+v\n", conf)
 	for _, s := range natsCheckin {
 		if conf.LimitData && stringInSlice(s, limitNatsData) {
 			continue
@@ -70,6 +80,15 @@ func (a *Agent) AgentSvc(nc *nats.Conn) {
 			a.NatsMessage(nc, s)
 			time.Sleep(time.Duration(randRange(100, 400)) * time.Millisecond)
 		}
+	}
+
+	// The server conf check is also done in the functions to keep the parameters the same.
+	// Don't force a download when restarting the service.
+	if conf.InstallNushell {
+		go a.InstallNushell(false)
+	}
+	if conf.InstallDeno {
+		go a.InstallDeno(false)
 	}
 
 	go a.SyncMeshNodeID()
@@ -139,6 +158,14 @@ func (a *Agent) GetCheckInConfFromAPI() AgentCheckInConfig {
 		ret.WMI = randRange(3000, 4000)
 		ret.SyncMesh = randRange(800, 1200)
 		ret.LimitData = false
+		ret.InstallNushell = false
+		ret.InstallNushellVersion = ""
+		ret.InstallNushellUrl = ""
+		ret.NushellEnableConfig = false
+		ret.InstallDeno = false
+		ret.InstallDenoVersion = ""
+		ret.InstallDenoUrl = ""
+		ret.DenoDefaultPermissions = ""
 	} else {
 		ret.Hello = r.Result().(*AgentCheckInConfig).Hello
 		ret.AgentInfo = r.Result().(*AgentCheckInConfig).AgentInfo
@@ -149,6 +176,14 @@ func (a *Agent) GetCheckInConfFromAPI() AgentCheckInConfig {
 		ret.WMI = r.Result().(*AgentCheckInConfig).WMI
 		ret.SyncMesh = r.Result().(*AgentCheckInConfig).SyncMesh
 		ret.LimitData = r.Result().(*AgentCheckInConfig).LimitData
+		ret.InstallNushell = r.Result().(*AgentCheckInConfig).InstallNushell
+		ret.InstallNushellVersion = r.Result().(*AgentCheckInConfig).InstallNushellVersion
+		ret.InstallNushellUrl = r.Result().(*AgentCheckInConfig).InstallNushellUrl
+		ret.NushellEnableConfig = r.Result().(*AgentCheckInConfig).NushellEnableConfig
+		ret.InstallDeno = r.Result().(*AgentCheckInConfig).InstallDeno
+		ret.InstallDenoVersion = r.Result().(*AgentCheckInConfig).InstallDenoVersion
+		ret.InstallDenoUrl = r.Result().(*AgentCheckInConfig).InstallDenoUrl
+		ret.DenoDefaultPermissions = r.Result().(*AgentCheckInConfig).DenoDefaultPermissions
 	}
 	return ret
 }

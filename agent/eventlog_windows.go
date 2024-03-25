@@ -158,8 +158,11 @@ func getResourceMessage(providerName, sourceName string, eventID uint32, argsptr
 		return "", err
 	}
 
-	handle, err := LoadLibraryEx(syscall.StringToUTF16Ptr(val), 0,
-		DONT_RESOLVE_DLL_REFERENCES|LOAD_LIBRARY_AS_DATAFILE)
+	handlePtr, err := windows.UTF16PtrFromString(val)
+	if err != nil {
+		return "", err
+	}
+	handle, err := LoadLibraryEx(handlePtr, 0, DONT_RESOLVE_DLL_REFERENCES|LOAD_LIBRARY_AS_DATAFILE)
 	if err != nil {
 		return "", err
 	}
@@ -180,7 +183,7 @@ func getResourceMessage(providerName, sourceName string, eventID uint32, argsptr
 		return "", err
 	}
 	message, _ := bytesToString(msgbuf[:numChars*2])
-	message = strings.Replace(message, "\r", "", -1)
+	message = strings.ReplaceAll(message, "\r", "")
 	message = strings.TrimSuffix(message, "\n")
 	return message, nil
 }

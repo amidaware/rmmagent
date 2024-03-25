@@ -169,7 +169,7 @@ type ScriptCheckResult struct {
 // ScriptCheck runs either bat, powershell or python script
 func (a *Agent) ScriptCheck(data rmm.Check, r *resty.Client) {
 	start := time.Now()
-	stdout, stderr, retcode, _ := a.RunScript(data.Script.Code, data.Script.Shell, data.ScriptArgs, data.Timeout, data.Script.RunAsUser, data.EnvVars)
+	stdout, stderr, retcode, _ := a.RunScript(data.Script.Code, data.Script.Shell, data.ScriptArgs, data.Timeout, data.Script.RunAsUser, data.EnvVars, data.NushellEnableConfig, data.DenoDefaultPermissions)
 
 	payload := ScriptCheckResult{
 		ID:      data.CheckPK,
@@ -260,7 +260,7 @@ func (a *Agent) EventLogCheck(data rmm.Check, r *resty.Client) {
 
 	for _, i := range evtLog {
 		if i.EventType == data.EventType {
-			if !data.EventIDWildcard && !(int(i.EventID) == data.EventID) {
+			if !data.EventIDWildcard && (int(i.EventID) != data.EventID) {
 				continue
 			}
 

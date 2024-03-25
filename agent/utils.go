@@ -12,8 +12,11 @@ https://license.tacticalrmm.com
 package agent
 
 import (
+	"archive/tar"
 	"archive/zip"
 	"bytes"
+	"compress/gzip"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -89,6 +92,7 @@ func DoPing(host string) (PingResponse, error) {
 func (a *Agent) PublicIP() string {
 	a.Logger.Debugln("PublicIP start")
 	client := resty.New()
+	client.SetHeader("User-Agent", a.AgentHeader)
 	client.SetTimeout(4 * time.Second)
 	if len(a.Proxy) > 0 {
 		client.SetProxy(a.Proxy)
@@ -280,6 +284,73 @@ func Unzip(src, dest string) error {
 	return nil
 }
 
+// ExtractTarGz extracts a tar.gz file to the specified directory.
+// Returns the extracted directory name.
+// https://stackoverflow.com/questions/57639648/how-to-decompress-tar-gz-file-in-go
+func (a *Agent) ExtractTarGz(targz string, destDir string) (extractedDir string, err error) {
+	gzipStream, err := os.Open(targz)
+	if err != nil {
+		a.Logger.Errorln("ExtractTarGz(): Open() failed:", err.Error())
+		return "", err
+	}
+	defer gzipStream.Close()
+
+	uncompressedStream, err := gzip.NewReader(gzipStream)
+	if err != nil {
+		a.Logger.Errorln("ExtractTarGz(): NewReader() failed:", err.Error())
+		return "", err
+	}
+	defer uncompressedStream.Close()
+
+	extractedDir = ""
+	tarReader := tar.NewReader(uncompressedStream)
+	for {
+		header, err := tarReader.Next()
+
+		if err == io.EOF {
+			break
+		}
+
+		if err != nil {
+			a.Logger.Errorln("ExtractTarGz(): Next() failed:", err.Error())
+			return "", err
+		}
+
+		switch header.Typeflag {
+		case tar.TypeDir:
+			if err := os.MkdirAll(filepath.Join(destDir, header.Name), 0755); err != nil {
+				a.Logger.Errorln("ExtractTarGz(): Mkdir() failed:", err.Error())
+				return "", err
+			}
+			if extractedDir == "" {
+				extractedDir = header.Name
+			}
+		case tar.TypeReg:
+			outFile, err := os.Create(filepath.Join(destDir, header.Name))
+			if err != nil {
+				a.Logger.Errorln("ExtractTarGz(): Create() failed:", err.Error())
+				return "", err
+			}
+			if _, err := io.Copy(outFile, tarReader); err != nil {
+				a.Logger.Errorln("ExtractTarGz(): Copy() failed:", err.Error())
+				return "", err
+			}
+			err = outFile.Close()
+			if err != nil {
+				a.Logger.Errorln("ExtractTarGz(): Close() failed:", err.Error())
+				return "", err
+			}
+
+		default:
+			errMsg := fmt.Sprintf("ExtractTarGz(): Unknown type: %v in %s", header.Typeflag, header.Name)
+			a.Logger.Errorln(errMsg)
+			return "", errors.New(errMsg)
+		}
+
+	}
+	return extractedDir, nil
+}
+
 // https://yourbasic.org/golang/formatting-byte-size-to-human-readable-format/
 func ByteCountSI(b uint64) string {
 	const unit = 1024
@@ -362,14 +433,19 @@ func getCwd() (string, error) {
 	return filepath.Dir(self), nil
 }
 
-func createNixTmpFile() (*os.File, error) {
+func createNixTmpFile(shell ...string) (*os.File, error) {
 	var f *os.File
 	cwd, err := getCwd()
 	if err != nil {
 		return f, err
 	}
 
-	f, err = os.CreateTemp(cwd, "trmm")
+	ext := ""
+	if len(shell) > 0 && shell[0] == "deno" {
+		ext = ".ts"
+	}
+
+	f, err = os.CreateTemp(cwd, fmt.Sprintf("trmm*%s", ext))
 	if err != nil {
 		return f, err
 	}

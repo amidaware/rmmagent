@@ -119,9 +119,10 @@ func (a *Agent) EditService(name, startupType string) rmm.WinSvcResp {
 	}
 
 	conf.StartType = startType
-	if startupType == "autodelay" {
+	switch startupType {
+	case "autodelay":
 		conf.DelayedAutoStart = true
-	} else if startupType == "auto" {
+	case "auto":
 		conf.DelayedAutoStart = false
 	}
 

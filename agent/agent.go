@@ -58,6 +58,9 @@ type Agent struct {
 	MeshSystemEXE      string
 	MeshSVC            string
 	PyBin              string
+	NuBin              string
+	DenoBin            string
+	AgentHeader        string
 	Headers            map[string]string
 	Logger             *logrus.Logger
 	Version            string
@@ -86,6 +89,8 @@ const (
 	nixAgentDir          = "/opt/tacticalagent"
 	nixMeshDir           = "/opt/tacticalmesh"
 	nixAgentBin          = nixAgentDir + "/tacticalagent"
+	nixAgentBinDir       = nixAgentDir + "/bin"
+	nixAgentEtcDir       = nixAgentDir + "/etc"
 	nixMeshAgentBin      = nixMeshDir + "/meshagent"
 	macPlistPath         = "/Library/LaunchDaemons/tacticalagent.plist"
 	macPlistName         = "tacticalagent"
@@ -119,8 +124,25 @@ func New(logger *logrus.Logger, version string) *Agent {
 		pybin = filepath.Join(pd, "py38-x32", "python.exe")
 	}
 
+	var nuBin string
+	switch runtime.GOOS {
+	case "windows":
+		nuBin = filepath.Join(pd, "bin", "nu.exe")
+	default:
+		nuBin = filepath.Join(nixAgentBinDir, "nu")
+	}
+
+	var denoBin string
+	switch runtime.GOOS {
+	case "windows":
+		denoBin = filepath.Join(pd, "bin", "deno.exe")
+	default:
+		denoBin = filepath.Join(nixAgentBinDir, "deno")
+	}
+
 	ac := NewAgentConfig()
 
+	agentHeader := fmt.Sprintf("trmm/%s/%s/%s", version, runtime.GOOS, runtime.GOARCH)
 	headers := make(map[string]string)
 	if len(ac.Token) > 0 {
 		headers["Content-Type"] = "application/json"
@@ -232,7 +254,10 @@ func New(logger *logrus.Logger, version string) *Agent {
 		MeshSystemEXE:      MeshSysExe,
 		MeshSVC:            meshSvcName,
 		PyBin:              pybin,
+		NuBin:              nuBin,
+		DenoBin:            denoBin,
 		Headers:            headers,
+		AgentHeader:        agentHeader,
 		Logger:             logger,
 		Version:            version,
 		Debug:              logger.IsLevelEnabled(logrus.DebugLevel),

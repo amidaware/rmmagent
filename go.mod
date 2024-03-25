@@ -10,7 +10,7 @@ require (
 	github.com/go-resty/resty/v2 v2.11.0
 	github.com/gonutz/w32/v2 v2.11.1
 	github.com/iamacarpet/go-win64api v0.0.0-20230324134531-ef6dbdd6db97
-	github.com/nats-io/nats.go v1.32.0
+	github.com/nats-io/nats.go v1.34.0
 	github.com/rickb777/date v1.19.1
 	github.com/shirou/gopsutil/v3 v3.23.12
 	github.com/sirupsen/logrus v1.9.3
@@ -31,6 +31,7 @@ require (
 	github.com/jaypipes/ghw v0.12.0
 	github.com/kardianos/service v1.2.2
 	github.com/spf13/viper v1.18.2
+	golang.org/x/text v0.14.0
 )
 
 require (
@@ -73,7 +74,6 @@ require (
 	golang.org/x/crypto v0.18.0 // indirect
 	golang.org/x/exp v0.0.0-20230905200255-921286631fa9 // indirect
 	golang.org/x/sync v0.5.0 // indirect
-	golang.org/x/text v0.14.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/toast.v1 v1.0.0-20180812000517-0a84660828b2 // indirect

@@ -26,22 +26,24 @@ import (
 )
 
 type NatsMsg struct {
-	Func            string            `json:"func"`
-	Timeout         int               `json:"timeout"`
-	Data            map[string]string `json:"payload"`
-	ScriptArgs      []string          `json:"script_args"`
-	ProcPID         int32             `json:"procpid"`
-	TaskPK          int               `json:"taskpk"`
-	ScheduledTask   SchedTask         `json:"schedtaskpayload"`
-	RecoveryCommand string            `json:"recoverycommand"`
-	UpdateGUIDs     []string          `json:"guids"`
-	ChocoProgName   string            `json:"choco_prog_name"`
-	PendingActionPK int               `json:"pending_action_pk"`
-	PatchMgmt       bool              `json:"patch_mgmt"`
-	ID              int               `json:"id"`
-	Code            string            `json:"code"`
-	RunAsUser       bool              `json:"run_as_user"`
-	EnvVars         []string          `json:"env_vars"`
+	Func                   string            `json:"func"`
+	Timeout                int               `json:"timeout"`
+	Data                   map[string]string `json:"payload"`
+	ScriptArgs             []string          `json:"script_args"`
+	ProcPID                int32             `json:"procpid"`
+	TaskPK                 int               `json:"taskpk"`
+	ScheduledTask          SchedTask         `json:"schedtaskpayload"`
+	RecoveryCommand        string            `json:"recoverycommand"`
+	UpdateGUIDs            []string          `json:"guids"`
+	ChocoProgName          string            `json:"choco_prog_name"`
+	PendingActionPK        int               `json:"pending_action_pk"`
+	PatchMgmt              bool              `json:"patch_mgmt"`
+	ID                     int               `json:"id"`
+	Code                   string            `json:"code"`
+	RunAsUser              bool              `json:"run_as_user"`
+	EnvVars                []string          `json:"env_vars"`
+	NushellEnableConfig    bool              `json:"nushell_enable_config"`
+	DenoDefaultPermissions string            `json:"deno_default_permissions"`
 }
 
 var (
@@ -264,7 +266,7 @@ func (a *Agent) RunRPC() {
 				var resultData rmm.RunScriptResp
 				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
 				start := time.Now()
-				stdout, stderr, retcode, err := a.RunScript(p.Data["code"], p.Data["shell"], p.ScriptArgs, p.Timeout, p.RunAsUser, p.EnvVars)
+				stdout, stderr, retcode, err := a.RunScript(p.Data["code"], p.Data["shell"], p.ScriptArgs, p.Timeout, p.RunAsUser, p.EnvVars, p.NushellEnableConfig, p.DenoDefaultPermissions)
 				resultData.ExecTime = time.Since(start).Seconds()
 				resultData.ID = p.ID
 
@@ -294,7 +296,7 @@ func (a *Agent) RunRPC() {
 				var retData rmm.RunScriptResp
 				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
 				start := time.Now()
-				stdout, stderr, retcode, err := a.RunScript(p.Data["code"], p.Data["shell"], p.ScriptArgs, p.Timeout, p.RunAsUser, p.EnvVars)
+				stdout, stderr, retcode, err := a.RunScript(p.Data["code"], p.Data["shell"], p.ScriptArgs, p.Timeout, p.RunAsUser, p.EnvVars, p.NushellEnableConfig, p.DenoDefaultPermissions)
 
 				retData.ExecTime = time.Since(start).Seconds()
 				if err != nil {
@@ -337,6 +339,22 @@ func (a *Agent) RunRPC() {
 				a.Logger.Debugln(sw)
 				ret.Encode(sw)
 				msg.Respond(resp)
+			}()
+
+		case "shutdown":
+			go func() {
+				a.Logger.Debugln("Scheduling immediate shutdown")
+				var resp []byte
+				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
+				ret.Encode("ok")
+				msg.Respond(resp)
+				if runtime.GOOS == "windows" {
+					CMD("shutdown.exe", []string{"/s", "/t", "5", "/f"}, 15, false)
+				} else {
+					opts := a.NewCMDOpts()
+					opts.Command = "shutdown -h now"
+					a.CmdV2(opts)
+				}
 			}()
 
 		case "rebootnow":
@@ -437,6 +455,10 @@ func (a *Agent) RunRPC() {
 			}()
 		case "installpython":
 			go a.GetPython(true)
+		case "installnushell":
+			go a.InstallNushell(true)
+		case "installdeno":
+			go a.InstallDeno(true)
 		case "installchoco":
 			go a.InstallChoco()
 		case "installwithchoco":

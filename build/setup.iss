@@ -1,5 +1,5 @@
 #define MyAppName "Tactical RMM Agent"
-#define MyAppVersion "2.6.2"
+#define MyAppVersion "2.7.0"
 #define MyAppPublisher "AmidaWare Inc"
 #define MyAppURL "https://github.com/amidaware"
 #define MyAppExeName "tacticalrmm.exe"
@@ -28,6 +28,8 @@ WizardStyle=modern
 RestartApplications=no
 CloseApplications=no
 MinVersion=6.0
+VersionInfoVersion=1.0.0.0
+AppCopyright="Copyright (C) 2024 {#MyAppPublisher}"
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"

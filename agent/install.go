@@ -258,8 +258,13 @@ func (a *Agent) Install(i *Installer) {
 	// check in once
 	a.DoNatsCheckIn()
 
+	if runtime.GOOS == "linux" {
+		// Used for Nushell and Deno binaries
+		os.MkdirAll(nixAgentBinDir, 0755)
+	}
+
 	if runtime.GOOS == "darwin" {
-		os.MkdirAll(nixAgentDir, 0755)
+		os.MkdirAll(nixAgentBinDir, 0755)
 		self, _ := os.Executable()
 		copyFile(self, nixAgentBin)
 		os.Chmod(nixAgentBin, 0755)
@@ -300,6 +305,8 @@ func (a *Agent) Install(i *Installer) {
 	}
 
 	if runtime.GOOS == "windows" {
+		os.MkdirAll(filepath.Join(a.ProgramDir, "bin"), 0755)
+
 		// send software api
 		a.SendSoftware()
 
@@ -341,7 +348,7 @@ func (a *Agent) Install(i *Installer) {
 		}
 	}
 
-	a.installerMsg("Installation was successfull!\nAllow a few minutes for the agent to properly display in the RMM", "info", i.Silent)
+	a.installerMsg("Installation was successful!\nAllow a few minutes for the agent to properly display in the RMM", "info", i.Silent)
 }
 
 func copyFile(src, dst string) error {

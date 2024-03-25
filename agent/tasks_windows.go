@@ -19,8 +19,9 @@ import (
 	"strings"
 	"time"
 
-	rmm "github.com/amidaware/rmmagent/shared"
 	"github.com/amidaware/taskmaster"
+
+	rmm "github.com/amidaware/rmmagent/shared"
 	"github.com/rickb777/date/period"
 )
 
@@ -59,7 +60,7 @@ func (a *Agent) RunTask(id int) error {
 
 		action_start := time.Now()
 		if action.ActionType == "script" {
-			stdout, stderr, retcode, err := a.RunScript(action.Code, action.Shell, action.Args, action.Timeout, action.RunAsUser, action.EnvVars)
+			stdout, stderr, retcode, err := a.RunScript(action.Code, action.Shell, action.Args, action.Timeout, action.RunAsUser, action.EnvVars, action.NushellEnableConfig, action.DenoDefaultPermissions)
 
 			if err != nil {
 				a.Logger.Debugln(err)
