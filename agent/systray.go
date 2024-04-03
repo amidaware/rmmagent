@@ -243,7 +243,7 @@ func SendConfigToNamedPipe(supportName string, config []SupportConfig) error {
 	var written uint32
 	err = windows.WriteFile(hPipe, dataBytes, &written, nil)
 	if err != nil {
-		return fmt.Println("failed to write to named pipe: %v", err)
+		return fmt.Errorf("failed to write to named pipe: %v", err)
 	}
 
 	fmt.Println("Data sent to named pipe successfully.")
