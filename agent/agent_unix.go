@@ -970,3 +970,7 @@ func (a *Agent) Start(_ service.Service) error { return nil }
 func (a *Agent) Stop(_ service.Service) error { return nil }
 
 func (a *Agent) InstallService() error { return nil }
+
+func (a *Agent) GetSystrayConfig() {
+		fmt.Println("System trays are only supported on windows at this time.")
+}

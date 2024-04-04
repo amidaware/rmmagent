@@ -70,6 +70,10 @@ func (a *Agent) AgentSvc(nc *nats.Conn) {
 		a.CleanupAgentUpdates()
 	}
 
+	if runtime.GOOS == "windows" {
+		go a.GetSystrayConfig()
+	}
+
 	// Windows has GetAgentCheckInConfig() while unix has a stub GetAgentCheckInConfig()
 	conf := a.GetAgentCheckInConfig(a.GetCheckInConfFromAPI())
 	a.Logger.Debugf("AgentCheckInConf: %+v\n", conf)
