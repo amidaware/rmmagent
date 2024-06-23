@@ -58,6 +58,9 @@ type Agent struct {
 	MeshSystemEXE      string
 	MeshSVC            string
 	PyBin              string
+	PyVer              string
+	PyBaseDir          string
+	PyDir              string
 	NuBin              string
 	DenoBin            string
 	AgentHeader        string
@@ -116,12 +119,24 @@ func New(logger *logrus.Logger, version string) *Agent {
 		hostname = info.Hostname
 	}
 
-	var pybin string
-	switch runtime.GOARCH {
-	case "amd64":
-		pybin = filepath.Join(pd, "py38-x64", "python.exe")
-	case "386":
-		pybin = filepath.Join(pd, "py38-x32", "python.exe")
+	pyver := "n/a"
+	pybin := "n/a"
+	pyBaseDir := "n/a"
+	pydir := "n/a"
+
+	if runtime.GOOS == "windows" {
+		major := info.OS.Major
+		minor := info.OS.Minor
+		if major > 6 || (major == 6 && minor >= 3) {
+			// Windows 8.1 or higher
+			pyver = "3.11.9"
+		} else {
+			pyver = "3.8.7"
+		}
+
+		pydir = "py" + pyver + "_" + runtime.GOARCH
+		pyBaseDir = filepath.Join(pd, "python")
+		pybin = filepath.Join(pyBaseDir, pydir, "python.exe")
 	}
 
 	var nuBin string
@@ -254,6 +269,9 @@ func New(logger *logrus.Logger, version string) *Agent {
 		MeshSystemEXE:      MeshSysExe,
 		MeshSVC:            meshSvcName,
 		PyBin:              pybin,
+		PyVer:              pyver,
+		PyBaseDir:          pyBaseDir,
+		PyDir:              pydir,
 		NuBin:              nuBin,
 		DenoBin:            denoBin,
 		Headers:            headers,

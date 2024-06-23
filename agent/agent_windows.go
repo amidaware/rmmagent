@@ -752,6 +752,15 @@ func (a *Agent) AgentUninstall(code string) {
 
 // RunMigrations cleans up unused stuff from older agents
 func (a *Agent) RunMigrations() {
+
+	// changed pybin dirs in v2.8.0
+	for _, i := range []string{"py38-x64", "py38-x32"} {
+		py := filepath.Join(a.ProgramDir, i)
+		if trmm.FileExists(py) {
+			os.RemoveAll(py)
+		}
+	}
+
 	for _, i := range []string{"nssm.exe", "nssm-x86.exe"} {
 		nssm := filepath.Join(a.ProgramDir, i)
 		if trmm.FileExists(nssm) {
@@ -845,29 +854,22 @@ func (a *Agent) GetPython(force bool) {
 		return
 	}
 
+	if force {
+		os.RemoveAll(a.PyBaseDir)
+	}
+
 	sleepDelay := randRange(1, 10)
-	a.Logger.Debugf("GetPython() sleeping for %v seconds", sleepDelay)
+	a.Logger.Debugf("GetPython() sleeping for %v seconds\n", sleepDelay)
 	time.Sleep(time.Duration(sleepDelay) * time.Second)
 
-	var archZip string
-	var folder string
-	switch runtime.GOARCH {
-	case "amd64":
-		archZip = "py38-x64.zip"
-		folder = "py38-x64"
-	case "386":
-		archZip = "py38-x32.zip"
-		folder = "py38-x32"
+	if !trmm.FileExists(a.PyBaseDir) {
+		os.MkdirAll(a.PyBaseDir, 0775)
 	}
-	pyFolder := filepath.Join(a.ProgramDir, folder)
-	pyZip := filepath.Join(a.ProgramDir, archZip)
-	a.Logger.Debugln(pyZip)
-	a.Logger.Debugln(a.PyBin)
-	defer os.Remove(pyZip)
 
-	if force {
-		os.RemoveAll(pyFolder)
-	}
+	archZip := a.PyDir + ".zip"
+
+	pyZip := filepath.Join(a.PyBaseDir, archZip)
+	defer os.Remove(pyZip)
 
 	rClient := resty.New()
 	rClient.SetTimeout(20 * time.Minute)
@@ -878,7 +880,7 @@ func (a *Agent) GetPython(force bool) {
 		rClient.SetProxy(a.Proxy)
 	}
 
-	url := fmt.Sprintf("https://github.com/amidaware/rmmagent/releases/download/v2.0.0/%s", archZip)
+	url := fmt.Sprintf("https://github.com/amidaware/rmmagent/releases/download/v2.8.0/%s", archZip)
 	a.Logger.Debugln(url)
 	r, err := rClient.R().SetOutput(pyZip).Get(url)
 	if err != nil {
@@ -890,7 +892,7 @@ func (a *Agent) GetPython(force bool) {
 		return
 	}
 
-	err = Unzip(pyZip, a.ProgramDir)
+	err = Unzip(pyZip, a.PyBaseDir)
 	if err != nil {
 		a.Logger.Errorln(err)
 	}
