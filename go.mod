@@ -7,31 +7,31 @@ require (
 	github.com/elastic/go-sysinfo v1.11.2
 	github.com/go-ole/go-ole v1.3.0
 	github.com/go-ping/ping v1.1.0
-	github.com/go-resty/resty/v2 v2.11.0
+	github.com/go-resty/resty/v2 v2.13.1
 	github.com/gonutz/w32/v2 v2.11.1
 	github.com/iamacarpet/go-win64api v0.0.0-20230324134531-ef6dbdd6db97
-	github.com/nats-io/nats.go v1.34.0
+	github.com/nats-io/nats.go v1.36.0
 	github.com/rickb777/date v1.19.1
 	github.com/shirou/gopsutil/v3 v3.23.12
 	github.com/sirupsen/logrus v1.9.3
 	github.com/ugorji/go/codec v1.2.12
 	github.com/wh1te909/go-win64api v0.0.0-20230802051600-21b24f62e846
 	github.com/wh1te909/trmm-shared v0.0.0-20220227075846-f9f757361139
-	golang.org/x/net v0.19.0 // indirect
-	golang.org/x/sys v0.16.0
+	golang.org/x/net v0.25.0 // indirect
+	golang.org/x/sys v0.20.0
 )
 
 require (
 	github.com/amidaware/taskmaster v0.0.0-20220111015025-c9cd178bbbf2
-	github.com/go-cmd/cmd v1.4.2
+	github.com/go-cmd/cmd v1.4.3
 )
 
 require (
 	github.com/fourcorelabs/wintoken v1.0.0
 	github.com/jaypipes/ghw v0.12.0
 	github.com/kardianos/service v1.2.2
-	github.com/spf13/viper v1.18.2
-	golang.org/x/text v0.14.0
+	github.com/spf13/viper v1.19.0
+	golang.org/x/text v0.15.0
 )
 
 require (
@@ -52,7 +52,7 @@ require (
 	github.com/nats-io/nkeys v0.4.7 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
 	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d // indirect
-	github.com/pelletier/go-toml/v2 v2.1.0 // indirect
+	github.com/pelletier/go-toml/v2 v2.2.2 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/power-devops/perfstat v0.0.0-20220216144756-c35f1ee13d7c // indirect
 	github.com/prometheus/procfs v0.8.0 // indirect
@@ -71,9 +71,9 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.3 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
-	golang.org/x/crypto v0.18.0 // indirect
+	golang.org/x/crypto v0.23.0 // indirect
 	golang.org/x/exp v0.0.0-20230905200255-921286631fa9 // indirect
-	golang.org/x/sync v0.5.0 // indirect
+	golang.org/x/sync v0.6.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/toast.v1 v1.0.0-20180812000517-0a84660828b2 // indirect

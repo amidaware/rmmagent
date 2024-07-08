@@ -49,6 +49,8 @@ type AgentCheckInConfig struct {
 }
 
 func (a *Agent) AgentSvc(nc *nats.Conn) {
+	a.RunMigrations()
+
 	if runtime.GOOS == "windows" {
 		go a.GetPython(false)
 
@@ -57,8 +59,6 @@ func (a *Agent) AgentSvc(nc *nats.Conn) {
 			a.Logger.Errorln("AgentSvc() createWinTempDir():", err)
 		}
 	}
-
-	a.RunMigrations()
 
 	sleepDelay := randRange(7, 25)
 	a.Logger.Debugf("AgentSvc() sleeping for %v seconds", sleepDelay)
