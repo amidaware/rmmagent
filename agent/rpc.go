@@ -340,15 +340,6 @@ func (a *Agent) RunRPC() {
 				ret.Encode(sw)
 				msg.Respond(resp)
 			}()
-			
-		case "systrayconfig":
-			go func() {
-				var resp []byte
-				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
-				a.GetSystrayConfig()
-				ret.Encode("ok")
-				msg.Respond(resp)
-			}()
 
 		case "systrayconfig":
 			go func() {
