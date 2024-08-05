@@ -1,25 +1,24 @@
 package agent
 
 import (
-	"fmt"
-	"log"
-	"io/ioutil"
-	"net/http"
+	"bytes"
 	"encoding/json"
-	"os/exec"
-	"runtime"
-	"syscall"
-	"strings"
-	"time"
-	"os"
+	"fmt"
 	"io"
+	"log"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
+	"strings"
+	"syscall"
+	"time"
 
-	"golang.org/x/sys/windows"
-	"golang.org/x/sys/windows/registry"
 	"github.com/fourcorelabs/wintoken"
+	"golang.org/x/sys/windows"
 )
 
-type SupportConfigItem struct {
+type SystrayConfigItem struct {
 	Type       string `json:"type"`
 	Title      string `json:"title,omitempty"`
 	Action     string `json:"action,omitempty"`
@@ -28,163 +27,128 @@ type SupportConfigItem struct {
 	IsDisabled bool   `json:"isDisabled,omitempty"`
 }
 
-type SupportConfig struct {
-	Type   string             `json:"type"`
-	Items  []SupportConfigItem `json:"items"`
-	Title  string             `json:"title,omitempty"`
-	Tooltip string            `json:"tooltip,omitempty"`
+type SystrayConfig struct {
+	Type    string              `json:"type"`
+	Items   []SystrayConfigItem `json:"items"`
+	Title   string              `json:"title,omitempty"`
+	Action  string              `json:"action"`
+	Tooltip string              `json:"tooltip,omitempty"`
 }
 
-type SupportResponse struct {
-	SupportConfig []SupportConfig `json:"support_config"`
-	SystrayEnabled bool           `json:"systray_enabled"`
-	SupportIcon    string         `json:"support_icon"`
-	SupportName    string         `json:"support_name"`
+type SystrayResponse struct {
+	SystrayConfig  []SystrayConfig `json:"systray_config"`
+	SystrayEnabled bool            `json:"systray_enabled"`
+	SystrayIcon    string          `json:"systray_icon"`
+	SystrayName    string          `json:"systray_name"`
 }
 
 func (a *Agent) GetSystrayConfig() {
 	if runtime.GOOS != "windows" {
-		log.Println("System trays are only supported on windows at this time.")
+		a.Logger.Debugln("System trays are only supported on windows at this time.")
 		return
 	}
 
-	reg, err := registry.OpenKey(registry.LOCAL_MACHINE, `SOFTWARE\TacticalRMM`, registry.QUERY_VALUE)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	defer reg.Close()
-
-	agentID, _, err := reg.GetStringValue("agentID")
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	baseURL, _, err := reg.GetStringValue("BaseURL")
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	token, _, err := reg.GetStringValue("Token")
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	// Construct request URL and create the request
-	requestURL := fmt.Sprintf("%s/api/v3/%s/support/", baseURL, agentID)
-	req, err := http.NewRequest("GET", requestURL, nil)
-	if err != nil {
-		fmt.Println("Error creating request:", err)
-		return
-	}
-	
-	// Add the Authorization header
-	req.Header.Add("Authorization", "Token "+token)
-	
 	// Send the request
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	url := fmt.Sprintf("/api/v3/%s/systray/", a.AgentID)
+	resp, err := a.rClient.R().Get(url)
 	if err != nil {
-		fmt.Println("Error sending request:", err)
+		a.Logger.Debugln("Error sending request:", err)
 		return
 	}
-	defer resp.Body.Close()
-	
+
 	// Read the response
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		fmt.Println("Error reading response body:", err)
+	body := resp.Body()
+	if body == nil {
+		a.Logger.Debugln("Error: response body is nil")
 		return
 	}
-	
-	var result SupportResponse
+
+	var result SystrayResponse
 	err = json.Unmarshal(body, &result)
 	if err != nil {
-		fmt.Println("Error unmarshaling response:", err)
+		a.Logger.Debugln("Invalid or Missing Config:", err)
+		a.closeExistingSystray()
 		return
 	}
 
-	fmt.Printf("Support Information: %+v\n", result)
+	a.Logger.Debugln("Systray Information:", result)
 
 	// Close existing systray if it exists
-	closeExistingSystray()
+	a.closeExistingSystray()
 
-	// Check if support is enabled
+	// Check if systray is enabled
 	if result.SystrayEnabled {
 		// Task 1: Download the icon
-		iconErr := downloadIcon(result.SupportIcon, agentID, token)
+		iconErr := a.downloadTrayIcon(result.SystrayIcon, a.AgentID, a.Token)
 		if iconErr != nil {
-			fmt.Println("Error downloading icon:", iconErr)
+			a.Logger.Debugln("Error downloading icon:", iconErr)
 			return
 		}
-	
+
 		// Task 2: Start the systray application
-		startSystray()
+		startSystray(a.EXE)
 		time.Sleep(1 * time.Second)
 
 		// Task 3: Send config over named pipe
-		sendErr := SendConfigToNamedPipe(result.SupportName, result.SupportConfig)
+		sendErr := SendConfigToNamedPipe(result.SystrayName, result.SystrayConfig)
 		if sendErr != nil {
-			fmt.Println("Error sending config to named pipe:", sendErr)
+			a.Logger.Debugln("Error sending config to named pipe:", sendErr)
 			return
 		}
 	}
 }
 
-func downloadIcon(url, agentId, token string) error {
+func (a *Agent) downloadTrayIcon(url, agentId, token string) error {
 	// Correct the URL by inserting the agent ID
-	correctedURL := strings.Replace(url, "/support/", fmt.Sprintf("/%s/%s/%s/support/", "api", "v3", agentId), 1)
-
-	// Create the HTTP request
-	req, err := http.NewRequest("GET", correctedURL, nil)
-	if err != nil {
-		return fmt.Errorf("creating request: %v", err)
-	}
-
-	// Add the Authorization header
-	req.Header.Add("Authorization", "Token "+token)
+	correctedURL := strings.Replace(url, "/core/systray/", fmt.Sprintf("/%s/%s/%s/systray/", "api", "v3", agentId), 1)
 
 	// Execute the request
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := a.rClient.SetBaseURL("").R().Get(correctedURL)
 	if err != nil {
-		return fmt.Errorf("executing request: %v", err)
+		a.Logger.Debugln("executing request:", err)
+		return err
 	}
-	defer resp.Body.Close()
 
-	// Check if the request was successful
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("non-OK HTTP status: %s", resp.Status)
-	}
+	a.rClient.SetBaseURL(a.BaseURL)
 
 	// Ensure the target directory exists
-	iconDir := `C:\ProgramData\TacticalRMM`
+	iconDir := filepath.Join(os.Getenv("ProgramData"), "TacticalRMM")
 	if err := os.MkdirAll(iconDir, 0755); err != nil {
-		return fmt.Errorf("creating directory: %v", err)
+		a.Logger.Debugln("creating directory:", err)
+		return err
 	}
 
 	// Create the file
 	filePath := iconDir + `\icon.ico`
 	file, err := os.Create(filePath)
 	if err != nil {
-		return fmt.Errorf("creating file: %v", err)
+		a.Logger.Debugln("creating file:", err)
+		return err
 	}
 	defer file.Close()
 
-	// Write the body to file
-	_, err = io.Copy(file, resp.Body)
-	if err != nil {
-		return fmt.Errorf("writing to file: %v", err)
+	// Read the response
+	body := resp.Body()
+	if body == nil {
+		a.Logger.Debugln("Error: response body is nil")
+		return nil
 	}
 
-	fmt.Printf("Icon successfully downloaded to %s\n", filePath)
+	// Convert the body to an io.Reader
+	reader := bytes.NewReader(body)
+
+	// Write the body to file
+	_, err = io.Copy(file, reader)
+	if err != nil {
+		a.Logger.Debugln("writing to file:", err)
+		return err
+	}
+
+	a.Logger.Debugln("Icon successfully downloaded to", filePath)
 	return nil
 }
 
-func startSystray() {
+func startSystray(exe string) {
 	if runtime.GOOS != "windows" {
 		log.Println("This function is designed to run on Windows.")
 		return
@@ -198,7 +162,7 @@ func startSystray() {
 	defer token.Close()
 
 	// Launch the tray application using the fetched token.
-	cmd := exec.Command("C:\\Program Files\\TacticalAgent\\tacticalrmm.exe", "-m", "tray")
+	cmd := exec.Command(exe, "-m", "tray")
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Token: syscall.Token(token.Token()),
 	}
@@ -209,28 +173,37 @@ func startSystray() {
 	}
 }
 
-func SendConfigToNamedPipe(supportName string, config []SupportConfig) error {
-
+func SendConfigToNamedPipe(systrayName string, config []SystrayConfig) error {
 	pipeName := `\\.\pipe\TRMM`
 
-	// Open the named pipe
-	hPipe, err := windows.CreateFile(
-		syscall.StringToUTF16Ptr(pipeName),
-		windows.GENERIC_READ|windows.GENERIC_WRITE,
-		0, nil,
-		windows.OPEN_EXISTING,
-		0, 0)
+	// Retry mechanism for opening the named pipe
+	var hPipe windows.Handle
+	var err error
+	for retries := 0; retries < 5; retries++ {
+		hPipe, err = windows.CreateFile(
+			syscall.StringToUTF16Ptr(pipeName),
+			windows.GENERIC_READ|windows.GENERIC_WRITE,
+			0, nil,
+			windows.OPEN_EXISTING,
+			0, 0)
+		if err == nil {
+			break
+		}
+		log.Printf("Failed to open named pipe on attempt", retries+1, err)
+		time.Sleep(2 * time.Second)
+	}
+
 	if err != nil {
-		return fmt.Errorf("failed to open named pipe: %v", err)
+		return fmt.Errorf("failed to open named pipe:", err)
 	}
 	defer windows.CloseHandle(hPipe)
 
 	// Prepare the data to send
 	data := struct {
 		Name   string          `json:"name"`
-		Config []SupportConfig `json:"config"`
+		Config []SystrayConfig `json:"config"`
 	}{
-		Name:   supportName,
+		Name:   systrayName,
 		Config: config,
 	}
 
@@ -246,26 +219,30 @@ func SendConfigToNamedPipe(supportName string, config []SupportConfig) error {
 		return fmt.Errorf("failed to write to named pipe: %v", err)
 	}
 
-	fmt.Println("Data sent to named pipe successfully.")
+	log.Println("Data sent to named pipe successfully.")
 	return nil
 }
 
-func closeExistingSystray() {
+func (a *Agent) closeExistingSystray() {
 	const pipeName = `\\.\pipe\TRMM`
-	var securityAttributes windows.SecurityAttributes
 
-	// Open the named pipe
-	hPipe, err := windows.CreateFile(
-		syscall.StringToUTF16Ptr(pipeName),
-		windows.GENERIC_READ|windows.GENERIC_WRITE,
-		0,
-		&securityAttributes,
-		windows.OPEN_EXISTING,
-		0,
-		0,
-	)
+	var hPipe windows.Handle
+	var err error
+	for retries := 0; retries < 5; retries++ {
+		hPipe, err = windows.CreateFile(
+			syscall.StringToUTF16Ptr(pipeName),
+			windows.GENERIC_READ|windows.GENERIC_WRITE,
+			0, nil,
+			windows.OPEN_EXISTING,
+			0, 0)
+		if err == nil {
+			break
+		}
+		a.Logger.Debugln("Failed to open named pipe on attempt", retries+1, err)
+		time.Sleep(2 * time.Second)
+	}
 	if err != nil {
-		fmt.Printf("Failed to open named pipe: %v\n", err)
+		a.Logger.Debugln("Failed to open named pipe:", err)
 		return
 	}
 	defer windows.CloseHandle(hPipe)
@@ -278,7 +255,7 @@ func closeExistingSystray() {
 	}
 	msgBytes, err := json.Marshal(msg)
 	if err != nil {
-		fmt.Printf("Failed to marshal message: %v\n", err)
+		a.Logger.Debugln("Failed to marshal message:", err)
 		return
 	}
 
@@ -286,9 +263,9 @@ func closeExistingSystray() {
 	var written uint32
 	err = windows.WriteFile(hPipe, msgBytes, &written, nil)
 	if err != nil {
-		fmt.Printf("Failed to write to named pipe: %v\n", err)
+		a.Logger.Debugln("Failed to write to named pipe:", err)
 		return
 	}
 
-	fmt.Println("Message sent successfully.")
+	a.Logger.Debugln("Message sent successfully.")
 }
