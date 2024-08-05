@@ -4,8 +4,7 @@ go 1.20
 
 require (
 	github.com/StackExchange/wmi v1.2.1
-	github.com/elastic/go-sysinfo v1.11.1
-	github.com/elastic/go-sysinfo v1.11.1
+	github.com/elastic/go-sysinfo v1.11.2
 	github.com/go-ole/go-ole v1.3.0
 	github.com/go-ping/ping v1.1.0
 	github.com/go-resty/resty/v2 v2.13.1
@@ -13,11 +12,9 @@ require (
 	github.com/iamacarpet/go-win64api v0.0.0-20230324134531-ef6dbdd6db97
 	github.com/nats-io/nats.go v1.36.0
 	github.com/rickb777/date v1.19.1
-	github.com/shirou/gopsutil/v3 v3.23.10
-	github.com/shirou/gopsutil/v3 v3.23.10
+	github.com/shirou/gopsutil/v3 v3.23.12
 	github.com/sirupsen/logrus v1.9.3
-	github.com/ugorji/go/codec v1.2.11
-	github.com/ugorji/go/codec v1.2.11
+	github.com/ugorji/go/codec v1.2.12
 	github.com/wh1te909/go-win64api v0.0.0-20230802051600-21b24f62e846
 	github.com/wh1te909/trmm-shared v0.0.0-20220227075846-f9f757361139
 	golang.org/x/net v0.25.0 // indirect
@@ -31,8 +28,6 @@ require (
 
 require (
 	github.com/fourcorelabs/wintoken v1.0.0
-	github.com/getlantern/systray v1.2.2
-	github.com/getlantern/systray v1.2.2
 	github.com/jaypipes/ghw v0.12.0
 	github.com/kardianos/service v1.2.2
 	github.com/spf13/viper v1.19.0
@@ -41,27 +36,11 @@ require (
 
 require (
 	github.com/elastic/go-windows v1.0.1 // indirect
-	github.com/fsnotify/fsnotify v1.6.0 // indirect
-	github.com/getlantern/context v0.0.0-20190109183933-c447772a6520 // indirect
-	github.com/getlantern/errors v0.0.0-20190325191628-abdb3e3e36f7 // indirect
-	github.com/getlantern/golog v0.0.0-20190830074920-4ef2e798c2d7 // indirect
-	github.com/getlantern/hex v0.0.0-20190417191902-c6586a6fe0b7 // indirect
-	github.com/getlantern/hidden v0.0.0-20190325191715-f02dbb02be55 // indirect
-	github.com/getlantern/ops v0.0.0-20190325191751-d70cb0d6f85f // indirect
-	github.com/fsnotify/fsnotify v1.6.0 // indirect
-	github.com/getlantern/context v0.0.0-20190109183933-c447772a6520 // indirect
-	github.com/getlantern/errors v0.0.0-20190325191628-abdb3e3e36f7 // indirect
-	github.com/getlantern/golog v0.0.0-20190830074920-4ef2e798c2d7 // indirect
-	github.com/getlantern/hex v0.0.0-20190417191902-c6586a6fe0b7 // indirect
-	github.com/getlantern/hidden v0.0.0-20190325191715-f02dbb02be55 // indirect
-	github.com/getlantern/ops v0.0.0-20190325191751-d70cb0d6f85f // indirect
+	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/ghodss/yaml v1.0.0 // indirect
-	github.com/go-stack/stack v1.8.0 // indirect
-	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/google/cabbie v1.0.3 // indirect
 	github.com/google/glazier v0.0.0-20220520121753-83447cca4ea7 // indirect
-	github.com/google/uuid v1.3.0 // indirect
-	github.com/google/uuid v1.3.0 // indirect
+	github.com/google/uuid v1.4.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/jaypipes/pcidb v1.0.0 // indirect
 	github.com/joeshaw/multierror v0.0.0-20140124173710-69b34d4ec901 // indirect
@@ -70,8 +49,7 @@ require (
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
-	github.com/nats-io/nkeys v0.4.6 // indirect
-	github.com/nats-io/nkeys v0.4.6 // indirect
+	github.com/nats-io/nkeys v0.4.7 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
 	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d // indirect
 	github.com/pelletier/go-toml/v2 v2.2.2 // indirect
@@ -79,22 +57,20 @@ require (
 	github.com/power-devops/perfstat v0.0.0-20220216144756-c35f1ee13d7c // indirect
 	github.com/prometheus/procfs v0.8.0 // indirect
 	github.com/rickb777/plural v1.4.1 // indirect
-	github.com/sagikazarmark/locafero v0.3.0 // indirect
-	github.com/sagikazarmark/locafero v0.3.0 // indirect
+	github.com/sagikazarmark/locafero v0.4.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
 	github.com/scjalliance/comshim v0.0.0-20190308082608-cf06d2532c4e // indirect
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
-	github.com/spf13/afero v1.10.0 // indirect
-	github.com/spf13/cast v1.5.1 // indirect
-	github.com/spf13/afero v1.10.0 // indirect
-	github.com/spf13/cast v1.5.1 // indirect
+	github.com/spf13/afero v1.11.0 // indirect
+	github.com/spf13/cast v1.6.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/tklauser/go-sysconf v0.3.12 // indirect
 	github.com/tklauser/numcpus v0.6.1 // indirect
 	github.com/yusufpapurcu/wmi v1.2.3 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
+	go.uber.org/multierr v1.9.0 // indirect
 	golang.org/x/crypto v0.23.0 // indirect
 	golang.org/x/exp v0.0.0-20230905200255-921286631fa9 // indirect
 	golang.org/x/sync v0.6.0 // indirect
