@@ -45,6 +45,7 @@ require (
 	github.com/getlantern/hidden v0.0.0-20190325191715-f02dbb02be55 // indirect
 	github.com/getlantern/ops v0.0.0-20190325191751-d70cb0d6f85f // indirect
 	github.com/ghodss/yaml v1.0.0 // indirect
+	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/google/cabbie v1.0.3 // indirect
 	github.com/google/glazier v0.0.0-20220520121753-83447cca4ea7 // indirect
 	github.com/google/uuid v1.4.0 // indirect
