@@ -19,7 +19,7 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/amidaware/rmmagent/agent/support"
+	"github.com/amidaware/rmmagent/agent/tray"
 	"github.com/amidaware/rmmagent/agent"
 	"github.com/kardianos/service"
 	"github.com/sirupsen/logrus"
@@ -106,7 +106,7 @@ func main() {
 		fmt.Println(a.AgentPK)
 	case "tray":
 		if runtime.GOOS == "windows" {
-			support.InitTrayIcon()
+			tray.InitTrayIcon()
 	}
 	case "winagentsvc":
 		fmt.Println("deprecated. use 'svc'")
