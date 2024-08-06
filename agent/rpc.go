@@ -341,6 +341,16 @@ func (a *Agent) RunRPC() {
 				msg.Respond(resp)
 			}()
 
+		case "systrayconfig":
+			go func() {
+				a.Logger.Debugln("Updating systray")
+				var resp []byte
+				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
+				a.GetSystrayConfig()
+				ret.Encode("ok")
+				msg.Respond(resp)
+			}()
+
 		case "shutdown":
 			go func() {
 				a.Logger.Debugln("Scheduling immediate shutdown")
