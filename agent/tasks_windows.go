@@ -266,7 +266,7 @@ func (a *Agent) CreateSchedTask(st SchedTask) (bool, error) {
 	case "schedreboot":
 		path = "shutdown.exe"
 		workdir = filepath.Join(os.Getenv("SYSTEMROOT"), "System32")
-		args = "/r /t 5 /f"
+		args = `/r /t 5 /f /c "Reboot scheduled by RMM agent." /d p:0:0`
 	case "custom":
 		path = st.Path
 		workdir = st.WorkDir
