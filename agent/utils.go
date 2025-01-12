@@ -451,7 +451,7 @@ func createNixTmpFile(shell ...string) (*os.File, error) {
 		}
  	}
 
-	f, err = os.CreateTemp(dirPath, fmt.Sprintf("trmm*%s", ext))
+	f, err := os.CreateTemp(dirPath, fmt.Sprintf("trmm*%s", ext))
 	if err != nil {
 		return f, err
 	}
