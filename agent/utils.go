@@ -433,19 +433,25 @@ func getCwd() (string, error) {
 	return filepath.Dir(self), nil
 }
 
+
 func createNixTmpFile(shell ...string) (*os.File, error) {
 	var f *os.File
-	cwd, err := getCwd()
-	if err != nil {
-		return f, err
-	}
 
 	ext := ""
 	if len(shell) > 0 && shell[0] == "deno" {
 		ext = ".ts"
 	}
 
-	f, err = os.CreateTemp(cwd, fmt.Sprintf("trmm*%s", ext))
+	dirPath := "/tmp/trmm"
+
+	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
+		err := os.MkdirAll(dirPath, 0700) // only we have access
+		if err != nil {
+			return f, err
+		}
+ 	}
+
+	f, err = os.CreateTemp(dirPath, fmt.Sprintf("trmm*%s", ext))
 	if err != nil {
 		return f, err
 	}
