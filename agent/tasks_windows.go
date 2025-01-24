@@ -12,7 +12,6 @@ https://license.tacticalrmm.com
 package agent
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -20,111 +19,8 @@ import (
 	"time"
 
 	"github.com/amidaware/taskmaster"
-
-	rmm "github.com/amidaware/rmmagent/shared"
 	"github.com/rickb777/date/period"
 )
-
-func (a *Agent) RunTask(id int) error {
-	data := rmm.AutomatedTask{}
-	url := fmt.Sprintf("/api/v3/%d/%s/taskrunner/", id, a.AgentID)
-	r1, gerr := a.rClient.R().Get(url)
-	if gerr != nil {
-		a.Logger.Debugln(gerr)
-		return gerr
-	}
-
-	if r1.IsError() {
-		a.Logger.Debugln("Run Task:", r1.String())
-		return nil
-	}
-
-	if err := json.Unmarshal(r1.Body(), &data); err != nil {
-		a.Logger.Debugln(err)
-		return err
-	}
-
-	start := time.Now()
-
-	type TaskResult struct {
-		Stdout   string  `json:"stdout"`
-		Stderr   string  `json:"stderr"`
-		RetCode  int     `json:"retcode"`
-		ExecTime float64 `json:"execution_time"`
-	}
-
-	payload := TaskResult{}
-
-	// loop through all task actions
-	for _, action := range data.TaskActions {
-
-		action_start := time.Now()
-		if action.ActionType == "script" {
-			stdout, stderr, retcode, err := a.RunScript(action.Code, action.Shell, action.Args, action.Timeout, action.RunAsUser, action.EnvVars, action.NushellEnableConfig, action.DenoDefaultPermissions)
-
-			if err != nil {
-				a.Logger.Debugln(err)
-			}
-
-			// add text to stdout showing which script ran if more than 1 script
-			action_exec_time := time.Since(action_start).Seconds()
-
-			if len(data.TaskActions) > 1 {
-				payload.Stdout += fmt.Sprintf("\n------------\nRunning Script: %s. Execution Time: %f\n------------\n\n", action.ScriptName, action_exec_time)
-			}
-
-			// save results
-			payload.Stdout += stdout
-			payload.Stderr += stderr
-			payload.RetCode = retcode
-
-			if !data.ContinueOnError && stderr != "" {
-				break
-			}
-
-		} else if action.ActionType == "cmd" {
-			// out[0] == stdout, out[1] == stderr
-			out, err := CMDShell(action.Shell, []string{}, action.Command, action.Timeout, false, action.RunAsUser)
-
-			if err != nil {
-				a.Logger.Debugln(err)
-			}
-
-			if len(data.TaskActions) > 1 {
-				action_exec_time := time.Since(action_start).Seconds()
-
-				// add text to stdout showing which script ran
-				payload.Stdout += fmt.Sprintf("\n------------\nRunning Command: %s. Execution Time: %f\n------------\n\n", action.Command, action_exec_time)
-			}
-			// save results
-			payload.Stdout += out[0]
-			payload.Stderr += out[1]
-
-			// no error
-			if out[1] == "" {
-				payload.RetCode = 0
-			} else {
-				payload.RetCode = 1
-
-				if !data.ContinueOnError {
-					break
-				}
-			}
-
-		} else {
-			a.Logger.Debugln("Invalid Action", action)
-		}
-	}
-
-	payload.ExecTime = time.Since(start).Seconds()
-
-	_, perr := a.rClient.R().SetBody(payload).Patch(url)
-	if perr != nil {
-		a.Logger.Debugln(perr)
-		return perr
-	}
-	return nil
-}
 
 type SchedTask struct {
 	PK                  int                            `json:"pk"`

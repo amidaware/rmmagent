@@ -941,8 +941,6 @@ func (a *Agent) GetInstalledSoftware() []trmm.WinSoftwareList { return []trmm.Wi
 
 func (a *Agent) ChecksRunning() bool { return false }
 
-func (a *Agent) RunTask(id int) error { return nil }
-
 func (a *Agent) InstallChoco() {}
 
 func (a *Agent) InstallWithChoco(name string) (string, error) { return "", nil }
