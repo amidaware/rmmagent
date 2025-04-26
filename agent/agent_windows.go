@@ -410,8 +410,7 @@ func (a *Agent) GetDisks() []trmm.Disk {
 	ret := make([]trmm.Disk, 0)
 	partitions, err := disk.Partitions(false)
 	if err != nil {
-		a.Logger.Debugln(err)
-		return ret
+		a.Logger.Debugln("GetDisks() partitions", err)
 	}
 
 	for _, p := range partitions {

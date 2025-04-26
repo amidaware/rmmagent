@@ -469,7 +469,7 @@ func (a *Agent) RunRPC() {
 				msg.Respond(resp)
 				out, _ := a.InstallWithChoco(p.ChocoProgName)
 				results := map[string]string{"results": out}
-				url := fmt.Sprintf("/api/v3/%d/chocoresult/", p.PendingActionPK)
+				url := fmt.Sprintf("/api/v4/%s/%d/chocoresult/", a.AgentID, p.PendingActionPK)
 				a.rClient.R().SetBody(results).Patch(url)
 			}(payload)
 		case "getwinupdates":

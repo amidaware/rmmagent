@@ -1,5 +1,5 @@
 #define MyAppName "Tactical RMM Agent"
-#define MyAppVersion "2.9.0"
+#define MyAppVersion "2.9.1"
 #define MyAppPublisher "AmidaWare Inc"
 #define MyAppURL "https://github.com/amidaware"
 #define MyAppExeName "tacticalrmm.exe"
@@ -27,8 +27,8 @@ SolidCompression=yes
 WizardStyle=modern
 RestartApplications=no
 CloseApplications=no
-MinVersion=6.0
-VersionInfoVersion=2.9.0.0
+MinVersion=6.1
+VersionInfoVersion=2.9.1.0
 VersionInfoOriginalFileName=tacticalrmm.exe
 AppCopyright="Copyright (C) 2025 {#MyAppPublisher}"
 
@@ -55,23 +55,11 @@ function InitializeSetup(): boolean;
 var
   ResultCode: Integer;
 begin
-  Exec('cmd.exe', '/c ping 127.0.0.1 -n 2 && net stop tacticalrpc', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-  Log('Stop tacticalrpc: ' + IntToStr(ResultCode));
-
-  Exec('cmd.exe', '/c net stop tacticalagent', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-  Log('Stop tacticalagent: ' + IntToStr(ResultCode));
-
   Exec('cmd.exe', '/c ping 127.0.0.1 -n 2 && net stop tacticalrmm', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
   Log('Stop tacticalrmm: ' + IntToStr(ResultCode));
 
   Exec('cmd.exe', '/c taskkill /F /IM tacticalrmm.exe', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
   Log('taskkill: ' + IntToStr(ResultCode));
-
-  Exec('cmd.exe', '/c sc delete tacticalagent', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-  Log('delete tacticalagent: ' + IntToStr(ResultCode));
-
-  Exec('cmd.exe', '/c sc delete tacticalrpc', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
-  Log('delete tacticalrpc: ' + IntToStr(ResultCode));
 
   Result := True;
 end;
