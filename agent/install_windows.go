@@ -21,7 +21,11 @@ import (
 	"golang.org/x/sys/windows/registry"
 )
 
-func createAgentConfig(baseurl, agentid, apiurl, token, agentpk, cert, proxy, meshdir, natsport string, insecure bool) {
+func createAgentConfig(
+	baseurl, agentid, apiurl, token, agentpk, cert, proxy, meshdir, natsport string, insecure bool,
+	// openframe parameters
+	openframeMode bool, openframeaccesstoken string,
+) {
 	k, _, err := registry.CreateKey(registry.LOCAL_MACHINE, `SOFTWARE\TacticalRMM`, registry.ALL_ACCESS)
 	if err != nil {
 		log.Fatalln("Error creating registry key:", err)
@@ -85,6 +89,21 @@ func createAgentConfig(baseurl, agentid, apiurl, token, agentpk, cert, proxy, me
 		err = k.SetStringValue("Insecure", "true")
 		if err != nil {
 			log.Fatalln("Error creating Insecure registry key:", err)
+		}
+	}
+
+	// openframe parameters
+	if openframeMode {
+		err = k.SetStringValue("OpenframeMode", "true")
+		if err != nil {
+			log.Fatalln("Error creating OpenframeMode registry key:", err)
+		}
+	}
+
+	if len(openframeaccesstoken) > 0 {
+		err = k.SetStringValue("OpenframeAccessToken", openframeaccesstoken)
+		if err != nil {
+			log.Fatalln("Error creating OpenframeAccessToken registry key:", err)
 		}
 	}
 }

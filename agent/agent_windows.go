@@ -70,6 +70,9 @@ func NewAgentConfig() *rmm.AgentConfig {
 	natsPingInterval, _, _ := k.GetStringValue("NatsPingInterval")
 	npi, _ := strconv.Atoi(natsPingInterval)
 	insecure, _, _ := k.GetStringValue("Insecure")
+	// openframe parameters
+	openframeMode, _, _ := k.GetStringValue("OpenframeMode")
+	openframeAccessToken, _, _ := k.GetStringValue("OpenframeAccessToken")
 
 	return &rmm.AgentConfig{
 		BaseURL:            baseurl,
@@ -88,6 +91,10 @@ func NewAgentConfig() *rmm.AgentConfig {
 		NatsStandardPort:   natsStandardPort,
 		NatsPingInterval:   npi,
 		Insecure:           insecure,
+		// openframe parameters
+		OpenframeMode:        openframeMode == "true",
+		OpenframeGatewayURL:  openframeGatewayURL,
+		OpenframeAccessToken: openframeAccessToken,
 	}
 }
 

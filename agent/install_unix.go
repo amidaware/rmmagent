@@ -33,7 +33,11 @@ func (a *Agent) installerMsg(msg, alert string, silent bool) {
 	}
 }
 
-func createAgentConfig(baseurl, agentid, apiurl, token, agentpk, cert, proxy, meshdir, natsport string, insecure bool) {
+func createAgentConfig(
+	baseurl, agentid, apiurl, token, agentpk, cert, proxy, meshdir, natsport string, insecure bool,
+	// openframe parameters
+	openframeMode bool, openframeaccesstoken string,
+) {
 	viper.SetConfigType("json")
 	viper.Set("baseurl", baseurl)
 	viper.Set("agentid", agentid)
@@ -47,11 +51,17 @@ func createAgentConfig(baseurl, agentid, apiurl, token, agentpk, cert, proxy, me
 	if insecure {
 		viper.Set("insecure", "true")
 	}
+
+	// openframe parameters
+	viper.Set("openframe-mode", openframeMode)
+	viper.Set("openframeaccesstoken", openframeaccesstoken)
+
 	viper.SetConfigPermissions(0660)
 	err := viper.SafeWriteConfigAs(etcConfig)
 	if err != nil {
 		log.Fatalln("createAgentConfig", err)
 	}
+
 }
 
 func (a *Agent) checkExistingAndRemove(silent bool) {

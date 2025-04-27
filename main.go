@@ -55,6 +55,11 @@ func main() {
 	proxy := flag.String("proxy", "", "Use a http proxy")
 	insecure := flag.Bool("insecure", false, "Insecure for testing only")
 	natsport := flag.String("natsport", "", "nats standard port")
+
+	// openframe parameters
+	openframeMode := flag.Bool("openframe-mode", false, "Openframe mode")
+	openframeToken := flag.String("openframe-token", "", "Openframe Token")
+
 	flag.Parse()
 
 	if *ver {
@@ -166,6 +171,9 @@ func main() {
 			MeshNodeID:       *meshNodeID,
 			Insecure:         *insecure,
 			NatsStandardPort: *natsport,
+			// openframe parameters
+			OpenframeMode:       *openframeMode,
+			OpenframeToken:      *openframeToken,
 		})
 	default:
 		agent.ShowStatus(version)

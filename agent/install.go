@@ -50,15 +50,25 @@ type Installer struct {
 	MeshNodeID       string
 	Insecure         bool
 	NatsStandardPort string
+	// openframe parameters
+	OpenframeMode  bool
+	OpenframeToken string
 }
 
 func (a *Agent) Install(i *Installer) {
 	a.checkExistingAndRemove(i.Silent)
 
 	i.Headers = map[string]string{
-		"content-type":  "application/json",
-		"Authorization": fmt.Sprintf("Token %s", i.Token),
+		"content-type": "application/json",
 	}
+
+	if i.OpenframeMode {
+		i.Headers["Authorization"] = fmt.Sprintf("Bearer %s", i.OpenframeToken)
+		i.Headers["Tool-Authorization"] = fmt.Sprintf("Token %s", i.Token)
+	} else {
+		i.Headers["Authorization"] = fmt.Sprintf("Token %s", i.Token)
+	}
+
 	a.AgentID = GenerateAgentID()
 	a.Logger.Debugln("Agent ID:", a.AgentID)
 
@@ -85,7 +95,12 @@ func (a *Agent) Install(i *Installer) {
 
 	a.Logger.Debugln("API:", i.SaltMaster)
 
-	baseURL := u.Scheme + "://" + u.Host
+	var baseURL string
+	if i.OpenframeMode {
+		baseURL = i.RMM + "/tools/tactical-rmm/agent"
+	} else {
+		baseURL = u.Scheme + "://" + u.Host
+	}
 	a.Logger.Debugln("Base URL:", baseURL)
 
 	iClient := resty.New()
@@ -245,7 +260,11 @@ func (a *Agent) Install(i *Installer) {
 	a.Logger.Debugln("Agent token:", agentToken)
 	a.Logger.Debugln("Agent PK:", agentPK)
 
-	createAgentConfig(baseURL, a.AgentID, i.SaltMaster, agentToken, strconv.Itoa(agentPK), i.Cert, i.Proxy, i.MeshDir, i.NatsStandardPort, i.Insecure)
+	createAgentConfig(
+		baseURL, a.AgentID, i.SaltMaster, agentToken, strconv.Itoa(agentPK), i.Cert, i.Proxy, i.MeshDir, i.NatsStandardPort, i.Insecure,
+		// openframe parameters
+		i.OpenframeMode, i.OpenframeToken,
+	)
 	time.Sleep(1 * time.Second)
 	// refresh our agent with new values
 	a = New(a.Logger, a.Version)

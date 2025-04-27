@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -82,6 +83,9 @@ type Agent struct {
 	NatsPingInterval   int
 	NatsWSCompression  bool
 	Insecure           bool
+	// openframe parameters
+	OpenframeMode        bool
+	OpenframeAccessToken string
 }
 
 const (
@@ -159,16 +163,28 @@ func New(logger *logrus.Logger, version string) *Agent {
 	ac := NewAgentConfig()
 
 	agentHeader := fmt.Sprintf("trmm/%s/%s/%s", version, runtime.GOOS, runtime.GOARCH)
+
 	headers := make(map[string]string)
 	if len(ac.Token) > 0 {
 		headers["Content-Type"] = "application/json"
-		headers["Authorization"] = fmt.Sprintf("Token %s", ac.Token)
+		if ac.OpenframeMode {
+			headers["Authorization"] = fmt.Sprintf("Bearer %s", ac.OpenframeAccessToken)
+			headers["Tool-Authorization"] = fmt.Sprintf("Token %s", ac.OpenframeAccessToken)
+		} else {
+			headers["Authorization"] = fmt.Sprintf("Token %s", ac.Token)
+		}
 	}
 
 	insecure := ac.Insecure == "true"
 
 	restyC := resty.New()
-	restyC.SetBaseURL(ac.BaseURL)
+
+	if ac.OpenframeMode {
+		restyC.SetBaseURL(ac.BaseURL)
+	} else {
+		restyC.SetBaseURL(ac.BaseURL)
+	}
+
 	restyC.SetCloseConnection(true)
 	restyC.SetHeaders(headers)
 	restyC.SetTimeout(15 * time.Second)
@@ -239,11 +255,22 @@ func New(logger *logrus.Logger, version string) *Agent {
 	// check if using nats standard tcp, otherwise use nats websockets by default
 	var natsServer string
 	var natsWsCompression bool
-	if ac.NatsStandardPort != "" {
-		natsServer = fmt.Sprintf("tls://%s:%s", ac.APIURL, ac.NatsStandardPort)
+
+	if ac.OpenframeMode {
+		logger.Debugln("ApiURL:", ac.APIURL)
+		apiurl, err := url.Parse(ac.APIURL)
+		if err != nil {
+			logger.Errorln("Error parsing api url:", err)
+		}
+		natsServer = fmt.Sprintf("ws://%s:%s", apiurl.Host, apiurl.Port())
+		logger.Debugln("Using Openframe mode, natsServer:", natsServer)
 	} else {
-		natsServer = fmt.Sprintf("wss://%s:%s", ac.APIURL, natsProxyPort)
-		natsWsCompression = true
+		if ac.NatsStandardPort != "" {
+			natsServer = fmt.Sprintf("tls://%s:%s", ac.APIURL, ac.NatsStandardPort)
+		} else {
+			natsServer = fmt.Sprintf("wss://%s:%s", ac.APIURL, natsProxyPort)
+			natsWsCompression = true
+		}
 	}
 
 	var natsPingInterval int
@@ -291,6 +318,9 @@ func New(logger *logrus.Logger, version string) *Agent {
 		NatsPingInterval:   natsPingInterval,
 		NatsWSCompression:  natsWsCompression,
 		Insecure:           insecure,
+		// openframe parameters
+		OpenframeMode:        ac.OpenframeMode,
+		OpenframeAccessToken: ac.OpenframeAccessToken,
 	}
 }
 
@@ -519,7 +549,14 @@ func (a *Agent) setupNatsOptions() []nats.Option {
 	opts = append(opts, nats.Compression(a.NatsWSCompression))
 	opts = append(opts, nats.MaxReconnects(-1))
 	opts = append(opts, nats.ReconnectBufSize(-1))
-	opts = append(opts, nats.ProxyPath(a.NatsProxyPath))
+
+	if a.OpenframeMode {
+		proxyPath := fmt.Sprintf("ws/tools/tactical-rmm/agent?authorisation=Bearer%%20%s", a.OpenframeAccessToken)
+		opts = append(opts, nats.ProxyPath(proxyPath))
+	} else {
+		opts = append(opts, nats.ProxyPath(a.NatsProxyPath))
+	}
+
 	opts = append(opts, nats.ReconnectJitter(500*time.Millisecond, 4*time.Second))
 	opts = append(opts, nats.DisconnectErrHandler(func(nc *nats.Conn, err error) {
 		a.Logger.Debugln("NATS disconnected:", err)

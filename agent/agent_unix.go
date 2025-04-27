@@ -165,6 +165,9 @@ func NewAgentConfig() *rmm.AgentConfig {
 		NatsStandardPort: viper.GetString("natsstandardport"),
 		NatsPingInterval: viper.GetInt("natspinginterval"),
 		Insecure:         viper.GetString("insecure"),
+		// openframe parameters
+		OpenframeMode:        viper.GetBool("openframe-mode"),
+		OpenframeAccessToken: viper.GetString("openframeaccesstoken"),
 	}
 	return ret
 }
