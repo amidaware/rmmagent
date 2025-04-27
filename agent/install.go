@@ -260,6 +260,14 @@ func (a *Agent) Install(i *Installer) {
 	a.Logger.Debugln("Agent token:", agentToken)
 	a.Logger.Debugln("Agent PK:", agentPK)
 
+	/* 
+		TODO: remove access token from config after openframe agent is implemented
+		Openframe access token should be passed as a parameter when starting the agent
+
+		The reason for current implementation is that tactical agent is started as system service now
+		and if system start it without access token paramater the logic of 
+		communication with openframe gateway will be broken.
+	*/
 	createAgentConfig(
 		baseURL, a.AgentID, i.SaltMaster, agentToken, strconv.Itoa(agentPK), i.Cert, i.Proxy, i.MeshDir, i.NatsStandardPort, i.Insecure,
 		// openframe parameters
