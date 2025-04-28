@@ -97,7 +97,7 @@ func (a *Agent) Install(i *Installer) {
 
 	var baseURL string
 	if i.OpenframeMode {
-		baseURL = i.RMM + "/tools/tactical-rmm/agent"
+		baseURL = i.RMM + "/tools/agent/tactical-rmm"
 	} else {
 		baseURL = u.Scheme + "://" + u.Host
 	}
