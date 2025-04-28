@@ -257,12 +257,11 @@ func New(logger *logrus.Logger, version string) *Agent {
 	var natsWsCompression bool
 
 	if ac.OpenframeMode {
-		logger.Debugln("ApiURL:", ac.APIURL)
-		apiurl, err := url.Parse(ac.APIURL)
+		baseurl, err := url.Parse(ac.BaseURL)
 		if err != nil {
 			logger.Errorln("Error parsing api url:", err)
 		}
-		natsServer = fmt.Sprintf("ws://%s:%s", apiurl.Host, apiurl.Port())
+		natsServer = fmt.Sprintf("ws://%s", baseurl.Host)
 		logger.Debugln("Using Openframe mode, natsServer:", natsServer)
 	} else {
 		if ac.NatsStandardPort != "" {
@@ -551,7 +550,7 @@ func (a *Agent) setupNatsOptions() []nats.Option {
 	opts = append(opts, nats.ReconnectBufSize(-1))
 
 	if a.OpenframeMode {
-		proxyPath := fmt.Sprintf("ws/tools/agent/tactical-rmm?authorisation=Bearer %s", a.OpenframeAccessToken)
+		proxyPath := fmt.Sprintf("ws/tools/agent/tactical-rmm/natsws?authorisation=Bearer%%20%s", a.OpenframeAccessToken)
 		opts = append(opts, nats.ProxyPath(proxyPath))
 	} else {
 		opts = append(opts, nats.ProxyPath(a.NatsProxyPath))
