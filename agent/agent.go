@@ -551,7 +551,7 @@ func (a *Agent) setupNatsOptions() []nats.Option {
 	opts = append(opts, nats.ReconnectBufSize(-1))
 
 	if a.OpenframeMode {
-		proxyPath := fmt.Sprintf("ws/tools/tactical-rmm/agent?authorisation=Bearer%%20%s", a.OpenframeAccessToken)
+		proxyPath := fmt.Sprintf("ws/tools/agent/tactical-rmm?authorisation=Bearer %s", a.OpenframeAccessToken)
 		opts = append(opts, nats.ProxyPath(proxyPath))
 	} else {
 		opts = append(opts, nats.ProxyPath(a.NatsProxyPath))
