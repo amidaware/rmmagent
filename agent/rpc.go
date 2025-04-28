@@ -349,7 +349,7 @@ func (a *Agent) RunRPC() {
 				ret.Encode("ok")
 				msg.Respond(resp)
 				if runtime.GOOS == "windows" {
-					CMD("shutdown.exe", []string{"/s", "/t", "5", "/f"}, 15, false)
+					CMD("shutdown.exe", []string{"/s", "/t", "5", "/f", "/c", "Shutdown initiated by RMM agent.", "/d", "e:0:0" }, 15, false)
 				} else {
 					opts := a.NewCMDOpts()
 					opts.Command = "shutdown -h now"
@@ -365,7 +365,7 @@ func (a *Agent) RunRPC() {
 				ret.Encode("ok")
 				msg.Respond(resp)
 				if runtime.GOOS == "windows" {
-					CMD("shutdown.exe", []string{"/r", "/t", "5", "/f"}, 15, false)
+					CMD("shutdown.exe", []string{"/r", "/t", "5", "/f", "/c", "Reboot initiated by RMM agent.", "/d", "e:0:0" }, 15, false)
 				} else {
 					opts := a.NewCMDOpts()
 					opts.Command = "reboot"
