@@ -19,8 +19,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"net"
-	"net/http"
 	"net/url"
 	"os"
 	"os/exec"
@@ -29,7 +27,6 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
-
 	"time"
 
 	rmm "github.com/amidaware/rmmagent/shared"

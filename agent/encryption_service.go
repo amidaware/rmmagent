@@ -8,17 +8,17 @@ import (
 	"log"
 )
 
-type EncryptionService struct {
+type OpenframeEncryptionService struct {
 	encryptionKey string
 }
 
-func NewEncryptionService(encryptionKey string) *EncryptionService {
-	return &EncryptionService{
+func NewOpenframeEncryptionService(encryptionKey string) *OpenframeEncryptionService {
+	return &OpenframeEncryptionService{
 		encryptionKey: encryptionKey,
 	}
 }
 
-func (es *EncryptionService) Encrypt(data []byte) (string, error) {
+func (es *OpenframeEncryptionService) Encrypt(data []byte) (string, error) {
 	block, err := aes.NewCipher([]byte(es.encryptionKey))
 	if err != nil {
 		log.Printf("Error creating cipher: %v", err)
@@ -39,7 +39,7 @@ func (es *EncryptionService) Encrypt(data []byte) (string, error) {
 	return base64Token, nil
 }
 
-func (es *EncryptionService) Decrypt(data string) ([]byte, error) {
+func (es *OpenframeEncryptionService) Decrypt(data string) ([]byte, error) {
 	// Decode base64 string to bytes
 	encryptedData, err := base64.StdEncoding.DecodeString(data)
 	if err != nil {

@@ -7,21 +7,21 @@ import (
 	"github.com/robfig/cron/v3"
 )
 
-type TokenRefresher struct {
+type OpenframeTokenRefresher struct {
 	a              *Agent
 	cron           *cron.Cron
-	tokenExtractor *TokenExtractor
+	tokenExtractor *OpenframeTokenExtractor
 }
 
-func NewTokenRefresher(a *Agent, tokenExtractor *TokenExtractor) *TokenRefresher {
-	return &TokenRefresher{
+func NewOpenframeTokenRefresher(a *Agent, tokenExtractor *OpenframeTokenExtractor) *OpenframeTokenRefresher {
+	return &OpenframeTokenRefresher{
 		a:              a,
 		cron:           cron.New(),
 		tokenExtractor: tokenExtractor,
 	}
 }
 
-func (tr *TokenRefresher) Start() error {
+func (tr *OpenframeTokenRefresher) Start() error {
 	// Schedule the job to run every minute
 	log.Println("Scheduling token refresh job")
 	_, err := tr.cron.AddFunc("* * * * *", tr.refreshToken)
@@ -33,7 +33,7 @@ func (tr *TokenRefresher) Start() error {
 	return nil
 }
 
-func (tr *TokenRefresher) Stop() {
+func (tr *OpenframeTokenRefresher) Stop() {
 	if tr.cron != nil {
 		log.Println("Stopping token refresh job")
 		tr.cron.Stop()
@@ -41,7 +41,7 @@ func (tr *TokenRefresher) Stop() {
 	}
 }
 
-func (tr *TokenRefresher) refreshToken() {
+func (tr *OpenframeTokenRefresher) refreshToken() {
 	log.Println("Refreshing token")
 
 	token, err := tr.tokenExtractor.ExtractToken()
@@ -59,7 +59,7 @@ func (tr *TokenRefresher) refreshToken() {
 		tr.a.rClient.SetHeader("Authorization", fmt.Sprintf("Bearer %s", token))
 		tr.a.Logger.Debugln("Rest token updated")
 		tr.a.Logger.Debugln("Checking NATS connection status")
-		
+
 		tr.a.NatsConn.Opts.ProxyPath = fmt.Sprintf("ws/tools/agent/tactical-rmm/natsws?authorization=Bearer%%20%s", token)
 		tr.a.Logger.Debugln("Updated nats options with new token")
 		tr.a.Logger.Debugln("Nats options: ", tr.a.NatsConn.Opts)

@@ -9,17 +9,17 @@ const (
 	filePath = "/etc/openframe/token.txt"
 )
 
-type TokenExtractor struct {
+type OpenframeTokenExtractor struct {
 	encryptionService *EncryptionService
 }
 
-func NewTokenExtractor(encryptionService *EncryptionService) *TokenExtractor {
-	return &TokenExtractor{
+func NewOpenframeTokenExtractor(encryptionService *EncryptionService) *OpenframeTokenExtractor {
+	return &OpenframeTokenExtractor{
 		encryptionService: encryptionService,
 	}
 }
 
-func (te *TokenExtractor) ExtractToken() (string, error) {
+func (te *OpenframeTokenExtractor) ExtractToken() (string, error) {
 	// Read the encrypted token from file
 	encryptedData, err := os.ReadFile(filePath)
 	if err != nil {

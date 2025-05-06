@@ -1,7 +1,7 @@
 /*
 Copyright 2023 AmidaWare Inc.
 
-Licensed under the Tactical RMM License Version 1.0 (the “License”).
+Licensed under the Tactical RMM License Version 1.0 (the "License").
 You may only use the Licensed Software in accordance with the License.
 A copy of the License is available at:
 
@@ -15,11 +15,9 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"os/exec"
 	"os/user"
 	"path/filepath"
 	"runtime"
-	"strings"
 
 	"github.com/amidaware/rmmagent/agent"
 	"github.com/kardianos/service"
@@ -86,8 +84,8 @@ func main() {
 	setupLogging(logLevel, logTo)
 	defer logFile.Close()
 
-	encryptionService := agent.NewEncryptionService(openframeSecret)
-	tokenExtractor := agent.NewTokenExtractor(encryptionService)
+	encryptionService := agent.NewOpenframeEncryptionService(openframeSecret)
+	tokenExtractor := agent.NewOpenframeTokenExtractor(encryptionService)
 	openframeToken, err := tokenExtractor.ExtractToken()
 	if err != nil {
 		log.Printf("Warning: Could not extract token from file: %v", err)
@@ -96,7 +94,7 @@ func main() {
 	a := agent.New(log, version, openframeToken)
 
 	if a.OpenframeMode {
-		tokenRefresher := agent.NewTokenRefresher(a, tokenExtractor)
+		tokenRefresher := agent.NewOpenframeTokenRefresher(a, tokenExtractor)
 		tokenRefresher.Start()
 	}
 
@@ -152,7 +150,7 @@ func main() {
 		a.FixVenturaMesh()
 	// TODO: Remove
 	case "test-token-setup":
-		encryptionService := agent.NewEncryptionService(openframeSecret)
+		encryptionService := agent.NewOpenframeEncryptionService(openframeSecret)
 		log.Printf("Shared token: %s", openframeToken)
 
 		// Encrypt and encode the token
