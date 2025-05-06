@@ -1,0 +1,64 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug Test Token Update Mode",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}",
+            "args": [
+                "-m", "update-shared-token",
+                "-log", "DEBUG",
+                "-logto", "stdout"
+            ],
+            "cwd": "${workspaceFolder}",
+            "buildFlags": "-tags=debug",
+            "env": {
+                "GOFLAGS": "-tags=debug -gcflags='all=-N -l'"
+            }
+        },
+        {
+            "name": "Debug Install Mode",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}",
+            "args": [
+                "-m", "install",
+                "-api", "http://localhost:8100",
+                "-auth", "123",
+                "-client-id", "1",
+                "-site-id", "1",
+                "-agent-type", "workstation",
+                "-log", "DEBUG",
+                "-logto", "stdout",
+                "-openframe-token", "123456",
+                "--openframe-mode",
+                "-nomesh"
+            ],
+            "cwd": "${workspaceFolder}",
+            "buildFlags": "-tags=debug",
+            "env": {
+                "GOFLAGS": "-tags=debug -gcflags='all=-N -l'"
+            }
+        },
+        {
+            "name": "Debug Service Mode",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}",
+            "args": [
+                "-m", "svc",
+                "-log", "DEBUG",
+                "-logto", "stdout"
+            ],
+            "cwd": "${workspaceFolder}",
+            "buildFlags": "-tags=debug",
+            "env": {
+                "GOFLAGS": "-tags=debug -gcflags='all=-N -l'"
+            }
+        }
+    ]
+}

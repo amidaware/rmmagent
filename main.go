@@ -15,13 +15,19 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/exec"
 	"os/user"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/amidaware/rmmagent/agent"
 	"github.com/kardianos/service"
 	"github.com/sirupsen/logrus"
+)
+
+const (
+	openframeSecret = "12345678901234567890123456789012"
 )
 
 var (
@@ -55,6 +61,11 @@ func main() {
 	proxy := flag.String("proxy", "", "Use a http proxy")
 	insecure := flag.Bool("insecure", false, "Insecure for testing only")
 	natsport := flag.String("natsport", "", "nats standard port")
+
+	// openframe parameters
+	openframeMode := flag.Bool("openframe-mode", false, "Openframe mode")
+	openframeUpdateToken := flag.String("openframe-token", "", "Openframe token")
+
 	flag.Parse()
 
 	if *ver {
@@ -75,7 +86,19 @@ func main() {
 	setupLogging(logLevel, logTo)
 	defer logFile.Close()
 
-	a := *agent.New(log, version)
+	encryptionService := agent.NewEncryptionService(openframeSecret)
+	tokenExtractor := agent.NewTokenExtractor(encryptionService)
+	openframeToken, err := tokenExtractor.ExtractToken()
+	if err != nil {
+		log.Printf("Warning: Could not extract token from file: %v", err)
+	}
+
+	a := agent.New(log, version, openframeToken)
+
+	if a.OpenframeMode {
+		tokenRefresher := agent.NewTokenRefresher(a, tokenExtractor)
+		tokenRefresher.Start()
+	}
 
 	if *mode == "install" {
 		a.Logger.SetOutput(os.Stdout)
@@ -96,7 +119,7 @@ func main() {
 		a.RunRPC()
 	case "svc":
 		if runtime.GOOS == "windows" {
-			s, _ := service.New(&a, a.ServiceConfig)
+			s, _ := service.New(a, a.ServiceConfig)
 			s.Run()
 		} else {
 			a.RunRPC()
@@ -127,6 +150,27 @@ func main() {
 		a.RecoverMesh()
 	case "macventurafix":
 		a.FixVenturaMesh()
+	// TODO: Remove
+	case "test-token-setup":
+		encryptionService := agent.NewEncryptionService(openframeSecret)
+		log.Printf("Shared token: %s", openframeToken)
+
+		// Encrypt and encode the token
+		encryptedToken, err := encryptionService.Encrypt([]byte(*openframeUpdateToken))
+		if err != nil {
+			log.Fatalf("Error encrypting token: %v", err)
+		}
+		log.Printf("Encrypted and encoded token: %s", encryptedToken)
+
+		// Save encrypted token to file
+		if err := os.MkdirAll("/etc/openframe", 0755); err != nil {
+			log.Fatalf("Error creating directory: %v", err)
+		}
+
+		if err := os.WriteFile("/etc/openframe/token.txt", []byte(encryptedToken), 0644); err != nil {
+			log.Fatalf("Error writing token to file: %v", err)
+		}
+		log.Printf("Successfully saved encrypted token to /etc/openframe/token.txt")
 	case "taskrunner":
 		if len(os.Args) < 5 || *taskPK == 0 {
 			return
@@ -166,6 +210,9 @@ func main() {
 			MeshNodeID:       *meshNodeID,
 			Insecure:         *insecure,
 			NatsStandardPort: *natsport,
+			// openframe parameters
+			OpenframeMode:  *openframeMode,
+			OpenframeToken: openframeToken,
 		})
 	default:
 		agent.ShowStatus(version)
@@ -190,4 +237,12 @@ func setupLogging(level, to *string) {
 		}
 		log.SetOutput(logFile)
 	}
+}
+
+func getCurrentDir() string {
+	dir, err := os.Getwd()
+	if err != nil {
+		return fmt.Sprintf("Error getting current directory: %v", err)
+	}
+	return dir
 }

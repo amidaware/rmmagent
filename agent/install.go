@@ -50,15 +50,25 @@ type Installer struct {
 	MeshNodeID       string
 	Insecure         bool
 	NatsStandardPort string
+	// openframe parameters
+	OpenframeMode  bool
+	OpenframeToken string
 }
 
 func (a *Agent) Install(i *Installer) {
 	a.checkExistingAndRemove(i.Silent)
 
 	i.Headers = map[string]string{
-		"content-type":  "application/json",
-		"Authorization": fmt.Sprintf("Token %s", i.Token),
+		"content-type": "application/json",
 	}
+
+	if i.OpenframeMode {
+		i.Headers["Authorization"] = fmt.Sprintf("Bearer %s", i.OpenframeToken)
+		i.Headers["Tool-Authorization"] = fmt.Sprintf("Token %s", i.Token)
+	} else {
+		i.Headers["Authorization"] = fmt.Sprintf("Token %s", i.Token)
+	}
+
 	a.AgentID = GenerateAgentID()
 	a.Logger.Debugln("Agent ID:", a.AgentID)
 
@@ -85,7 +95,12 @@ func (a *Agent) Install(i *Installer) {
 
 	a.Logger.Debugln("API:", i.SaltMaster)
 
-	baseURL := u.Scheme + "://" + u.Host
+	var baseURL string
+	if i.OpenframeMode {
+		baseURL = i.RMM + "/tools/agent/tactical-rmm"
+	} else {
+		baseURL = u.Scheme + "://" + u.Host
+	}
 	a.Logger.Debugln("Base URL:", baseURL)
 
 	iClient := resty.New()
@@ -245,10 +260,14 @@ func (a *Agent) Install(i *Installer) {
 	a.Logger.Debugln("Agent token:", agentToken)
 	a.Logger.Debugln("Agent PK:", agentPK)
 
-	createAgentConfig(baseURL, a.AgentID, i.SaltMaster, agentToken, strconv.Itoa(agentPK), i.Cert, i.Proxy, i.MeshDir, i.NatsStandardPort, i.Insecure)
+	createAgentConfig(
+		baseURL, a.AgentID, i.SaltMaster, agentToken, strconv.Itoa(agentPK), i.Cert, i.Proxy, i.MeshDir, i.NatsStandardPort, i.Insecure,
+		// openframe parameters
+		i.OpenframeMode,
+	)
 	time.Sleep(1 * time.Second)
 	// refresh our agent with new values
-	a = New(a.Logger, a.Version)
+	a = New(a.Logger, a.Version, i.OpenframeToken)
 	a.Logger.Debugf("%+v\n", a)
 
 	// set new headers, no longer knox auth...use agent auth
@@ -268,40 +287,45 @@ func (a *Agent) Install(i *Installer) {
 		self, _ := os.Executable()
 		copyFile(self, nixAgentBin)
 		os.Chmod(nixAgentBin, 0755)
-		svc := fmt.Sprintf(`
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-	<dict>
-		<key>Label</key>
-		<string>%s</string>
 
-		<key>ServiceDescription</key>
-        <string>TacticalAgent Service</string>
+		if i.OpenrameMode {
+			a.Logger.Infoln("LaunchDaemon installation disabled")
+		} else {
+		    svc := fmt.Sprintf(`
+            <?xml version="1.0" encoding="UTF-8"?>
+            <!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+            <plist version="1.0">
+            	<dict>
+            		<key>Label</key>
+            		<string>%s</string>
 
-		<key>ProgramArguments</key>
-		<array>
-			<string>%s</string>
-			<string>-m</string>
-			<string>svc</string>
-		</array>
+            		<key>ServiceDescription</key>
+                    <string>TacticalAgent Service</string>
 
-		<key>WorkingDirectory</key>
-		<string>%s/</string>
+            		<key>ProgramArguments</key>
+            		<array>
+            			<string>%s</string>
+            			<string>-m</string>
+            			<string>svc</string>
+            		</array>
 
-		<key>RunAtLoad</key>
-		<true/>
+            		<key>WorkingDirectory</key>
+            		<string>%s/</string>
 
-		<key>KeepAlive</key>
-		<true/>
-	</dict>
-</plist>
-`, macPlistName, nixAgentBin, nixAgentDir)
+            		<key>RunAtLoad</key>
+            		<true/>
 
-		os.WriteFile(macPlistPath, []byte(svc), 0644)
-		opts := a.NewCMDOpts()
-		opts.Command = fmt.Sprintf("launchctl bootstrap system %s", macPlistPath)
-		a.CmdV2(opts)
+            		<key>KeepAlive</key>
+            		<true/>
+            	</dict>
+            </plist>
+            `, macPlistName, nixAgentBin, nixAgentDir)
+
+            os.WriteFile(macPlistPath, []byte(svc), 0644)
+            opts := a.NewCMDOpts()
+            opts.Command = fmt.Sprintf("launchctl bootstrap system %s", macPlistPath)
+            a.CmdV2(opts)
+		}
 	}
 
 	if runtime.GOOS == "windows" {
@@ -319,17 +343,21 @@ func (a *Agent) Install(i *Installer) {
 		a.Logger.Debugln("Disabling automatic windows updates")
 		a.PatchMgmnt(true)
 
-		a.Logger.Infoln("Installing service...")
-		err = a.InstallService()
-		if err != nil {
-			a.installerMsg(err.Error(), "error", i.Silent)
-		}
+		if i.OpenframeMode {
+			a.Logger.Infoln("Service install disabled")
+		} else {
+            a.Logger.Infoln("Installing service...")
+            err = a.InstallService()
+            if err != nil {
+                a.installerMsg(err.Error(), "error", i.Silent)
+            }
 
-		time.Sleep(1 * time.Second)
-		a.Logger.Infoln("Starting service...")
-		out := a.ControlService(winSvcName, "start")
-		if !out.Success {
-			a.installerMsg(out.ErrorMsg, "error", i.Silent)
+            time.Sleep(1 * time.Second)
+            a.Logger.Infoln("Starting service...")
+            out := a.ControlService(winSvcName, "start")
+            if !out.Success {
+                a.installerMsg(out.ErrorMsg, "error", i.Silent)
+            }
 		}
 
 		if i.Power {
