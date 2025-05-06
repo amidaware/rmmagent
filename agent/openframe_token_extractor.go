@@ -10,10 +10,10 @@ const (
 )
 
 type OpenframeTokenExtractor struct {
-	encryptionService *EncryptionService
+	encryptionService *OpenframeEncryptionService
 }
 
-func NewOpenframeTokenExtractor(encryptionService *EncryptionService) *OpenframeTokenExtractor {
+func NewOpenframeTokenExtractor(encryptionService *OpenframeEncryptionService) *OpenframeTokenExtractor {
 	return &OpenframeTokenExtractor{
 		encryptionService: encryptionService,
 	}

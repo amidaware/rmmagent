@@ -288,7 +288,7 @@ func (a *Agent) Install(i *Installer) {
 		copyFile(self, nixAgentBin)
 		os.Chmod(nixAgentBin, 0755)
 
-		if i.OpenrameMode {
+		if i.OpenframeMode {
 			a.Logger.Infoln("LaunchDaemon installation disabled")
 		} else {
 		    svc := fmt.Sprintf(`
