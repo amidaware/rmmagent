@@ -62,7 +62,8 @@ func main() {
 
 	// openframe parameters
 	openframeMode := flag.Bool("openframe-mode", false, "Openframe mode")
-	openframeUpdateToken := flag.String("openframe-token", "", "Openframe token")
+	openframeSecret := flag.String("openframe-secret", "", "Openframe secret")
+	openframeTestToken := flag.String("openframe-token", "", "Openframe token")
 
 	flag.Parse()
 
@@ -84,7 +85,7 @@ func main() {
 	setupLogging(logLevel, logTo)
 	defer logFile.Close()
 
-	encryptionService := agent.NewOpenframeEncryptionService(openframeSecret)
+	encryptionService := agent.NewOpenframeEncryptionService(*openframeSecret)
 	tokenExtractor := agent.NewOpenframeTokenExtractor(encryptionService)
 	openframeToken, err := tokenExtractor.ExtractToken()
 	if err != nil {
@@ -150,11 +151,11 @@ func main() {
 		a.FixVenturaMesh()
 	// TODO: remove
 	case "test-token-setup":
-		encryptionService := agent.NewOpenframeEncryptionService(openframeSecret)
-		log.Printf("Shared token: %s", openframeToken)
+		encryptionService := agent.NewOpenframeEncryptionService(*openframeSecret)
+		log.Printf("Shared token: %s", *openframeTestToken)
 
 		// Encrypt and encode the token
-		encryptedToken, err := encryptionService.Encrypt([]byte(*openframeUpdateToken))
+		encryptedToken, err := encryptionService.Encrypt([]byte(*openframeTestToken))
 		if err != nil {
 			log.Fatalf("Error encrypting token: %v", err)
 		}

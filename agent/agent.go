@@ -85,7 +85,7 @@ type Agent struct {
 	// openframe parameters
 	OpenframeMode        bool
 	OpenframeAccessToken string
-
+	EncryptionService    *OpenframeEncryptionService
 	// tmp
 	NatsConn *nats.Conn
 }
