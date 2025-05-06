@@ -148,7 +148,7 @@ func main() {
 		a.RecoverMesh()
 	case "macventurafix":
 		a.FixVenturaMesh()
-	// TODO: Remove
+	// TODO: remove
 	case "test-token-setup":
 		encryptionService := agent.NewOpenframeEncryptionService(openframeSecret)
 		log.Printf("Shared token: %s", openframeToken)
