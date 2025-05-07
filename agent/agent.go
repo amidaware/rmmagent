@@ -263,7 +263,11 @@ func New(logger *logrus.Logger, version string, openframeSecret string) *Agent {
 		if err != nil {
 			logger.Errorln("Error parsing api url:", err)
 		}
-		natsServer = fmt.Sprintf("ws://%s", baseurl.Host)
+		if strings.Contains(baseurl.Host, "localhost") {
+			natsServer = fmt.Sprintf("ws://%s", baseurl.Host)
+		} else {
+			natsServer = fmt.Sprintf("wss://%s", baseurl.Host)
+		}
 		logger.Debugln("Using Openframe mode, natsServer:", natsServer)
 	} else {
 		if ac.NatsStandardPort != "" {
