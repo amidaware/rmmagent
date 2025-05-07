@@ -222,11 +222,3 @@ func setupLogging(level, to *string) {
 		log.SetOutput(logFile)
 	}
 }
-
-func getCurrentDir() string {
-	dir, err := os.Getwd()
-	if err != nil {
-		return fmt.Sprintf("Error getting current directory: %v", err)
-	}
-	return dir
-}
