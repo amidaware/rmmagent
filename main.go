@@ -24,10 +24,6 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const (
-	openframeSecret = "12345678901234567890123456789012"
-)
-
 var (
 	version = "2.9.0"
 	log     = logrus.New()
