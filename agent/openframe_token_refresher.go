@@ -61,14 +61,17 @@ func (tr *OpenframeTokenRefresher) refreshToken() {
 
 		a.rClient.SetHeader("Authorization", fmt.Sprintf("Bearer %s", token))
 		a.Logger.Debugln("Rest token updated")
-		a.Logger.Debugln("Checking NATS connection status")
 
-		a.NatsConn.Opts.ProxyPath = fmt.Sprintf(wsProxyPathTemplate, token)
-		a.Logger.Debugln("Updated nats options with new token")
-		a.Logger.Debugln("Nats options: ", tr.a.NatsConn.Opts)
-		a.Logger.Debugln("Force reconnecting nats")
-		a.NatsConn.ForceReconnect()
-		a.Logger.Debugln("Forced nats reconnection")
+		if a.NatsConn != nil {
+			a.NatsConn.Opts.ProxyPath = fmt.Sprintf(wsProxyPathTemplate, token)
+			a.Logger.Debugln("Updated nats options with new token")
+			a.Logger.Debugln("Nats options: ", tr.a.NatsConn.Opts)
+			a.Logger.Debugln("Force reconnecting nats")
+			a.NatsConn.ForceReconnect()
+			a.Logger.Debugln("Forced nats reconnection")
+		} else {
+			a.Logger.Debugln("Nats connection is nil, skipping reconnection")
+		}		
 	} else {
 		a.Logger.Debugln("Openframe token is the same, skipping refresh")
 	}
