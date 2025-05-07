@@ -85,9 +85,7 @@ type Agent struct {
 	// openframe parameters
 	OpenframeMode        bool
 	OpenframeAccessToken string
-	EncryptionService    *OpenframeEncryptionService
-	TokenExtractor       OpenframeTokenExtractor
-	NatsConn             *nats.Conn
+	connectionManager    *OpenframeConnectionManager
 }
 
 const (
@@ -113,7 +111,7 @@ var winMeshDir = filepath.Join(os.Getenv("PROGRAMFILES"), "Mesh Agent")
 var natsCheckin = []string{"agent-hello", "agent-agentinfo", "agent-disks", "agent-winsvc", "agent-publicip", "agent-wmi"}
 var limitNatsData = []string{"agent-winsvc", "agent-wmi"}
 
-func New(logger *logrus.Logger, version string, tokenExtractor OpenframeTokenExtractor) *Agent {
+func New(logger *logrus.Logger, version string, openframeSecret string) *Agent {
 	host, _ := ps.Host()
 	info := host.Info()
 	pd := filepath.Join(os.Getenv("ProgramFiles"), progFilesName)
@@ -165,6 +163,8 @@ func New(logger *logrus.Logger, version string, tokenExtractor OpenframeTokenExt
 
 	ac := NewAgentConfig()
 
+	encryptionService := NewOpenframeEncryptionService(openframeSecret)
+	tokenExtractor := NewOpenframeTokenExtractor(encryptionService)
 	openframeAccessToken, err := tokenExtractor.ExtractToken()
 	if err != nil {
 		logger.Errorln("Error extracting token:", err)
@@ -281,7 +281,7 @@ func New(logger *logrus.Logger, version string, tokenExtractor OpenframeTokenExt
 		natsPingInterval = ac.NatsPingInterval
 	}
 
-	return &Agent{
+	agent := &Agent{
 		Hostname:           hostname,
 		BaseURL:            ac.BaseURL,
 		AgentID:            ac.AgentID,
@@ -322,8 +322,17 @@ func New(logger *logrus.Logger, version string, tokenExtractor OpenframeTokenExt
 		// openframe parameters
 		OpenframeMode:        ac.OpenframeMode,
 		OpenframeAccessToken: openframeAccessToken,
-		TokenExtractor:       tokenExtractor,
 	}
+
+	if agent.OpenframeMode {
+		agent.connectionManager = NewOpenframeConnectionManager(agent.rClient, logger)
+		tokenRefresher := NewOpenframeTokenRefresher(agent, agent.connectionManager, tokenExtractor, logger)
+		if err := tokenRefresher.Start(); err != nil {
+			logger.Errorf("Failed to start token refresher: %v", err)
+		}
+	}
+
+	return agent
 }
 
 type CmdStatus struct {

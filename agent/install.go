@@ -52,18 +52,24 @@ type Installer struct {
 	NatsStandardPort string
 	// openframe parameters
 	OpenframeMode  bool
-	OpenframeToken string
+	OpenframeSecret string
 }
 
 func (a *Agent) Install(i *Installer) {
 	a.checkExistingAndRemove(i.Silent)
+
+	tokenExtractor := NewOpenframeTokenExtractor(NewOpenframeEncryptionService(i.OpenframeSecret))
+	openframeToken, err := tokenExtractor.ExtractToken()
+	if err != nil {
+		a.Logger.Errorln("Failed to extract token:", err)
+	}
 
 	i.Headers = map[string]string{
 		"content-type": "application/json",
 	}
 
 	if i.OpenframeMode {
-		i.Headers["Authorization"] = fmt.Sprintf("Bearer %s", i.OpenframeToken)
+		i.Headers["Authorization"] = fmt.Sprintf("Bearer %s", openframeToken)
 		i.Headers["Tool-Authorization"] = fmt.Sprintf("Token %s", i.Token)
 	} else {
 		i.Headers["Authorization"] = fmt.Sprintf("Token %s", i.Token)
@@ -267,7 +273,7 @@ func (a *Agent) Install(i *Installer) {
 	)
 	time.Sleep(1 * time.Second)
 	// refresh our agent with new values
-	a = New(a.Logger, a.Version, i.OpenframeToken)
+	a = New(a.Logger, a.Version, openframeToken)
 	a.Logger.Debugf("%+v\n", a)
 
 	// set new headers, no longer knox auth...use agent auth

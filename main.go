@@ -59,7 +59,7 @@ func main() {
 	// openframe parameters
 	openframeMode := flag.Bool("openframe-mode", false, "Openframe mode")
 	openframeSecret := flag.String("openframe-secret", "", "Openframe secret")
-	openframeTestToken := flag.String("openframe-token", "", "Openframe token")
+	openframeToken := flag.String("openframe-token", "", "Openframe token")
 
 	flag.Parse()
 
@@ -81,19 +81,7 @@ func main() {
 	setupLogging(logLevel, logTo)
 	defer logFile.Close()
 
-	encryptionService := agent.NewOpenframeEncryptionService(*openframeSecret)
-	tokenExtractor := agent.NewOpenframeTokenExtractor(encryptionService)
-	openframeToken, err := tokenExtractor.ExtractToken()
-	if err != nil {
-		log.Printf("Warning: Could not extract token from file: %v", err)
-	}
-
-	a := agent.New(log, version, *tokenExtractor)
-
-	if a.OpenframeMode {
-		tokenRefresher := agent.NewOpenframeTokenRefresher(a, tokenExtractor)
-		tokenRefresher.Start()
-	}
+	a := agent.New(log, version, *openframeSecret)
 
 	if *mode == "install" {
 		a.Logger.SetOutput(os.Stdout)
@@ -148,10 +136,10 @@ func main() {
 	// TODO: remove
 	case "test-token-setup":
 		encryptionService := agent.NewOpenframeEncryptionService(*openframeSecret)
-		log.Printf("Shared token: %s", *openframeTestToken)
+		log.Printf("Shared token: %s", *openframeToken)
 
 		// Encrypt and encode the token
-		encryptedToken, err := encryptionService.Encrypt([]byte(*openframeTestToken))
+		encryptedToken, err := encryptionService.Encrypt([]byte(*openframeToken))
 		if err != nil {
 			log.Fatalf("Error encrypting token: %v", err)
 		}
@@ -185,6 +173,7 @@ func main() {
 		if *api == "" || *clientID == 0 || *siteID == 0 || *token == "" {
 			return
 		}
+
 		a.Install(&agent.Installer{
 			RMM:              *api,
 			ClientID:         *clientID,
@@ -207,7 +196,7 @@ func main() {
 			NatsStandardPort: *natsport,
 			// openframe parameters
 			OpenframeMode:  *openframeMode,
-			OpenframeToken: openframeToken,
+			OpenframeSecret: *openframeSecret,
 		})
 	default:
 		agent.ShowStatus(version)

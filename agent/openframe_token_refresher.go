@@ -2,77 +2,72 @@ package agent
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/robfig/cron/v3"
+	"github.com/sirupsen/logrus"
 )
 
 type OpenframeTokenRefresher struct {
-	a              *Agent
-	cron           *cron.Cron
-	tokenExtractor *OpenframeTokenExtractor
+	a                 *Agent
+	connectionManager *OpenframeConnectionManager
+	tokenExtractor    *OpenframeTokenExtractor
+	cron              *cron.Cron
+	logger            *logrus.Logger
 }
 
-func NewOpenframeTokenRefresher(a *Agent, tokenExtractor *OpenframeTokenExtractor) *OpenframeTokenRefresher {
+func NewOpenframeTokenRefresher(
+	a *Agent,
+	connectionManager *OpenframeConnectionManager,
+	tokenExtractor *OpenframeTokenExtractor,
+	logger *logrus.Logger,
+) *OpenframeTokenRefresher {
 	return &OpenframeTokenRefresher{
-		a:              a,
-		cron:           cron.New(),
-		tokenExtractor: tokenExtractor,
+		a:                 a,
+		connectionManager: connectionManager,
+		tokenExtractor:    tokenExtractor,
+		cron:              cron.New(),
+		logger:            logger,
 	}
 }
 
 func (tr *OpenframeTokenRefresher) Start() error {
-	// Schedule the job to run every minute
-	log.Println("Scheduling token refresh job")
+	tr.logger.Println("Scheduling token refresh job")
 	_, err := tr.cron.AddFunc("* * * * *", tr.refreshToken)
 	if err != nil {
 		return fmt.Errorf("failed to schedule token refresh job: %v", err)
 	}
 	tr.cron.Start()
-	log.Println("Token refresh job started")
+	tr.logger.Println("Token refresh job started")
 	return nil
 }
 
 func (tr *OpenframeTokenRefresher) Stop() {
 	if tr.cron != nil {
-		log.Println("Stopping token refresh job")
+		tr.logger.Println("Stopping token refresh job")
 		tr.cron.Stop()
-		log.Println("Token refresh job stopped")
+		tr.logger.Println("Token refresh job stopped")
 	}
 }
 
 func (tr *OpenframeTokenRefresher) refreshToken() {
-	log.Println("Refreshing token")
+	tr.logger.Println("Refreshing token")
 
 	token, err := tr.tokenExtractor.ExtractToken()
 	if err != nil {
-		log.Printf("Error extracting token: %v", err)
+		tr.logger.Printf("Error extracting token: %v", err)
 		return
 	}
 
-	log.Printf("New token: %s", token)
+	tr.logger.Printf("New token: %s", token)
 
-	a := tr.a;
-
-	if a.OpenframeAccessToken != token {
-		log.Println("Openframe token changed, updating connections...")
-		a.OpenframeAccessToken = token
-		a.Logger.Debugln("Openframe token updated")
-
-		a.rClient.SetHeader("Authorization", fmt.Sprintf("Bearer %s", token))
-		a.Logger.Debugln("Rest token updated")
-
-		if a.NatsConn != nil {
-			a.NatsConn.Opts.ProxyPath = fmt.Sprintf(wsProxyPathTemplate, token)
-			a.Logger.Debugln("Updated nats options with new token")
-			a.Logger.Debugln("Nats options: ", tr.a.NatsConn.Opts)
-			a.Logger.Debugln("Force reconnecting nats")
-			a.NatsConn.ForceReconnect()
-			a.Logger.Debugln("Forced nats reconnection")
-		} else {
-			a.Logger.Debugln("Nats connection is nil, skipping reconnection")
-		}		
-	} else {
-		a.Logger.Debugln("Openframe token is the same, skipping refresh")
+	if tr.a.OpenframeAccessToken == token {
+		tr.logger.Debugln("Openframe token is the same, skipping refresh")
+		return
 	}
+
+	tr.a.OpenframeAccessToken = token
+	tr.logger.Debugln("Openframe token updated")
+
+	tr.connectionManager.UpdateRestClient(token)
+	tr.connectionManager.UpdateNatsConnection(token)
 }

@@ -58,7 +58,10 @@ func (a *Agent) RunRPC() {
 	opts := a.setupNatsOptions()
 	nc, err := nats.Connect(a.NatsServer, opts...)
 
-	a.NatsConn = nc
+	if a.OpenframeMode {
+		a.connectionManager.SetNatsConnection(nc)
+		a.Logger.Debugln("RPC NATS connection set in connection manager")
+	}
 
 	a.Logger.Debugf("%+v\n", nc)
 	a.Logger.Debugf("%+v\n", nc.Opts)
@@ -502,25 +505,25 @@ func (a *Agent) RunRPC() {
 			} else {
 				go func(p *NatsMsg) {
 					var resp []byte
-				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
-				if !atomic.CompareAndSwapUint32(&agentUpdateLocker, 0, 1) {
-					a.Logger.Debugln("Agent update already running")
-					ret.Encode("updaterunning")
-					msg.Respond(resp)
-				} else {
-					ret.Encode("ok")
-					msg.Respond(resp)
-					err := a.AgentUpdate(p.Data["url"], p.Data["inno"], p.Data["version"])
-					if err != nil {
+					ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
+					if !atomic.CompareAndSwapUint32(&agentUpdateLocker, 0, 1) {
+						a.Logger.Debugln("Agent update already running")
+						ret.Encode("updaterunning")
+						msg.Respond(resp)
+					} else {
+						ret.Encode("ok")
+						msg.Respond(resp)
+						err := a.AgentUpdate(p.Data["url"], p.Data["inno"], p.Data["version"])
+						if err != nil {
+							atomic.StoreUint32(&agentUpdateLocker, 0)
+							return
+						}
 						atomic.StoreUint32(&agentUpdateLocker, 0)
-						return
+						nc.Flush()
+						nc.Close()
+						a.ControlService(winSvcName, "stop")
+						os.Exit(0)
 					}
-					atomic.StoreUint32(&agentUpdateLocker, 0)
-					nc.Flush()
-					nc.Close()
-					a.ControlService(winSvcName, "stop")
-					os.Exit(0)
-				}
 				}(payload)
 			}
 		case "uninstall":
