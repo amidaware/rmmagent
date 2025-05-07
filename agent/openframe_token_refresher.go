@@ -58,8 +58,6 @@ func (tr *OpenframeTokenRefresher) refreshToken() {
 		return
 	}
 
-	tr.logger.Printf("New token: %s", token)
-
 	if tr.a.OpenframeAccessToken == token {
 		tr.logger.Debugln("Openframe token is the same, skipping refresh")
 		return
