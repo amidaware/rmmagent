@@ -273,7 +273,7 @@ func (a *Agent) Install(i *Installer) {
 	)
 	time.Sleep(1 * time.Second)
 	// refresh our agent with new values
-	a = New(a.Logger, a.Version, openframeToken)
+	a = New(a.Logger, a.Version, i.OpenframeSecret)
 	a.Logger.Debugf("%+v\n", a)
 
 	// set new headers, no longer knox auth...use agent auth
