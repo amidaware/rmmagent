@@ -86,8 +86,8 @@ type Agent struct {
 	OpenframeMode        bool
 	OpenframeAccessToken string
 	EncryptionService    *OpenframeEncryptionService
-	// tmp
-	NatsConn *nats.Conn
+	TokenExtractor       OpenframeTokenExtractor
+	NatsConn             *nats.Conn
 }
 
 const (
@@ -105,6 +105,7 @@ const (
 	macPlistPath         = "/Library/LaunchDaemons/tacticalagent.plist"
 	macPlistName         = "tacticalagent"
 	defaultMacMeshSvcDir = "/usr/local/mesh_services"
+	wsProxyPathTemplate  = "ws/tools/agent/tactical-rmm/natsws?authorization=Bearer%%20%s"
 )
 
 var defaultWinTmpDir = filepath.Join(os.Getenv("PROGRAMDATA"), "TacticalRMM")
@@ -112,7 +113,7 @@ var winMeshDir = filepath.Join(os.Getenv("PROGRAMFILES"), "Mesh Agent")
 var natsCheckin = []string{"agent-hello", "agent-agentinfo", "agent-disks", "agent-winsvc", "agent-publicip", "agent-wmi"}
 var limitNatsData = []string{"agent-winsvc", "agent-wmi"}
 
-func New(logger *logrus.Logger, version string, openframeAccessToken string) *Agent {
+func New(logger *logrus.Logger, version string, tokenExtractor OpenframeTokenExtractor) *Agent {
 	host, _ := ps.Host()
 	info := host.Info()
 	pd := filepath.Join(os.Getenv("ProgramFiles"), progFilesName)
@@ -163,6 +164,11 @@ func New(logger *logrus.Logger, version string, openframeAccessToken string) *Ag
 	}
 
 	ac := NewAgentConfig()
+
+	openframeAccessToken, err := tokenExtractor.ExtractToken()
+	if err != nil {
+		logger.Errorln("Error extracting token:", err)
+	}
 
 	agentHeader := fmt.Sprintf("trmm/%s/%s/%s", version, runtime.GOOS, runtime.GOARCH)
 
@@ -316,6 +322,7 @@ func New(logger *logrus.Logger, version string, openframeAccessToken string) *Ag
 		// openframe parameters
 		OpenframeMode:        ac.OpenframeMode,
 		OpenframeAccessToken: openframeAccessToken,
+		TokenExtractor:       tokenExtractor,
 	}
 }
 
@@ -548,7 +555,7 @@ func (a *Agent) setupNatsOptions() []nats.Option {
 	a.Logger.Debugln("OpenframeMode:", a.OpenframeMode)
 	a.Logger.Debugln("OpenframeAccessToken:", a.OpenframeAccessToken)
 	if a.OpenframeMode {
-		proxyPath := fmt.Sprintf("ws/tools/agent/tactical-rmm/natsws?authorization=Bearer%%20%s", a.OpenframeAccessToken)
+		proxyPath := fmt.Sprintf(wsProxyPathTemplate, a.OpenframeAccessToken)
 		a.Logger.Debugln("Using Openframe mode, proxyPath:", proxyPath)
 		opts = append(opts, nats.ProxyPath(proxyPath))
 	} else {

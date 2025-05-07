@@ -92,7 +92,7 @@ func main() {
 		log.Printf("Warning: Could not extract token from file: %v", err)
 	}
 
-	a := agent.New(log, version, openframeToken)
+	a := agent.New(log, version, *tokenExtractor)
 
 	if a.OpenframeMode {
 		tokenRefresher := agent.NewOpenframeTokenRefresher(a, tokenExtractor)

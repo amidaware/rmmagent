@@ -52,21 +52,23 @@ func (tr *OpenframeTokenRefresher) refreshToken() {
 
 	log.Printf("New token: %s", token)
 
-	if tr.a.OpenframeAccessToken != token {
-		log.Println("Openframe token changed, updating connections...")
-		tr.a.OpenframeAccessToken = token
-		tr.a.Logger.Debugln("Openframe token updated")
-		tr.a.rClient.SetHeader("Authorization", fmt.Sprintf("Bearer %s", token))
-		tr.a.Logger.Debugln("Rest token updated")
-		tr.a.Logger.Debugln("Checking NATS connection status")
+	a := tr.a;
 
-		tr.a.NatsConn.Opts.ProxyPath = fmt.Sprintf("ws/tools/agent/tactical-rmm/natsws?authorization=Bearer%%20%s", token)
-		tr.a.Logger.Debugln("Updated nats options with new token")
-		tr.a.Logger.Debugln("Nats options: ", tr.a.NatsConn.Opts)
-		tr.a.Logger.Debugln("Force reconnecting nats")
-		tr.a.NatsConn.ForceReconnect()
-		tr.a.Logger.Debugln("Forced nats reconnection")
+	if a.OpenframeAccessToken != token {
+		log.Println("Openframe token changed, updating connections...")
+		a.OpenframeAccessToken = token
+		a.Logger.Debugln("Openframe token updated")
+		a.rClient.SetHeader("Authorization", fmt.Sprintf("Bearer %s", token))
+		a.Logger.Debugln("Rest token updated")
+		a.Logger.Debugln("Checking NATS connection status")
+
+		a.NatsConn.Opts.ProxyPath = fmt.Sprintf(wsProxyPathTemplate, token)
+		a.Logger.Debugln("Updated nats options with new token")
+		a.Logger.Debugln("Nats options: ", tr.a.NatsConn.Opts)
+		a.Logger.Debugln("Force reconnecting nats")
+		a.NatsConn.ForceReconnect()
+		a.Logger.Debugln("Forced nats reconnection")
 	} else {
-		tr.a.Logger.Debugln("Openframe token is the same, skipping refresh")
+		a.Logger.Debugln("Openframe token is the same, skipping refresh")
 	}
 }
