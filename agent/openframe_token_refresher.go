@@ -58,6 +58,7 @@ func (tr *OpenframeTokenRefresher) refreshToken() {
 		log.Println("Openframe token changed, updating connections...")
 		a.OpenframeAccessToken = token
 		a.Logger.Debugln("Openframe token updated")
+
 		a.rClient.SetHeader("Authorization", fmt.Sprintf("Bearer %s", token))
 		a.Logger.Debugln("Rest token updated")
 		a.Logger.Debugln("Checking NATS connection status")
