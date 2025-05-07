@@ -49,6 +49,8 @@ type AgentConfig struct {
 	NatsStandardPort   string
 	NatsPingInterval   int
 	Insecure           string
+	// openframe parameters
+	OpenframeMode        bool
 }
 
 type RunScriptResp struct {

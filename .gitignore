@@ -10,3 +10,5 @@
 *.bmp
 build/Output
 tacticalagent-v*
+.idea
+rmmagent-mac-arm64

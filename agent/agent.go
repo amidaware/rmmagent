@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -26,7 +27,6 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
-
 	"time"
 
 	rmm "github.com/amidaware/rmmagent/shared"
@@ -82,6 +82,10 @@ type Agent struct {
 	NatsPingInterval   int
 	NatsWSCompression  bool
 	Insecure           bool
+	// openframe parameters
+	OpenframeMode        bool
+	OpenframeAccessToken string
+	connectionManager    *OpenframeConnectionManager
 }
 
 const (
@@ -99,6 +103,7 @@ const (
 	macPlistPath         = "/Library/LaunchDaemons/tacticalagent.plist"
 	macPlistName         = "tacticalagent"
 	defaultMacMeshSvcDir = "/usr/local/mesh_services"
+	wsProxyPathTemplate  = "ws/tools/agent/tactical-rmm/natsws?authorization=Bearer%%20%s"
 )
 
 var defaultWinTmpDir = filepath.Join(os.Getenv("PROGRAMDATA"), "TacticalRMM")
@@ -106,7 +111,7 @@ var winMeshDir = filepath.Join(os.Getenv("PROGRAMFILES"), "Mesh Agent")
 var natsCheckin = []string{"agent-hello", "agent-agentinfo", "agent-disks", "agent-winsvc", "agent-publicip", "agent-wmi"}
 var limitNatsData = []string{"agent-winsvc", "agent-wmi"}
 
-func New(logger *logrus.Logger, version string) *Agent {
+func New(logger *logrus.Logger, version string, openframeSecret string) *Agent {
 	host, _ := ps.Host()
 	info := host.Info()
 	pd := filepath.Join(os.Getenv("ProgramFiles"), progFilesName)
@@ -158,11 +163,24 @@ func New(logger *logrus.Logger, version string) *Agent {
 
 	ac := NewAgentConfig()
 
+	encryptionService := NewOpenframeEncryptionService(openframeSecret)
+	tokenExtractor := NewOpenframeTokenExtractor(encryptionService)
+	openframeAccessToken, err := tokenExtractor.ExtractToken()
+	if err != nil {
+		logger.Errorln("Error extracting token:", err)
+	}
+
 	agentHeader := fmt.Sprintf("trmm/%s/%s/%s", version, runtime.GOOS, runtime.GOARCH)
+
 	headers := make(map[string]string)
 	if len(ac.Token) > 0 {
 		headers["Content-Type"] = "application/json"
-		headers["Authorization"] = fmt.Sprintf("Token %s", ac.Token)
+		if ac.OpenframeMode {
+			headers["Authorization"] = fmt.Sprintf("Bearer %s", openframeAccessToken)
+			headers["Tool-Authorization"] = fmt.Sprintf("Token %s", ac.Token)
+		} else {
+			headers["Authorization"] = fmt.Sprintf("Token %s", ac.Token)
+		}
 	}
 
 	insecure := ac.Insecure == "true"
@@ -239,11 +257,25 @@ func New(logger *logrus.Logger, version string) *Agent {
 	// check if using nats standard tcp, otherwise use nats websockets by default
 	var natsServer string
 	var natsWsCompression bool
-	if ac.NatsStandardPort != "" {
-		natsServer = fmt.Sprintf("tls://%s:%s", ac.APIURL, ac.NatsStandardPort)
+
+	if ac.OpenframeMode {
+		baseurl, err := url.Parse(ac.BaseURL)
+		if err != nil {
+			logger.Errorln("Error parsing api url:", err)
+		}
+		if strings.Contains(baseurl.Host, "localhost") {
+			natsServer = fmt.Sprintf("ws://%s", baseurl.Host)
+		} else {
+			natsServer = fmt.Sprintf("wss://%s", baseurl.Host)
+		}
+		logger.Debugln("Using Openframe mode, natsServer:", natsServer)
 	} else {
-		natsServer = fmt.Sprintf("wss://%s:%s", ac.APIURL, natsProxyPort)
-		natsWsCompression = true
+		if ac.NatsStandardPort != "" {
+			natsServer = fmt.Sprintf("tls://%s:%s", ac.APIURL, ac.NatsStandardPort)
+		} else {
+			natsServer = fmt.Sprintf("wss://%s:%s", ac.APIURL, natsProxyPort)
+			natsWsCompression = true
+		}
 	}
 
 	var natsPingInterval int
@@ -253,7 +285,7 @@ func New(logger *logrus.Logger, version string) *Agent {
 		natsPingInterval = ac.NatsPingInterval
 	}
 
-	return &Agent{
+	agent := &Agent{
 		Hostname:           hostname,
 		BaseURL:            ac.BaseURL,
 		AgentID:            ac.AgentID,
@@ -291,7 +323,20 @@ func New(logger *logrus.Logger, version string) *Agent {
 		NatsPingInterval:   natsPingInterval,
 		NatsWSCompression:  natsWsCompression,
 		Insecure:           insecure,
+		// openframe parameters
+		OpenframeMode:        ac.OpenframeMode,
+		OpenframeAccessToken: openframeAccessToken,
 	}
+
+	if agent.OpenframeMode {
+		agent.connectionManager = NewOpenframeConnectionManager(agent.rClient, logger)
+		tokenRefresher := NewOpenframeTokenRefresher(agent, agent.connectionManager, tokenExtractor, logger)
+		if err := tokenRefresher.Start(); err != nil {
+			logger.Errorf("Failed to start token refresher: %v", err)
+		}
+	}
+
+	return agent
 }
 
 type CmdStatus struct {
@@ -519,7 +564,17 @@ func (a *Agent) setupNatsOptions() []nats.Option {
 	opts = append(opts, nats.Compression(a.NatsWSCompression))
 	opts = append(opts, nats.MaxReconnects(-1))
 	opts = append(opts, nats.ReconnectBufSize(-1))
-	opts = append(opts, nats.ProxyPath(a.NatsProxyPath))
+
+	a.Logger.Debugln("OpenframeMode:", a.OpenframeMode)
+	a.Logger.Debugln("OpenframeAccessToken:", a.OpenframeAccessToken)
+	if a.OpenframeMode {
+		proxyPath := fmt.Sprintf(wsProxyPathTemplate, a.OpenframeAccessToken)
+		a.Logger.Debugln("Using Openframe mode, proxyPath:", proxyPath)
+		opts = append(opts, nats.ProxyPath(proxyPath))
+	} else {
+		opts = append(opts, nats.ProxyPath(a.NatsProxyPath))
+	}
+
 	opts = append(opts, nats.ReconnectJitter(500*time.Millisecond, 4*time.Second))
 	opts = append(opts, nats.DisconnectErrHandler(func(nc *nats.Conn, err error) {
 		a.Logger.Debugln("NATS disconnected:", err)

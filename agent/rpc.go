@@ -57,6 +57,12 @@ func (a *Agent) RunRPC() {
 
 	opts := a.setupNatsOptions()
 	nc, err := nats.Connect(a.NatsServer, opts...)
+
+	if a.OpenframeMode {
+		a.connectionManager.SetNatsConnection(nc)
+		a.Logger.Debugln("RPC NATS connection set in connection manager")
+	}
+
 	a.Logger.Debugf("%+v\n", nc)
 	a.Logger.Debugf("%+v\n", nc.Opts)
 	if err != nil {
@@ -70,6 +76,7 @@ func (a *Agent) RunRPC() {
 
 	nc.Subscribe(a.AgentID, func(msg *nats.Msg) {
 		var payload *NatsMsg
+		a.Logger.Debugln("Received message:", string(msg.Data))
 		var mh codec.MsgpackHandle
 		mh.RawToString = true
 
@@ -493,29 +500,32 @@ func (a *Agent) RunRPC() {
 				}
 			}(payload)
 		case "agentupdate":
-			go func(p *NatsMsg) {
-				var resp []byte
-				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
-				if !atomic.CompareAndSwapUint32(&agentUpdateLocker, 0, 1) {
-					a.Logger.Debugln("Agent update already running")
-					ret.Encode("updaterunning")
-					msg.Respond(resp)
-				} else {
-					ret.Encode("ok")
-					msg.Respond(resp)
-					err := a.AgentUpdate(p.Data["url"], p.Data["inno"], p.Data["version"])
-					if err != nil {
+			if a.OpenframeMode {
+				a.Logger.Infoln("Agent update disabled")
+			} else {
+				go func(p *NatsMsg) {
+					var resp []byte
+					ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
+					if !atomic.CompareAndSwapUint32(&agentUpdateLocker, 0, 1) {
+						a.Logger.Debugln("Agent update already running")
+						ret.Encode("updaterunning")
+						msg.Respond(resp)
+					} else {
+						ret.Encode("ok")
+						msg.Respond(resp)
+						err := a.AgentUpdate(p.Data["url"], p.Data["inno"], p.Data["version"])
+						if err != nil {
+							atomic.StoreUint32(&agentUpdateLocker, 0)
+							return
+						}
 						atomic.StoreUint32(&agentUpdateLocker, 0)
-						return
+						nc.Flush()
+						nc.Close()
+						a.ControlService(winSvcName, "stop")
+						os.Exit(0)
 					}
-					atomic.StoreUint32(&agentUpdateLocker, 0)
-					nc.Flush()
-					nc.Close()
-					a.ControlService(winSvcName, "stop")
-					os.Exit(0)
-				}
-			}(payload)
-
+				}(payload)
+			}
 		case "uninstall":
 			go func(p *NatsMsg) {
 				var resp []byte

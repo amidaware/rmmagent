@@ -1,7 +1,7 @@
 /*
 Copyright 2023 AmidaWare Inc.
 
-Licensed under the Tactical RMM License Version 1.0 (the “License”).
+Licensed under the Tactical RMM License Version 1.0 (the "License").
 You may only use the Licensed Software in accordance with the License.
 A copy of the License is available at:
 
@@ -55,6 +55,12 @@ func main() {
 	proxy := flag.String("proxy", "", "Use a http proxy")
 	insecure := flag.Bool("insecure", false, "Insecure for testing only")
 	natsport := flag.String("natsport", "", "nats standard port")
+
+	// openframe parameters
+	openframeMode := flag.Bool("openframe-mode", false, "Openframe mode")
+	openframeSecret := flag.String("openframe-secret", "", "Openframe secret")
+	openframeToken := flag.String("openframe-token", "", "Openframe token")
+
 	flag.Parse()
 
 	if *ver {
@@ -75,7 +81,7 @@ func main() {
 	setupLogging(logLevel, logTo)
 	defer logFile.Close()
 
-	a := *agent.New(log, version)
+	a := agent.New(log, version, *openframeSecret)
 
 	if *mode == "install" {
 		a.Logger.SetOutput(os.Stdout)
@@ -96,7 +102,7 @@ func main() {
 		a.RunRPC()
 	case "svc":
 		if runtime.GOOS == "windows" {
-			s, _ := service.New(&a, a.ServiceConfig)
+			s, _ := service.New(a, a.ServiceConfig)
 			s.Run()
 		} else {
 			a.RunRPC()
@@ -127,6 +133,27 @@ func main() {
 		a.RecoverMesh()
 	case "macventurafix":
 		a.FixVenturaMesh()
+	// TODO: remove
+	case "test-token-setup":
+		encryptionService := agent.NewOpenframeEncryptionService(*openframeSecret)
+		log.Printf("Shared token: %s", *openframeToken)
+
+		// Encrypt and encode the token
+		encryptedToken, err := encryptionService.Encrypt([]byte(*openframeToken))
+		if err != nil {
+			log.Fatalf("Error encrypting token: %v", err)
+		}
+		log.Printf("Encrypted and encoded token: %s", encryptedToken)
+
+		// Save encrypted token to file
+		if err := os.MkdirAll("/etc/openframe", 0755); err != nil {
+			log.Fatalf("Error creating directory: %v", err)
+		}
+
+		if err := os.WriteFile("/etc/openframe/token.txt", []byte(encryptedToken), 0644); err != nil {
+			log.Fatalf("Error writing token to file: %v", err)
+		}
+		log.Printf("Successfully saved encrypted token to /etc/openframe/token.txt")
 	case "taskrunner":
 		if len(os.Args) < 5 || *taskPK == 0 {
 			return
@@ -146,6 +173,7 @@ func main() {
 		if *api == "" || *clientID == 0 || *siteID == 0 || *token == "" {
 			return
 		}
+
 		a.Install(&agent.Installer{
 			RMM:              *api,
 			ClientID:         *clientID,
@@ -166,6 +194,9 @@ func main() {
 			MeshNodeID:       *meshNodeID,
 			Insecure:         *insecure,
 			NatsStandardPort: *natsport,
+			// openframe parameters
+			OpenframeMode:  *openframeMode,
+			OpenframeSecret: *openframeSecret,
 		})
 	default:
 		agent.ShowStatus(version)
