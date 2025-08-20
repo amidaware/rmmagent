@@ -85,6 +85,7 @@ type Agent struct {
 	// openframe parameters
 	OpenframeMode        bool
 	OpenframeAccessToken string
+	OpenframeTokenPath   string
 	connectionManager    *OpenframeConnectionManager
 }
 
@@ -111,7 +112,7 @@ var winMeshDir = filepath.Join(os.Getenv("PROGRAMFILES"), "Mesh Agent")
 var natsCheckin = []string{"agent-hello", "agent-agentinfo", "agent-disks", "agent-winsvc", "agent-publicip", "agent-wmi"}
 var limitNatsData = []string{"agent-winsvc", "agent-wmi"}
 
-func New(logger *logrus.Logger, version string, openframeSecret string) *Agent {
+func New(logger *logrus.Logger, version string, openframeSecret string, openframeTokenPath string) *Agent {
 	host, _ := ps.Host()
 	info := host.Info()
 	pd := filepath.Join(os.Getenv("ProgramFiles"), progFilesName)
@@ -164,7 +165,7 @@ func New(logger *logrus.Logger, version string, openframeSecret string) *Agent {
 	ac := NewAgentConfig()
 
 	encryptionService := NewOpenframeEncryptionService(openframeSecret)
-	tokenExtractor := NewOpenframeTokenExtractor(encryptionService)
+	tokenExtractor := NewOpenframeTokenExtractor(encryptionService, openframeTokenPath)
 	openframeAccessToken, err := tokenExtractor.ExtractToken()
 	if err != nil {
 		logger.Errorln("Error extracting token:", err)
@@ -263,11 +264,7 @@ func New(logger *logrus.Logger, version string, openframeSecret string) *Agent {
 		if err != nil {
 			logger.Errorln("Error parsing api url:", err)
 		}
-		if strings.Contains(baseurl.Host, "localhost") {
-			natsServer = fmt.Sprintf("ws://%s", baseurl.Host)
-		} else {
-			natsServer = fmt.Sprintf("wss://%s", baseurl.Host)
-		}
+        natsServer = fmt.Sprintf("wss://%s", baseurl.Host)
 		logger.Debugln("Using Openframe mode, natsServer:", natsServer)
 	} else {
 		if ac.NatsStandardPort != "" {
@@ -326,6 +323,7 @@ func New(logger *logrus.Logger, version string, openframeSecret string) *Agent {
 		// openframe parameters
 		OpenframeMode:        ac.OpenframeMode,
 		OpenframeAccessToken: openframeAccessToken,
+		OpenframeTokenPath:   openframeTokenPath,
 	}
 
 	if agent.OpenframeMode {

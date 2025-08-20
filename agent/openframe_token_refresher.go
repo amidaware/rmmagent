@@ -32,7 +32,7 @@ func NewOpenframeTokenRefresher(
 
 func (tr *OpenframeTokenRefresher) Start() error {
 	tr.logger.Println("Scheduling token refresh job")
-	_, err := tr.cron.AddFunc("* * * * *", tr.refreshToken)
+	_, err := tr.cron.AddFunc("*/5 * * * * *", tr.refreshToken)
 	if err != nil {
 		return fmt.Errorf("failed to schedule token refresh job: %v", err)
 	}

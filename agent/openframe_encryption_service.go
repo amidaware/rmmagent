@@ -18,26 +18,6 @@ func NewOpenframeEncryptionService(encryptionKey string) *OpenframeEncryptionSer
 	}
 }
 
-func (es *OpenframeEncryptionService) Encrypt(data []byte) (string, error) {
-	block, err := aes.NewCipher([]byte(es.encryptionKey))
-	if err != nil {
-		log.Printf("Error creating cipher: %v", err)
-		return "", err
-	}
-
-	gcm, err := cipher.NewGCM(block)
-	if err != nil {
-		log.Printf("Error creating GCM: %v", err)
-		return "", err
-	}
-
-	nonce := make([]byte, gcm.NonceSize())
-	ciphertext := gcm.Seal(nonce, nonce, data, nil)
-
-	// Encode to base64
-	base64Token := base64.StdEncoding.EncodeToString(ciphertext)
-	return base64Token, nil
-}
 
 func (es *OpenframeEncryptionService) Decrypt(data string) ([]byte, error) {
 	// Decode base64 string to bytes
