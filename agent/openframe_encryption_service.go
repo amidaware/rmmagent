@@ -42,6 +42,7 @@ func (es *OpenframeEncryptionService) Decrypt(data string) ([]byte, error) {
 		return nil, fmt.Errorf("ciphertext too short")
 	}
 
+	// Extract nonce from the beginning of encrypted data
 	nonce := encryptedData[:gcm.NonceSize()]
 	ciphertext := encryptedData[gcm.NonceSize():]
 
