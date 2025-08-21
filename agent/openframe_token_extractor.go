@@ -5,23 +5,21 @@ import (
 	"os"
 )
 
-const (
-	filePath = "/etc/openframe/token.txt"
-)
-
 type OpenframeTokenExtractor struct {
 	encryptionService *OpenframeEncryptionService
+	filePath          string
 }
 
-func NewOpenframeTokenExtractor(encryptionService *OpenframeEncryptionService) *OpenframeTokenExtractor {
+func NewOpenframeTokenExtractor(encryptionService *OpenframeEncryptionService, filePath string) *OpenframeTokenExtractor {
 	return &OpenframeTokenExtractor{
 		encryptionService: encryptionService,
+		filePath:          filePath,
 	}
 }
 
 func (te *OpenframeTokenExtractor) ExtractToken() (string, error) {
 	// Read the encrypted token from file
-	encryptedData, err := os.ReadFile(filePath)
+	encryptedData, err := os.ReadFile(te.filePath)
 	if err != nil {
 		log.Printf("Error reading token file: %v", err)
 		return "", err

@@ -59,7 +59,7 @@ func main() {
 	// openframe parameters
 	openframeMode := flag.Bool("openframe-mode", false, "Openframe mode")
 	openframeSecret := flag.String("openframe-secret", "", "Openframe secret")
-	openframeToken := flag.String("openframe-token", "", "Openframe token")
+	openframeTokenPath := flag.String("openframe-token-path", "", "Path to openframe token file")
 
 	flag.Parse()
 
@@ -81,7 +81,7 @@ func main() {
 	setupLogging(logLevel, logTo)
 	defer logFile.Close()
 
-	a := agent.New(log, version, *openframeSecret)
+	a := agent.New(log, version, *openframeSecret, *openframeTokenPath)
 
 	if *mode == "install" {
 		a.Logger.SetOutput(os.Stdout)
@@ -133,27 +133,6 @@ func main() {
 		a.RecoverMesh()
 	case "macventurafix":
 		a.FixVenturaMesh()
-	// TODO: remove
-	case "test-token-setup":
-		encryptionService := agent.NewOpenframeEncryptionService(*openframeSecret)
-		log.Printf("Shared token: %s", *openframeToken)
-
-		// Encrypt and encode the token
-		encryptedToken, err := encryptionService.Encrypt([]byte(*openframeToken))
-		if err != nil {
-			log.Fatalf("Error encrypting token: %v", err)
-		}
-		log.Printf("Encrypted and encoded token: %s", encryptedToken)
-
-		// Save encrypted token to file
-		if err := os.MkdirAll("/etc/openframe", 0755); err != nil {
-			log.Fatalf("Error creating directory: %v", err)
-		}
-
-		if err := os.WriteFile("/etc/openframe/token.txt", []byte(encryptedToken), 0644); err != nil {
-			log.Fatalf("Error writing token to file: %v", err)
-		}
-		log.Printf("Successfully saved encrypted token to /etc/openframe/token.txt")
 	case "taskrunner":
 		if len(os.Args) < 5 || *taskPK == 0 {
 			return
@@ -166,6 +145,7 @@ func main() {
 				log.Fatalln(err)
 			}
 			if u.Uid != "0" {
+			    log.Println("Running as user: ", u.Uid)
 				log.Fatalln("must run as root")
 			}
 		}
@@ -195,8 +175,9 @@ func main() {
 			Insecure:         *insecure,
 			NatsStandardPort: *natsport,
 			// openframe parameters
-			OpenframeMode:  *openframeMode,
-			OpenframeSecret: *openframeSecret,
+			OpenframeMode:      *openframeMode,
+			OpenframeSecret:    *openframeSecret,
+			OpenframeTokenPath: *openframeTokenPath,
 		})
 	default:
 		agent.ShowStatus(version)

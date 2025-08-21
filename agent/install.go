@@ -51,14 +51,15 @@ type Installer struct {
 	Insecure         bool
 	NatsStandardPort string
 	// openframe parameters
-	OpenframeMode  bool
-	OpenframeSecret string
+	OpenframeMode     bool
+	OpenframeSecret   string
+	OpenframeTokenPath string
 }
 
 func (a *Agent) Install(i *Installer) {
 	a.checkExistingAndRemove(i.Silent)
 
-	tokenExtractor := NewOpenframeTokenExtractor(NewOpenframeEncryptionService(i.OpenframeSecret))
+	tokenExtractor := NewOpenframeTokenExtractor(NewOpenframeEncryptionService(i.OpenframeSecret), i.OpenframeTokenPath)
 	openframeToken, err := tokenExtractor.ExtractToken()
 	if err != nil {
 		a.Logger.Errorln("Failed to extract token:", err)
@@ -273,7 +274,7 @@ func (a *Agent) Install(i *Installer) {
 	)
 	time.Sleep(1 * time.Second)
 	// refresh our agent with new values
-	a = New(a.Logger, a.Version, i.OpenframeSecret)
+	a = New(a.Logger, a.Version, i.OpenframeSecret, i.OpenframeTokenPath)
 	a.Logger.Debugf("%+v\n", a)
 
 	// set new headers, no longer knox auth...use agent auth
