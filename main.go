@@ -109,6 +109,8 @@ func main() {
 		}
 	case "pk":
 		fmt.Println(a.AgentPK)
+	case "agentid":
+		fmt.Println(a.AgentID)
 	case "winagentsvc":
 		fmt.Println("deprecated. use 'svc'")
 	case "runchecks":
