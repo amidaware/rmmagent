@@ -104,7 +104,7 @@ const (
 	macPlistPath         = "/Library/LaunchDaemons/tacticalagent.plist"
 	macPlistName         = "tacticalagent"
 	defaultMacMeshSvcDir = "/usr/local/mesh_services"
-	wsProxyPathTemplate  = "ws/tools/agent/tactical-rmm/natsws?authorization=Bearer%%20%s"
+	wsProxyPathTemplate  = "ws/tools/agent/tactical-rmm/natsws?authorization=%s"
 )
 
 var defaultWinTmpDir = filepath.Join(os.Getenv("PROGRAMDATA"), "TacticalRMM")

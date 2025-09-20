@@ -25,7 +25,7 @@ func NewOpenframeTokenRefresher(
 		a:                 a,
 		connectionManager: connectionManager,
 		tokenExtractor:    tokenExtractor,
-		cron:              cron.New(),
+		cron:              cron.New(cron.WithSeconds()),
 		logger:            logger,
 	}
 }
