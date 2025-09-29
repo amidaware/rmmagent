@@ -92,7 +92,6 @@ func NewAgentConfig() *rmm.AgentConfig {
 		Insecure:           insecure,
 		// openframe parameters
 		OpenframeMode:        openframeMode == "true",
-		OpenframeAccessToken: openframeAccessToken,
 	}
 }
 
