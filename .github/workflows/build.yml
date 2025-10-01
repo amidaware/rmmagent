@@ -13,7 +13,6 @@ on:
     branches: [develop]
     paths-ignore:
       - "**/*.md"
-      - ".github/**"
   workflow_dispatch:
     inputs:
       tag:
@@ -25,6 +24,7 @@ env:
   REGISTRY: "ghcr.io"
   ORGANISATION: ${{ github.repository_owner }}
   REPOSITORY: ${{ github.event.repository.name }}
+  BINARY_NAME: rmmagent
 
 # =============================================================================
 # JOBS
@@ -50,12 +50,7 @@ jobs:
           - os: windows-latest
             go_os: windows
             go_arch: amd64
-            artifact_name: rmmagent-windows-amd64.exe
-          - os: windows-latest
-            go_os: windows
-            go_arch: 386
-            artifact_name: rmmagent-windows-i386.exe
-         
+            artifact_name: rmmagent-windows-amd64
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -67,31 +62,39 @@ jobs:
         with:
           go-version: '1.20.13'
 
-      - name: Compile agent for ${{ matrix.go_os }}
+      - name: Compile agent for ${{ matrix.os }}
         run: |
           if [[ "${{ matrix.go_os }}" == "darwin" ]]; then
-            rm -rf ./build_target
-            mkdir -p ./build_target
             architectures=($(echo '${{ toJSON(matrix.go_arch) }}' | jq -r '.[]'))
             for arch in "${architectures[@]}"; do
               echo "Building for ${{ matrix.go_os }}/${arch}"
-              env CGO_ENABLED=0 GOOS=${{ matrix.go_os }} GOARCH=${arch} go build -ldflags "-s -w" -o "./build_target/rmmagent-mac-${arch}"
+              env CGO_ENABLED=0 GOOS=${{ matrix.go_os }} GOARCH=${arch} go build -ldflags "-s -w" -o "./rmmagent-mac-${arch}"
             done
-            echo "Create rmmagent-mac-universal package"
+          elif [[ "${{ matrix.go_os }}" == "windows" ]]; then
             mkdir -p artifacts
-            arch0=${architectures[0]}
-            arch1=${architectures[1]}
-            lipo -create ./build_target/rmmagent-mac-${arch0} ./build_target/rmmagent-mac-${arch1} -output "./artifacts/${{ matrix.artifact_name }}"
-            lipo -info "./artifacts/${{ matrix.artifact_name }}"
-            rm -rf ./build_target
-          fi
-          if [[ "${{ matrix.go_os }}" == "windows" ]]; then
-            mkdir -p artifacts
-            env CGO_ENABLED=0 GOOS=${{ matrix.go_os }} GOARCH=${{ matrix.go_arch }} go build -ldflags "-s -w" -o "./artifacts/${{ matrix.artifact_name }}"
+            env CGO_ENABLED=0 GOOS=${{ matrix.go_os }} GOARCH=${{ matrix.go_arch }} go build -ldflags "-s -w" -o "./artifacts/${{ env.BINARY_NAME }}.exe"
+          else
+            echo "Unsupported OS: ${{ runner.os }}"
+            exit 1
           fi
 
+      - name: Create macOS universal package
+        if: "runner.os == 'macOS'"
+        shell: bash
+        run: |
+          echo "Create ${{ matrix.artifact_name }}"
+          mkdir -p artifacts
+          architectures=($(echo '${{ toJSON(matrix.go_arch) }}' | jq -r '.[]'))
+          arch0=${architectures[0]}
+          arch1=${architectures[1]}
+          lipo -create ./rmmagent-mac-${arch0} ./rmmagent-mac-${arch1} -output "./artifacts/${{ env.BINARY_NAME }}"
+          
+          echo "Verify macOS universal package"
+          lipo -info "./artifacts/${{ env.BINARY_NAME }}"
+          file "./artifacts/${{ env.BINARY_NAME }}"
+
       - name: Sign MacOS package
-        if: matrix.go_os == 'darwin'
+        if: runner.os == 'macOS'
         uses: ./.github/steps/sign-macos-package
         with:
           apple_certificate_p12: ${{ secrets.APPLE_CERTIFICATE_P12 }}
@@ -100,8 +103,7 @@ jobs:
           apple_id_username: ${{ secrets.APPLE_ID_USERNAME }}
           apple_id_password: ${{ secrets.APPLE_ID_PASSWORD }}
           apple_team_id: ${{ secrets.APPLE_TEAM_ID }}
-          binary_name: ${{ matrix.artifact_name }}
-          app_name: RMMAgent
+          binary_name: ${{ env.BINARY_NAME }}
 
       - name: Upload client artifact
         uses: actions/upload-artifact@v4
