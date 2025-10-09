@@ -101,6 +101,12 @@ func main() {
 		} else {
 			a.RunRPC()
 		}
+	case "tray":
+		if runtime.GOOS == "windows" {
+			agent.StartTrayIcon(&a, version)
+		} else {
+			fmt.Println("Tray icon is only available on Windows")
+		}
 	case "pk":
 		fmt.Println(a.AgentPK)
 	case "winagentsvc":
