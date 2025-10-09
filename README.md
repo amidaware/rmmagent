@@ -3,9 +3,10 @@ https://github.com/amidaware/tacticalrmm
 
 ## Building the Agent
 
-There are multiple ways to build the Tactical RMM Agent executable:
+> 🚀 **[Quick Start Guide](QUICKSTART.md)** - Fastest way to compile an EXE  
+> 📖 **[Detailed Build Guide](BUILD.md)** - Complete build documentation
 
-> 📖 **For detailed build instructions, see [BUILD.md](BUILD.md)**
+There are multiple ways to build the Tactical RMM Agent executable:
 
 ### Quick Start - Build for Your Platform
 
