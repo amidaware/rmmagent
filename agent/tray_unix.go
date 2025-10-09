@@ -1,3 +1,6 @@
+//go:build !windows
+// +build !windows
+
 /*
 Copyright 2023 AmidaWare Inc.
 
@@ -8,9 +11,6 @@ A copy of the License is available at:
 https://license.tacticalrmm.com
 
 */
-
-//go:build !windows
-// +build !windows
 
 package agent
 
