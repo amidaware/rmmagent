@@ -5,6 +5,7 @@
 *.zip
 *.py
 *.sh
+!build.sh
 *.syso
 *.ico
 *.bmp
