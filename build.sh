@@ -96,6 +96,31 @@ echo -e "  ${YELLOW}Architecture: $ARCH${NC}"
 echo -e "  ${YELLOW}Output: $OUTPUT${NC}"
 echo ""
 
+# Generate Windows resource files if building for Windows
+if [ "$OS" = "windows" ]; then
+    echo -e "${CYAN}Generating Windows resource files...${NC}"
+    
+    # Check if goversioninfo is installed
+    if ! command -v goversioninfo &> /dev/null; then
+        echo -e "${YELLOW}Installing goversioninfo...${NC}"
+        go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest
+    fi
+    
+    # Use full path to goversioninfo if not in PATH
+    GOVERSIONINFO="goversioninfo"
+    if ! command -v goversioninfo &> /dev/null; then
+        GOVERSIONINFO="$HOME/go/bin/goversioninfo"
+    fi
+    
+    # Generate appropriate resource file based on architecture
+    if [ "$ARCH" = "amd64" ]; then
+        $GOVERSIONINFO -64 versioninfo.json
+    elif [ "$ARCH" = "386" ]; then
+        $GOVERSIONINFO -o resource_386.syso versioninfo.json
+    fi
+    echo -e "${GREEN}Resource files generated.${NC}"
+fi
+
 # Build
 export CGO_ENABLED=0
 export GOOS=$OS

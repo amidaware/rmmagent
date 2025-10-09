@@ -60,6 +60,20 @@ env CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags "-s -w" -o tactical
 - **Linux:** amd64, 386, arm64, arm
 - **macOS:** amd64, arm64
 
+### Windows Icon Embedding
+
+The Windows executable includes an embedded icon (`build/onit.ico`) that is automatically included during the build process. The build scripts (`build.sh`, `build.ps1`, and `Makefile`) automatically generate the required Windows resource files using `goversioninfo`.
+
+If you need to manually generate the resource files:
+```bash
+# For 64-bit
+./generate-resources.sh
+# Or on Windows
+.\generate-resources.ps1
+```
+
+This will create `resource.syso` (amd64) and `resource_386.syso` (386) files that Go automatically embeds during compilation.
+
 #### Windows System Tray Icon
 The agent now includes a Windows system tray icon that provides quick access to agent status and information.
 

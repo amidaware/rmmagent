@@ -28,14 +28,34 @@ build:
 	env CGO_ENABLED=0 go build -ldflags "$(LDFLAGS)" -o tacticalrmm
 
 # Build for Windows (amd64)
-build-windows:
+build-windows: generate-resources-amd64
 	@echo "Building for Windows (amd64)..."
 	env CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags "$(LDFLAGS)" -o tacticalrmm.exe
 
 # Build for Windows (386)
-build-windows-386:
+build-windows-386: generate-resources-386
 	@echo "Building for Windows (386)..."
 	env CGO_ENABLED=0 GOOS=windows GOARCH=386 go build -ldflags "$(LDFLAGS)" -o tacticalrmm-386.exe
+
+# Generate Windows resource files for amd64
+generate-resources-amd64:
+	@echo "Generating Windows resource files (amd64)..."
+	@command -v goversioninfo >/dev/null 2>&1 || { echo "Installing goversioninfo..."; go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest; }
+	@if command -v goversioninfo >/dev/null 2>&1; then \
+		goversioninfo -64 versioninfo.json; \
+	else \
+		$$HOME/go/bin/goversioninfo -64 versioninfo.json; \
+	fi
+
+# Generate Windows resource files for 386
+generate-resources-386:
+	@echo "Generating Windows resource files (386)..."
+	@command -v goversioninfo >/dev/null 2>&1 || { echo "Installing goversioninfo..."; go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest; }
+	@if command -v goversioninfo >/dev/null 2>&1; then \
+		goversioninfo -o resource_386.syso versioninfo.json; \
+	else \
+		$$HOME/go/bin/goversioninfo -o resource_386.syso versioninfo.json; \
+	fi
 
 # Build for Linux (amd64)
 build-linux:

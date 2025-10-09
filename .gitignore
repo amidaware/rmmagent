@@ -6,9 +6,10 @@
 *.py
 *.sh
 !build.sh
+!generate-resources.sh
 *.syso
-*.ico
-*.bmp
+!build/*.ico
+!build/*.bmp
 build/Output
 tacticalagent-v*
 tacticalrmm-*

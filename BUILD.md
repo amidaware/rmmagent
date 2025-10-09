@@ -172,8 +172,38 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 After building the Windows executable, you can create an installer using Inno Setup:
 
 1. Build the agent: `make build-windows`
-2. Place the executable in the expected location (see `build/setup.iss`)
+2. The `build/setup.iss` script expects the executable at `../tacticalrmm.exe` (relative to the `build` directory)
 3. Run Inno Setup with the `build/setup.iss` script
+
+The installer will use the icon files in the `build` directory (`onit.ico` and `onit.bmp`) for the setup wizard.
+
+### Windows Icon Embedding
+
+The Windows executable automatically includes an embedded icon during the build process. The build scripts automatically:
+
+1. Install `goversioninfo` tool if not present
+2. Generate Windows resource files (`resource.syso` for 64-bit, `resource_386.syso` for 32-bit)
+3. Embed the icon from `build/onit.ico` as specified in `versioninfo.json`
+
+The icon will be visible in:
+- Windows Explorer (file icon)
+- Task Manager
+- System Tray (when running with `-m tray`)
+- Inno Setup installer
+
+If you need to manually generate the resource files:
+```bash
+# Using the helper script (Bash)
+./generate-resources.sh
+
+# Using the helper script (PowerShell)
+.\generate-resources.ps1
+
+# Or manually with goversioninfo
+go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest
+goversioninfo -64 versioninfo.json                    # For 64-bit
+goversioninfo -o resource_386.syso versioninfo.json   # For 32-bit
+```
 
 ## Running the Built Agent
 

@@ -19,8 +19,8 @@ DefaultDirName="{sd}\Program Files\TacticalAgent"
 DisableDirPage=yes
 SetupLogging=yes
 DisableProgramGroupPage=yes
-SetupIconFile=C:\Users\Public\Documents\agent\build\onit.ico
-WizardSmallImageFile=C:\Users\Public\Documents\agent\build\onit.bmp
+SetupIconFile=onit.ico
+WizardSmallImageFile=onit.bmp
 UninstallDisplayIcon={app}\{#MyAppExeName}
 Compression=lzma
 SolidCompression=yes
@@ -36,7 +36,7 @@ AppCopyright="Copyright (C) 2025 {#MyAppPublisher}"
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Files]
-Source: "C:\Users\Public\Documents\agent\tacticalrmm.exe"; DestDir: "{app}"; Flags: ignoreversion;
+Source: "..\tacticalrmm.exe"; DestDir: "{app}"; Flags: ignoreversion;
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent runascurrentuser

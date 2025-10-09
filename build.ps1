@@ -43,6 +43,25 @@ Write-Host "  Architecture: $Architecture" -ForegroundColor Yellow
 Write-Host "  Output: $OutputFile" -ForegroundColor Yellow
 Write-Host ""
 
+# Generate Windows resource files
+Write-Host "Generating Windows resource files..." -ForegroundColor Cyan
+
+# Check if goversioninfo is installed
+$goversioninfo = Get-Command goversioninfo -ErrorAction SilentlyContinue
+if (-not $goversioninfo) {
+    Write-Host "Installing goversioninfo..." -ForegroundColor Yellow
+    go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest
+}
+
+# Generate appropriate resource file based on architecture
+if ($Architecture -eq "amd64") {
+    & goversioninfo -64 versioninfo.json
+} elseif ($Architecture -eq "386") {
+    & goversioninfo -o resource_386.syso versioninfo.json
+}
+Write-Host "Resource files generated." -ForegroundColor Green
+Write-Host ""
+
 # Set environment variables and build
 $env:CGO_ENABLED = "0"
 $env:GOOS = "windows"
