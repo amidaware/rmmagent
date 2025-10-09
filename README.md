@@ -5,6 +5,8 @@ https://github.com/amidaware/tacticalrmm
 
 There are multiple ways to build the Tactical RMM Agent executable:
 
+> 📖 **For detailed build instructions, see [BUILD.md](BUILD.md)**
+
 ### Quick Start - Build for Your Platform
 
 **Using Make (recommended):**
