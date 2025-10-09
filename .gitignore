@@ -11,3 +11,6 @@
 *.bmp
 build/Output
 tacticalagent-v*
+tacticalrmm-*
+tacticalrmm
+agent/tray_icon_data.txt
