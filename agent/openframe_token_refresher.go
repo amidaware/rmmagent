@@ -50,7 +50,7 @@ func (tr *OpenframeTokenRefresher) Stop() {
 }
 
 func (tr *OpenframeTokenRefresher) refreshToken() {
-	tr.logger.Println("Refreshing token")
+	tr.logger.Debugln("Refreshing token")
 
 	token, err := tr.tokenExtractor.ExtractToken()
 	if err != nil {
