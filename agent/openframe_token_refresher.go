@@ -54,7 +54,7 @@ func (tr *OpenframeTokenRefresher) refreshToken() {
 
 	token, err := tr.tokenExtractor.ExtractToken()
 	if err != nil {
-		tr.logger.Printf("Error extracting token: %v", err)
+		tr.logger.Errorln("Error extracting token: %v", err)
 		return
 	}
 
