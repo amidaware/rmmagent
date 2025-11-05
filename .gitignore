@@ -10,3 +10,6 @@
 *.bmp
 build/Output
 tacticalagent-v*
+/private/
+/bin/
+.DS_Store
