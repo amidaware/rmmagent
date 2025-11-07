@@ -1,4 +1,4 @@
-name: Tactical RMM Agent Build and Test Latest
+name: Tactical RMM Test
 
 permissions:
   contents: write
