@@ -158,6 +158,8 @@ func (a *Agent) Install(i *Installer) {
 	var meshNodeID, meshOutput string
 
 	if !i.NoMesh && runtime.GOOS != "linux" {
+		var meshArchive, meshExtractDir, meshBinary, meshMSH string
+
 		switch runtime.GOOS {
 		case "windows":
 			meshOutput = filepath.Join(a.ProgramDir, a.MeshInstaller)
@@ -166,10 +168,11 @@ func (a *Agent) Install(i *Installer) {
 			if err != nil {
 				a.Logger.Fatalln("Failed to create mesh temp file", err)
 			}
-			meshOutput = tmp.Name()
-			os.Chmod(meshOutput, 0755)
-			defer os.Remove(meshOutput)
-			defer os.Remove(meshOutput + ".msh")
+			meshArchive = tmp.Name() + ".tar.gz"
+			meshExtractDir = tmp.Name() + "_extracted"
+			defer os.Remove(tmp.Name())
+			defer os.Remove(meshArchive)
+			defer os.RemoveAll(meshExtractDir)
 		}
 
 		if runtime.GOOS == "windows" && i.LocalMesh != "" {
@@ -177,7 +180,7 @@ func (a *Agent) Install(i *Installer) {
 			if err != nil {
 				a.installerMsg(err.Error(), "error", i.Silent)
 			}
-		} else {
+		} else if runtime.GOOS == "windows" {
 			a.Logger.Infoln("Downloading mesh agent...")
 			payload := map[string]string{"goarch": a.GoArch, "plat": a.Platform}
 			r, err := rClient.R().SetBody(payload).SetOutput(meshOutput).Post(fmt.Sprintf("%s/api/v3/meshexe/", baseURL))
@@ -187,6 +190,35 @@ func (a *Agent) Install(i *Installer) {
 			if r.StatusCode() != 200 {
 				a.installerMsg(fmt.Sprintf("Unable to download the mesh agent from the RMM. %s", r.String()), "error", i.Silent)
 			}
+		} else if runtime.GOOS == "darwin" {
+			// Download tar.gz archive for macOS
+			a.Logger.Infoln("Downloading mesh agent archive...")
+			payload := map[string]string{"goarch": a.GoArch, "plat": a.Platform}
+			r, err := rClient.R().SetBody(payload).SetOutput(meshArchive).Post(fmt.Sprintf("%s/api/v3/meshexe/", baseURL))
+			if err != nil {
+				a.installerMsg(fmt.Sprintf("Failed to download mesh agent: %s", err.Error()), "error", i.Silent)
+			}
+			if r.StatusCode() != 200 {
+				a.installerMsg(fmt.Sprintf("Unable to download the mesh agent from the RMM. %s", r.String()), "error", i.Silent)
+			}
+
+			// Extract archive
+			a.Logger.Infoln("Extracting mesh agent archive...")
+			os.MkdirAll(meshExtractDir, 0755)
+			_, err = a.ExtractTarGz(meshArchive, meshExtractDir)
+			if err != nil {
+				a.installerMsg(fmt.Sprintf("Failed to extract mesh archive: %s", err.Error()), "error", i.Silent)
+			}
+
+			// Verify both files exist
+			meshBinary = filepath.Join(meshExtractDir, "meshagent")
+			meshMSH = filepath.Join(meshExtractDir, "meshagent.msh")
+			if !trmm.FileExists(meshBinary) || !trmm.FileExists(meshMSH) {
+				a.installerMsg("Archive missing required files (meshagent or meshagent.msh)", "error", i.Silent)
+			}
+
+			os.Chmod(meshBinary, 0755)
+			meshOutput = meshBinary
 		}
 
 		a.Logger.Infoln("Installing mesh agent...")
@@ -200,7 +232,12 @@ func (a *Agent) Install(i *Installer) {
 			}
 		} else {
 			opts := a.NewCMDOpts()
-			opts.Command = fmt.Sprintf("%s -install --installPath=%s", meshOutput, nixMeshDir)
+			if runtime.GOOS == "darwin" {
+				// For macOS, use --copy-msh flag to use the .msh file
+				opts.Command = fmt.Sprintf("%s -install --copy-msh=\"1\" --installPath=%s", meshOutput, nixMeshDir)
+			} else {
+				opts.Command = fmt.Sprintf("%s -install --installPath=%s", meshOutput, nixMeshDir)
+			}
 			opts.Timeout = i.Timeout
 			out := a.CmdV2(opts)
 			if out.Status.Exit != 0 {
