@@ -12,7 +12,11 @@ https://license.tacticalrmm.com
 package agent
 
 import (
+	"bufio"
+	"crypto/rand"
+	"crypto/sha256"
 	"crypto/tls"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"net/url"
@@ -158,7 +162,7 @@ func (a *Agent) Install(i *Installer) {
 	var meshNodeID, meshOutput string
 
 	if !i.NoMesh && runtime.GOOS != "linux" {
-		var meshArchive, meshExtractDir, meshBinary, meshMSH string
+		var meshArchive, meshExtractDir, meshBinary string
 
 		switch runtime.GOOS {
 		case "windows":
@@ -169,7 +173,7 @@ func (a *Agent) Install(i *Installer) {
 				a.Logger.Fatalln("Failed to create mesh temp file", err)
 			}
 			meshArchive = tmp.Name() + ".tar.gz"
-			meshExtractDir = tmp.Name() + "_extracted"
+			meshExtractDir = tmp.Name() + "_extracted_" + generateRandomString(8)
 			defer os.Remove(tmp.Name())
 			defer os.Remove(meshArchive)
 			defer os.RemoveAll(meshExtractDir)
@@ -210,12 +214,16 @@ func (a *Agent) Install(i *Installer) {
 				a.installerMsg(fmt.Sprintf("Failed to extract mesh archive: %s", err.Error()), "error", i.Silent)
 			}
 
-			// Verify both files exist
-			meshBinary = filepath.Join(meshExtractDir, "meshagent")
-			meshMSH = filepath.Join(meshExtractDir, "meshagent.msh")
-			if !trmm.FileExists(meshBinary) || !trmm.FileExists(meshMSH) {
-				a.installerMsg("Archive missing required files (meshagent or meshagent.msh)", "error", i.Silent)
+			// Verify SHA256SUMS and get actual filenames
+			a.Logger.Infoln("Verifying mesh agent integrity...")
+			meshFilename, err := verifyMeshFiles(meshExtractDir)
+			if err != nil {
+				a.installerMsg(fmt.Sprintf("Failed to verify mesh agent: %s", err.Error()), "error", i.Silent)
 			}
+			a.Logger.Infoln("Mesh agent verification successful")
+
+			// Set path to mesh binary
+			meshBinary = filepath.Join(meshExtractDir, meshFilename)
 
 			os.Chmod(meshBinary, 0755)
 			meshOutput = meshBinary
@@ -233,8 +241,8 @@ func (a *Agent) Install(i *Installer) {
 		} else {
 			opts := a.NewCMDOpts()
 			if runtime.GOOS == "darwin" {
-				// For macOS, use --copy-msh flag to use the .msh file
-				opts.Command = fmt.Sprintf("%s -install --copy-msh=\"1\" --installPath=%s", meshOutput, nixMeshDir)
+				// For macOS, use --no-embedded and --copy-msh flags with the .msh file
+				opts.Command = fmt.Sprintf("%s -install --no-embedded=\"1\" --copy-msh=\"1\" --installPath=%s", meshOutput, nixMeshDir)
 			} else {
 				opts.Command = fmt.Sprintf("%s -install --installPath=%s", meshOutput, nixMeshDir)
 			}
@@ -386,6 +394,88 @@ func (a *Agent) Install(i *Installer) {
 	}
 
 	a.installerMsg("Installation was successful!\nAllow a few minutes for the agent to properly display in the RMM", "info", i.Silent)
+}
+
+// generateRandomString creates a random alphanumeric string of given length
+func generateRandomString(length int) string {
+	const charset = "abcdefghijklmnopqrstuvwxyz0123456789"
+	b := make([]byte, length)
+	rand.Read(b)
+	for i := range b {
+		b[i] = charset[int(b[i])%len(charset)]
+	}
+	return string(b)
+}
+
+// verifyMeshFiles reads SHA256SUMS and verifies the integrity of mesh files
+// Returns the base filename (e.g., "meshagent93c61773") or error
+func verifyMeshFiles(extractDir string) (string, error) {
+	sha256sumsPath := filepath.Join(extractDir, "SHA256SUMS")
+
+	// Read SHA256SUMS file
+	file, err := os.Open(sha256sumsPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to open SHA256SUMS: %w", err)
+	}
+	defer file.Close()
+
+	// Parse SHA256SUMS file (format: "<hash>  <filename>")
+	checksums := make(map[string]string)
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
+			continue
+		}
+		parts := strings.Fields(line)
+		if len(parts) != 2 {
+			continue
+		}
+		checksums[parts[1]] = parts[0]
+	}
+	if err := scanner.Err(); err != nil {
+		return "", fmt.Errorf("failed to read SHA256SUMS: %w", err)
+	}
+
+	// Find meshagent binary filename
+	var meshBinary, meshMSH string
+	for filename := range checksums {
+		if strings.HasPrefix(filename, "meshagent") && !strings.HasSuffix(filename, ".msh") {
+			meshBinary = filename
+		} else if strings.HasPrefix(filename, "meshagent") && strings.HasSuffix(filename, ".msh") {
+			meshMSH = filename
+		}
+	}
+
+	if meshBinary == "" || meshMSH == "" {
+		return "", fmt.Errorf("could not find meshagent files in SHA256SUMS")
+	}
+
+	// Verify checksums
+	for _, filename := range []string{meshBinary, meshMSH} {
+		filePath := filepath.Join(extractDir, filename)
+		expectedHash := checksums[filename]
+
+		// Calculate actual hash
+		f, err := os.Open(filePath)
+		if err != nil {
+			return "", fmt.Errorf("failed to open %s: %w", filename, err)
+		}
+		defer f.Close()
+
+		h := sha256.New()
+		if _, err := io.Copy(h, f); err != nil {
+			return "", fmt.Errorf("failed to hash %s: %w", filename, err)
+		}
+		actualHash := hex.EncodeToString(h.Sum(nil))
+
+		if actualHash != expectedHash {
+			return "", fmt.Errorf("checksum mismatch for %s: expected %s, got %s", filename, expectedHash, actualHash)
+		}
+	}
+
+	// Return base filename (without .msh extension)
+	return meshBinary, nil
 }
 
 func copyFile(src, dst string) error {
