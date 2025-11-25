@@ -842,6 +842,7 @@ func (a *Agent) RunRPC() {
 					a.Logger.Errorln("FeedTerminalInput:", err)
 				}
 			}(payload)
+
 		case "terminal_resize":
 			go func(p *NatsMsg) {
 				sessionID := p.Data["session_id"]
@@ -856,6 +857,14 @@ func (a *Agent) RunRPC() {
 				}
 			}(payload)
 
+		case "terminal_kill":
+			go func(p *NatsMsg) {
+				sessionID := p.Data["session_id"]
+
+				if err := a.KillTerminalSession(sessionID); err != nil {
+					a.Logger.Errorln("KillTerminalSession:", err)
+				}
+			}(payload)
 		}
 	})
 	nc.Flush()
