@@ -27,11 +27,13 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 
 	"time"
 
 	rmm "github.com/amidaware/rmmagent/shared"
+	"github.com/creack/pty"
 	ps "github.com/elastic/go-sysinfo"
 	gocmd "github.com/go-cmd/cmd"
 	"github.com/go-resty/resty/v2"
@@ -86,6 +88,8 @@ type Agent struct {
 	NatsPingInterval   int
 	NatsWSCompression  bool
 	Insecure           bool
+	TerminalSessions   map[string]*TerminalSession
+	TerminalSessionsMu sync.Mutex
 }
 
 const (
@@ -296,6 +300,7 @@ func New(logger *logrus.Logger, version string) *Agent {
 		NatsPingInterval:   natsPingInterval,
 		NatsWSCompression:  natsWsCompression,
 		Insecure:           insecure,
+		TerminalSessions:   make(map[string]*TerminalSession),
 	}
 }
 
@@ -829,4 +834,112 @@ func (a *Agent) RunTask(id int) error {
 		return perr
 	}
 	return nil
+}
+
+type TerminalSession struct {
+	ID   string
+	Cmd  *exec.Cmd
+	Ptmx *os.File
+}
+
+func (a *Agent) StartTerminalSession(sessionID, shell string, nc *nats.Conn) error {
+	a.Logger.Debugf("StartTerminalSession: session=%s shell=%s", sessionID, shell)
+
+	// Prevent duplicate sessions
+	a.TerminalSessionsMu.Lock()
+	if _, exists := a.TerminalSessions[sessionID]; exists {
+		a.TerminalSessionsMu.Unlock()
+		return fmt.Errorf("session already exists: %s", sessionID)
+	}
+	a.TerminalSessionsMu.Unlock()
+
+	// Create shell command
+	cmd := exec.Command(shell)
+
+	// Create PTY
+	ptmx, err := pty.Start(cmd)
+	if err != nil {
+		return fmt.Errorf("failed to start PTY: %w", err)
+	}
+
+	// Store session
+	a.TerminalSessionsMu.Lock()
+	a.TerminalSessions[sessionID] = &TerminalSession{
+		ID:   sessionID,
+		Cmd:  cmd,
+		Ptmx: ptmx,
+	}
+	a.TerminalSessionsMu.Unlock()
+
+	a.Logger.Debugf("Registered terminal session %s", sessionID)
+
+	// Stream output
+	go a.StreamTerminalOutput(sessionID, ptmx, nc)
+
+	// Watch for exit
+	go func() {
+		cmd.Wait()
+		a.Logger.Debugf("Terminal session %s exited", sessionID)
+		a.StopTerminalSession(sessionID)
+		
+		// Extract exit code
+		exitCode := 0
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			exitCode = exitErr.ExitCode()
+		}
+		a.SendTerminalDone(sessionID, exitCode, nc)
+	}()
+
+	return nil
+}
+
+func (a *Agent) StreamTerminalOutput(sessionID string, ptmx *os.File, nc *nats.Conn) {
+	topic := a.AgentID + ".terminal." + sessionID
+
+	buf := make([]byte, 2048)
+	for {
+		n, err := ptmx.Read(buf)
+		if err != nil {
+			a.Logger.Debugf("PTY closed for session %s: %v", sessionID, err)
+			return
+		}
+
+		// Encode bytes using MsgPack
+		var resp []byte
+		enc := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
+		_ = enc.Encode(buf[:n])
+
+		// Stream to NATS
+		_ = nc.Publish(topic, resp)
+	}
+}
+
+func (a *Agent) StopTerminalSession(sessionID string) {
+	a.TerminalSessionsMu.Lock()
+	sess, ok := a.TerminalSessions[sessionID]
+	if ok {
+		if sess.Cmd.Process != nil {
+			_ = sess.Cmd.Process.Kill()
+		}
+		if sess.Ptmx != nil {
+			_ = sess.Ptmx.Close()
+		}
+		delete(a.TerminalSessions, sessionID)
+	}
+	a.TerminalSessionsMu.Unlock()
+}
+
+func (a *Agent) SendTerminalDone(sessionID string, exitCode int, nc *nats.Conn) {
+	topic := a.AgentID + ".terminal." + sessionID
+
+	payload := map[string]interface{}{
+		"done":      true,
+		"exit_code": exitCode,
+	}
+
+	var resp []byte
+	enc := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
+	_ = enc.Encode(payload)
+
+	_ = nc.Publish(topic, resp)
 }

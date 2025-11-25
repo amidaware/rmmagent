@@ -817,6 +817,21 @@ func (a *Agent) RunRPC() {
 				nc.Close()
 				os.Exit(0)
 			}(payload)
+
+		case "terminal_start":
+			go func(p *NatsMsg) {
+				a.Logger.Debugln("Starting terminal session")
+				sessionID := p.Data["session_id"]
+				shell := p.Data["shell"]
+				if shell == "" {
+					shell = "/bin/bash"
+				}
+
+				err := a.StartTerminalSession(sessionID, shell, nc)
+				if err != nil {
+					a.Logger.Errorln("StartTerminalSession:", err)
+				}
+			}(payload)
 		}
 	})
 	nc.Flush()

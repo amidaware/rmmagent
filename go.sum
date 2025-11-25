@@ -8,6 +8,8 @@ github.com/amidaware/taskmaster v0.0.0-20220111015025-c9cd178bbbf2 h1:1K03qwtvgd
 github.com/amidaware/taskmaster v0.0.0-20220111015025-c9cd178bbbf2/go.mod h1:5UVBogOiPFWC2F6fKT/Kb9qD4NCsp2y+dCj+pvXnDQE=
 github.com/capnspacehook/taskmaster v0.0.0-20210519235353-1629df7c85e9/go.mod h1:257CYs3Wd/CTlLQ3c72jKv+fFE2MV3WPNnV5jiroYUU=
 github.com/creachadair/staticfile v0.1.3/go.mod h1:a3qySzCIXEprDGxk6tSxSI+dBBdLzqeBOMhZ+o2d3pM=
+github.com/creack/pty v1.1.24 h1:bJrF4RRfyJnbTJqzRLHzcGaZK1NeM5kTC9jGgovnR1s=
+github.com/creack/pty v1.1.24/go.mod h1:08sCNb52WyoAwi2QDyzUCTgcvVFhUzewun7wtTfvcwE=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1VwoXQT9A3Wy9MM3WgvqSxFWenqJduM=
