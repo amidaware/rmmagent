@@ -964,6 +964,8 @@ func (a *Agent) FeedTerminalInput(sessionID string, input string) error {
 }
 
 func (a *Agent) ResizeTerminalSession(sessionID string, rows, cols int) error {
+	a.Logger.Debugf("Resizing terminal session %s to %dx%d", sessionID, rows, cols)
+
 	a.TerminalSessionsMu.Lock()
 	sess, ok := a.TerminalSessions[sessionID]
 	a.TerminalSessionsMu.Unlock()
@@ -987,33 +989,27 @@ func (a *Agent) ResizeTerminalSession(sessionID string, rows, cols int) error {
 func (a *Agent) KillTerminalSession(sessionID string) error {
 	a.Logger.Debugf("Killing terminal session %s", sessionID)
 
+	var ok bool
 	a.TerminalSessionsMu.Lock()
 	sess, ok := a.TerminalSessions[sessionID]
+	if ok {
+		// Kill the process
+		if sess.Cmd.Process != nil {
+			_ = sess.Cmd.Process.Kill()
+		}
+
+		// Close the PTY
+		if sess.Ptmx != nil {
+			_ = sess.Ptmx.Close()
+		}
+		delete(a.TerminalSessions, sessionID)
+	}
 	a.TerminalSessionsMu.Unlock()
 
 	if !ok {
 		return fmt.Errorf("session not found: %s", sessionID)
 	}
 
-	// Kill the process
-	if sess.Cmd.Process != nil {
-		_ = sess.Cmd.Process.Kill()
-	}
-
-	// Close the PTY
-	if sess.Ptmx != nil {
-		_ = sess.Ptmx.Close()
-	}
-
-	// Remove from map
-	a.TerminalSessionsMu.Lock()
-	delete(a.TerminalSessions, sessionID)
-	a.TerminalSessionsMu.Unlock()
-
 	a.Logger.Debugf("Terminal session %s force-killed", sessionID)
-
-	// optional: // If the frontend expects a final “session closed” event, modify the end like this:
-	// a.SendTerminalDone(sessionID, -1, nc) // most systems treat a kill as hard-close (frontend socket closes too).
-
 	return nil
 }

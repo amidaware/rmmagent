@@ -849,6 +849,7 @@ func (a *Agent) RunRPC() {
 				rowsStr := p.Data["rows"]
 				colsStr := p.Data["cols"]
 
+				// todo: can we check the error here of mismatched type
 				rows, _ := strconv.Atoi(rowsStr)
 				cols, _ := strconv.Atoi(colsStr)
 
