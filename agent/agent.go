@@ -962,3 +962,24 @@ func (a *Agent) FeedTerminalInput(sessionID string, input string) error {
 	_, err := sess.Ptmx.Write([]byte(input))
 	return err
 }
+
+func (a *Agent) ResizeTerminalSession(sessionID string, rows, cols int) error {
+	a.TerminalSessionsMu.Lock()
+	sess, ok := a.TerminalSessions[sessionID]
+	a.TerminalSessionsMu.Unlock()
+
+	if !ok {
+		return fmt.Errorf("session not found: %s", sessionID)
+	}
+
+	if sess.Ptmx == nil {
+		return fmt.Errorf("pty handle is nil for session: %s", sessionID)
+	}
+
+	size := &pty.Winsize{
+		Rows: uint16(rows),
+		Cols: uint16(cols),
+	}
+
+	return pty.Setsize(sess.Ptmx, size)
+}

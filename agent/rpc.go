@@ -842,6 +842,20 @@ func (a *Agent) RunRPC() {
 					a.Logger.Errorln("FeedTerminalInput:", err)
 				}
 			}(payload)
+		case "terminal_resize":
+			go func(p *NatsMsg) {
+				sessionID := p.Data["session_id"]
+				rowsStr := p.Data["rows"]
+				colsStr := p.Data["cols"]
+
+				rows, _ := strconv.Atoi(rowsStr)
+				cols, _ := strconv.Atoi(colsStr)
+
+				if err := a.ResizeTerminalSession(sessionID, rows, cols); err != nil {
+					a.Logger.Errorln("ResizeTerminalSession:", err)
+				}
+			}(payload)
+
 		}
 	})
 	nc.Flush()
