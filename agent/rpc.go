@@ -832,6 +832,16 @@ func (a *Agent) RunRPC() {
 					a.Logger.Errorln("StartTerminalSession:", err)
 				}
 			}(payload)
+
+		case "terminal_input":
+			go func(p *NatsMsg) {
+				sessionID := p.Data["session_id"]
+				data := p.Data["data"] // raw input text
+
+				if err := a.FeedTerminalInput(sessionID, data); err != nil {
+					a.Logger.Errorln("FeedTerminalInput:", err)
+				}
+			}(payload)
 		}
 	})
 	nc.Flush()

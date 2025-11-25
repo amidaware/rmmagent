@@ -881,7 +881,7 @@ func (a *Agent) StartTerminalSession(sessionID, shell string, nc *nats.Conn) err
 		cmd.Wait()
 		a.Logger.Debugf("Terminal session %s exited", sessionID)
 		a.StopTerminalSession(sessionID)
-		
+
 		// Extract exit code
 		exitCode := 0
 		if exitErr, ok := err.(*exec.ExitError); ok {
@@ -942,4 +942,23 @@ func (a *Agent) SendTerminalDone(sessionID string, exitCode int, nc *nats.Conn) 
 	_ = enc.Encode(payload)
 
 	_ = nc.Publish(topic, resp)
+}
+
+func (a *Agent) FeedTerminalInput(sessionID string, input string) error {
+	a.Logger.Debugf("Input received for session %s: %.20s", sessionID, input)
+	a.TerminalSessionsMu.Lock()
+	sess, ok := a.TerminalSessions[sessionID]
+	a.TerminalSessionsMu.Unlock()
+
+	if !ok {
+		return fmt.Errorf("session not found: %s", sessionID)
+	}
+
+	if sess.Ptmx == nil {
+		return fmt.Errorf("PTY not initialized for session: %s", sessionID)
+	}
+
+	// Write input (UTF-8 bytes) directly to PTY
+	_, err := sess.Ptmx.Write([]byte(input))
+	return err
 }
