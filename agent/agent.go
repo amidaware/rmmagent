@@ -896,7 +896,11 @@ func (a *Agent) StartTerminalSession(sessionID, shell string, nc *nats.Conn) err
 func (a *Agent) StreamTerminalOutput(sessionID string, ptmx *os.File, nc *nats.Conn) {
 	topic := a.AgentID + ".terminal." + sessionID
 
+	// Reuse msgpack handle (avoid allocating a new one per chunk)
+	var mh codec.MsgpackHandle
+
 	buf := make([]byte, 2048)
+
 	for {
 		n, err := ptmx.Read(buf)
 		if err != nil {
@@ -906,11 +910,17 @@ func (a *Agent) StreamTerminalOutput(sessionID string, ptmx *os.File, nc *nats.C
 
 		// Encode bytes using MsgPack
 		var resp []byte
-		enc := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
-		_ = enc.Encode(buf[:n])
+		enc := codec.NewEncoderBytes(&resp, &mh)
+		if err := enc.Encode(buf[:n]); err != nil {
+			a.Logger.Debugf("msgpack encode failed for session %s: %v", sessionID, err)
+			return
+		}
 
 		// Stream to NATS
-		_ = nc.Publish(topic, resp)
+		if err := nc.Publish(topic, resp); err != nil {
+			a.Logger.Debugf("nats publish failed for session %s: %v", sessionID, err)
+			return
+		}
 	}
 }
 
