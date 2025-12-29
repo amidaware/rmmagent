@@ -845,14 +845,6 @@ type TerminalSession struct {
 func (a *Agent) StartTerminalSession(sessionID, shell string, nc *nats.Conn) error {
 	a.Logger.Debugf("StartTerminalSession: session=%s shell=%s", sessionID, shell)
 
-	// Prevent duplicate sessions
-	a.TerminalSessionsMu.Lock()
-	if _, exists := a.TerminalSessions[sessionID]; exists {
-		a.TerminalSessionsMu.Unlock()
-		return fmt.Errorf("session already exists: %s", sessionID)
-	}
-	a.TerminalSessionsMu.Unlock()
-
 	// Create shell command
 	cmd := exec.Command(shell)
 
@@ -862,8 +854,14 @@ func (a *Agent) StartTerminalSession(sessionID, shell string, nc *nats.Conn) err
 		return fmt.Errorf("failed to start PTY: %w", err)
 	}
 
-	// Store session
+	// Single lock: check (prevent duplicate sessions) + insert
 	a.TerminalSessionsMu.Lock()
+	if _, exists := a.TerminalSessions[sessionID]; exists {
+		a.TerminalSessionsMu.Unlock()
+		_ = ptmx.Close()
+		_ = cmd.Process.Kill()
+		return fmt.Errorf("Session already exists: %s", sessionID)
+	}
 	a.TerminalSessions[sessionID] = &TerminalSession{
 		ID:   sessionID,
 		Cmd:  cmd,
@@ -878,14 +876,19 @@ func (a *Agent) StartTerminalSession(sessionID, shell string, nc *nats.Conn) err
 
 	// Watch for exit
 	go func() {
-		cmd.Wait()
-		a.Logger.Debugf("Terminal session %s exited", sessionID)
+		waitErr := cmd.Wait()
+		a.Logger.Debugf("Terminal session %s exited: %v", sessionID, waitErr)
+
+		// cleanup
 		a.StopTerminalSession(sessionID)
 
-		// Extract exit code
 		exitCode := 0
-		if exitErr, ok := err.(*exec.ExitError); ok {
-			exitCode = exitErr.ExitCode()
+		if waitErr != nil {
+			if exitErr, ok := waitErr.(*exec.ExitError); ok {
+				exitCode = exitErr.ExitCode()
+			} else {
+				exitCode = 1
+			}
 		}
 		a.SendTerminalDone(sessionID, exitCode, nc)
 	}()
@@ -928,9 +931,6 @@ func (a *Agent) StopTerminalSession(sessionID string) {
 	a.TerminalSessionsMu.Lock()
 	sess, ok := a.TerminalSessions[sessionID]
 	if ok {
-		if sess.Cmd.Process != nil {
-			_ = sess.Cmd.Process.Kill()
-		}
 		if sess.Ptmx != nil {
 			_ = sess.Ptmx.Close()
 		}
