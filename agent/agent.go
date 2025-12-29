@@ -1017,7 +1017,9 @@ func (a *Agent) KillTerminalSession(sessionID string) error {
 	a.TerminalSessionsMu.Unlock()
 
 	if !ok {
-		return fmt.Errorf("session not found: %s", sessionID)
+		// session already cleaned up (duplicate kill)
+		a.Logger.Debugf("KillTerminalSession: session already gone: %s", sessionID)
+		return nil
 	}
 
 	a.Logger.Debugf("Terminal session %s force-killed", sessionID)
