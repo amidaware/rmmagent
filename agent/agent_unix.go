@@ -991,6 +991,22 @@ func ModifyRegistryValue(path string, name string, valType string, data interfac
 	return nil, errors.New("modifying registry values is only supported on Windows")
 }
 
+func StartTerminalSessionWindows(agentID string, sessionID string, shell string, nc *nats.Conn) error {
+	return errors.New("failed to start terminal session on windows")
+}
+
+func ResizeTerminalSessionWindows(sessionID string, rows, cols int) error {
+	return errors.New("failed to resize terminal session on windows")
+}
+
+func KillTerminalSessionWindows(sessionID string) error {
+	return errors.New("failed to kill terminal session on windows")
+}
+
+func FeedTerminalInputWindows(sessionID string, input string) error {
+	return errors.New("failed to feed input terminal session on windows")
+}
+
 func CMD(exe string, args []string, timeout int, detached bool) (output [2]string, e error) {
 	return [2]string{"", ""}, nil
 }
