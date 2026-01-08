@@ -821,49 +821,118 @@ func (a *Agent) RunRPC() {
 		case "terminal_start":
 			go func(p *NatsMsg) {
 				a.Logger.Debugln("Starting terminal session")
+
 				sessionID := p.Data["session_id"]
-				shell := p.Data["shell"]
-				if shell == "" {
-					shell = "/bin/bash"
+				if sessionID == "" {
+					a.Logger.Errorln("terminal_start: missing session_id")
+					return
 				}
 
-				err := a.StartTerminalSession(sessionID, shell, nc)
-				if err != nil {
-					a.Logger.Errorln("StartTerminalSession:", err)
+				shell := p.Data["shell"]
+
+				switch runtime.GOOS {
+				case "windows":
+					if shell == "" {
+						shell = "cmd"
+					}
+					// Windows: ConPTY function
+					if err := StartTerminalSessionWindows(a.AgentID, sessionID, shell, nc); err != nil {
+						a.Logger.Errorln("StartTerminalSessionWindows:", err)
+					}
+				default:
+					// Linux: agent method
+					if shell == "" {
+						shell = "/bin/bash"
+					}
+					if err := a.StartTerminalSession(sessionID, shell, nc); err != nil {
+						a.Logger.Errorln("StartTerminalSession:", err)
+					}
 				}
 			}(payload)
 
 		case "terminal_input":
 			go func(p *NatsMsg) {
 				sessionID := p.Data["session_id"]
-				data := p.Data["data"] // raw input text
+				if sessionID == "" {
+					a.Logger.Errorln("terminal_input: missing session_id")
+					return
+				}
 
-				if err := a.FeedTerminalInput(sessionID, data); err != nil {
-					a.Logger.Errorln("FeedTerminalInput:", err)
+				data := p.Data["data"] // raw input text from xterm
+				if data == "" {
+					return
+				}
+
+				switch runtime.GOOS {
+				case "windows":
+					// Windows: global ConPTY input
+					if err := FeedTerminalInputWindows(sessionID, data); err != nil {
+						a.Logger.Errorln("FeedTerminalInputWindows:", err)
+					}
+				default:
+					// Linux: existing PTY input
+					if err := a.FeedTerminalInput(sessionID, data); err != nil {
+						a.Logger.Errorln("FeedTerminalInput:", err)
+					}
 				}
 			}(payload)
 
 		case "terminal_resize":
 			go func(p *NatsMsg) {
 				sessionID := p.Data["session_id"]
+				if sessionID == "" {
+					a.Logger.Errorln("terminal_resize: missing session_id")
+					return
+				}
+
 				rowsStr := p.Data["rows"]
 				colsStr := p.Data["cols"]
 
-				// todo: can we check the error here of mismatched type
-				rows, _ := strconv.Atoi(rowsStr)
-				cols, _ := strconv.Atoi(colsStr)
+				rows, err1 := strconv.Atoi(rowsStr)
+				cols, err2 := strconv.Atoi(colsStr)
 
-				if err := a.ResizeTerminalSession(sessionID, rows, cols); err != nil {
-					a.Logger.Errorln("ResizeTerminalSession:", err)
+				// Validate input strictly
+				if err1 != nil || err2 != nil || rows <= 0 || cols <= 0 {
+					a.Logger.Debugf(
+						"terminal_resize: invalid size session=%s rows=%q cols=%q",
+						sessionID, rowsStr, colsStr,
+					)
+					return
+				}
+
+				switch runtime.GOOS {
+				case "windows":
+					// Windows: global ConPTY resize
+					if err := ResizeTerminalSessionWindows(sessionID, rows, cols); err != nil {
+						a.Logger.Errorln("ResizeTerminalSessionWindows:", err)
+					}
+				default:
+					// Linux: existing PTY resize
+					if err := a.ResizeTerminalSession(sessionID, rows, cols); err != nil {
+						a.Logger.Errorln("ResizeTerminalSession:", err)
+					}
 				}
 			}(payload)
 
 		case "terminal_kill":
 			go func(p *NatsMsg) {
 				sessionID := p.Data["session_id"]
+				if sessionID == "" {
+					a.Logger.Errorln("terminal_kill: missing session_id")
+					return
+				}
 
-				if err := a.KillTerminalSession(sessionID); err != nil {
-					a.Logger.Errorln("KillTerminalSession:", err)
+				switch runtime.GOOS {
+				case "windows":
+					// Windows: global ConPTY kill
+					if err := KillTerminalSessionWindows(sessionID); err != nil {
+						a.Logger.Errorln("KillTerminalSessionWindows:", err)
+					}
+				default:
+					// Linux: existing PTY kill
+					if err := a.KillTerminalSession(sessionID); err != nil {
+						a.Logger.Errorln("KillTerminalSession:", err)
+					}
 				}
 			}(payload)
 		}
