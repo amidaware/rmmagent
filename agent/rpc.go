@@ -820,32 +820,27 @@ func (a *Agent) RunRPC() {
 
 		case "terminal_start":
 			go func(p *NatsMsg) {
-				a.Logger.Debugln("Starting terminal session")
-
 				sessionID := p.Data["session_id"]
+				shell := p.Data["shell"]
 				if sessionID == "" {
 					a.Logger.Errorln("terminal_start: missing session_id")
 					return
 				}
 
-				shell := p.Data["shell"]
-
 				switch runtime.GOOS {
 				case "windows":
 					if shell == "" {
-						shell = "cmd"
+						shell = "cmd" // default assign
 					}
-					// Windows: ConPTY function
 					if err := StartTerminalSessionWindows(a.AgentID, sessionID, shell, nc); err != nil {
-						a.Logger.Errorln("StartTerminalSessionWindows:", err)
+						a.Logger.Errorln("terminal_start: StartTerminalSessionWindows:", err)
 					}
 				default:
-					// Linux: agent method
 					if shell == "" {
-						shell = "/bin/bash"
+						shell = "/bin/bash" // default assign
 					}
 					if err := a.StartTerminalSession(sessionID, shell, nc); err != nil {
-						a.Logger.Errorln("StartTerminalSession:", err)
+						a.Logger.Errorln("terminal_start: StartTerminalSession:", err)
 					}
 				}
 			}(payload)
@@ -858,21 +853,19 @@ func (a *Agent) RunRPC() {
 					return
 				}
 
-				data := p.Data["data"] // raw input text from xterm
+				data := p.Data["data"]
 				if data == "" {
 					return
 				}
 
 				switch runtime.GOOS {
 				case "windows":
-					// Windows: global ConPTY input
 					if err := FeedTerminalInputWindows(sessionID, data); err != nil {
-						a.Logger.Errorln("FeedTerminalInputWindows:", err)
+						a.Logger.Errorln("terminal_input: FeedTerminalInputWindows:", err)
 					}
 				default:
-					// Linux: existing PTY input
 					if err := a.FeedTerminalInput(sessionID, data); err != nil {
-						a.Logger.Errorln("FeedTerminalInput:", err)
+						a.Logger.Errorln("terminal_input: FeedTerminalInput:", err)
 					}
 				}
 			}(payload)
@@ -893,23 +886,18 @@ func (a *Agent) RunRPC() {
 
 				// Validate input strictly
 				if err1 != nil || err2 != nil || rows <= 0 || cols <= 0 {
-					a.Logger.Debugf(
-						"terminal_resize: invalid size session=%s rows=%q cols=%q",
-						sessionID, rowsStr, colsStr,
-					)
+					a.Logger.Debugf("terminal_resize: failed to validate values: os=%s session=%s rows=%q cols=%q", runtime.GOOS, sessionID, rowsStr, colsStr)
 					return
 				}
 
 				switch runtime.GOOS {
 				case "windows":
-					// Windows: global ConPTY resize
 					if err := ResizeTerminalSessionWindows(sessionID, rows, cols); err != nil {
-						a.Logger.Errorln("ResizeTerminalSessionWindows:", err)
+						a.Logger.Errorln("terminal_resize: ResizeTerminalSessionWindows:", err)
 					}
 				default:
-					// Linux: existing PTY resize
 					if err := a.ResizeTerminalSession(sessionID, rows, cols); err != nil {
-						a.Logger.Errorln("ResizeTerminalSession:", err)
+						a.Logger.Errorln("terminal_resize: ResizeTerminalSession:", err)
 					}
 				}
 			}(payload)
@@ -924,14 +912,12 @@ func (a *Agent) RunRPC() {
 
 				switch runtime.GOOS {
 				case "windows":
-					// Windows: global ConPTY kill
 					if err := KillTerminalSessionWindows(sessionID); err != nil {
-						a.Logger.Errorln("KillTerminalSessionWindows:", err)
+						a.Logger.Errorln("terminal_kill: KillTerminalSessionWindows:", err)
 					}
 				default:
-					// Linux: existing PTY kill
 					if err := a.KillTerminalSession(sessionID); err != nil {
-						a.Logger.Errorln("KillTerminalSession:", err)
+						a.Logger.Errorln("terminal_kill: KillTerminalSession:", err)
 					}
 				}
 			}(payload)
