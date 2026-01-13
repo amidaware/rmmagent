@@ -15,9 +15,6 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-/*
-Global session registry (because Windows uses global functions like CMDShell)
-*/
 type winTerminalSession struct {
 	id string
 
@@ -26,7 +23,6 @@ type winTerminalSession struct {
 	// Process handle for hard kill
 	proc windows.Handle
 
-	// IO pipes exposed as *os.File
 	inW  *os.File
 	outR *os.File
 
@@ -39,11 +35,7 @@ var (
 	winTerms  = map[string]*winTerminalSession{}
 )
 
-// ---------------------- Public global API ----------------------
-
 func StartTerminalSessionWindows(agentID string, sessionID string, shell string, nc *nats.Conn) error {
-	fmt.Println("StartTerminalSessionWindows: agent=%s session=%s shell=%s", agentID, sessionID, shell)
-
 	if sessionID == "" {
 		return fmt.Errorf("missing session_id")
 	}
@@ -52,7 +44,7 @@ func StartTerminalSessionWindows(agentID string, sessionID string, shell string,
 	winTermMu.Lock()
 	if _, exists := winTerms[sessionID]; exists {
 		winTermMu.Unlock()
-		return fmt.Errorf("Session already exists: %s", sessionID)
+		return fmt.Errorf("session already exists: %s", sessionID)
 	}
 	winTermMu.Unlock()
 
@@ -70,7 +62,6 @@ func StartTerminalSessionWindows(agentID string, sessionID string, shell string,
 		return fmt.Errorf("create output pipe: %w", err)
 	}
 
-	// If anything fails after here, we must close all remaining handles/files
 	cleanupHandles := func() {
 		_ = windows.CloseHandle(inR)
 		_ = windows.CloseHandle(inW)
@@ -85,11 +76,45 @@ func StartTerminalSessionWindows(agentID string, sessionID string, shell string,
 		return fmt.Errorf("create pseudoconsole: %w", err)
 	}
 
+	// ConPTY uses inR + outW; we use inW + outR
+	_ = windows.CloseHandle(inR)
+	_ = windows.CloseHandle(outW)
+
+	inWFile := os.NewFile(uintptr(inW), "conpty-in")
+	outRFile := os.NewFile(uintptr(outR), "conpty-out")
+
+	// Create session object NOW (proc will be set after CreateProcess)
+	sess := &winTerminalSession{
+		id:   sessionID,
+		hPC:  hPC,
+		proc: 0,
+		inW:  inWFile,
+		outR: outRFile,
+	}
+
+	// Register early so resize won't race (only needs hPC)
+	winTermMu.Lock()
+	if _, exists := winTerms[sessionID]; exists {
+		winTermMu.Unlock()
+
+		_ = inWFile.Close()
+		_ = outRFile.Close()
+		closePseudoConsole(hPC)
+
+		return fmt.Errorf("session already exists: %s", sessionID)
+	}
+	winTerms[sessionID] = sess
+	winTermMu.Unlock()
+
+	// From here onward: on any failure, remove session + cleanup via Stop()
+	cleanupRegistered := func() {
+		_ = StopTerminalSessionWindows(sessionID)
+	}
+
 	// Build STARTUPINFOEX
 	siEx, attr, err := buildStartupInfoEx(hPC)
 	if err != nil {
-		closePseudoConsole(hPC)
-		cleanupHandles()
+		cleanupRegistered()
 		return fmt.Errorf("build startupinfoex: %w", err)
 	}
 	defer deleteProcThreadAttrList(attr)
@@ -111,46 +136,14 @@ func StartTerminalSessionWindows(agentID string, sessionID string, shell string,
 		&pi,
 	)
 	if err != nil {
-		closePseudoConsole(hPC)
-		cleanupHandles()
+		cleanupRegistered()
 		return fmt.Errorf("CreateProcess: %w", err)
 	}
 
-	// We don't need thread handle
 	_ = windows.CloseHandle(pi.Thread)
 
-	// ConPTY uses inR + outW; we use inW + outR
-	_ = windows.CloseHandle(inR)
-	_ = windows.CloseHandle(outW)
-
-	inWFile := os.NewFile(uintptr(inW), "conpty-in")
-	outRFile := os.NewFile(uintptr(outR), "conpty-out")
-
-	sess := &winTerminalSession{
-		id:   sessionID,
-		hPC:  hPC,
-		proc: pi.Process,
-		inW:  inWFile,
-		outR: outRFile,
-	}
-
-	// Store session
-	winTermMu.Lock()
-	// Double-check in case of race
-	if _, exists := winTerms[sessionID]; exists {
-		winTermMu.Unlock()
-		// cleanup created process/session
-		_ = windows.TerminateProcess(pi.Process, 1)
-		_ = windows.CloseHandle(pi.Process)
-		_ = inWFile.Close()
-		_ = outRFile.Close()
-		closePseudoConsole(hPC)
-		return fmt.Errorf("Session already exists: %s", sessionID)
-	}
-	winTerms[sessionID] = sess
-	winTermMu.Unlock()
-
-	fmt.Println("Registered Windows terminal session %s", sessionID)
+	// Save proc handle into session (now kill/watcher can use it)
+	sess.proc = pi.Process
 
 	// Stream output
 	go streamTerminalOutputWindows(agentID, sessionID, outRFile, nc)
@@ -162,24 +155,29 @@ func StartTerminalSessionWindows(agentID string, sessionID string, shell string,
 		var code uint32
 		_ = windows.GetExitCodeProcess(sess.proc, &code)
 
-		StopTerminalSessionWindows(sessionID) // safe cleanup + remove
-		sendTerminalDoneWindows(agentID, sessionID, int(code), nc)
+		removed := StopTerminalSessionWindows(sessionID)
+		if removed {
+			sendTerminalDoneWindows(agentID, sessionID, int(code), nc)
+		}
 	}()
 
 	return nil
 }
 
-func StopTerminalSessionWindows(sessionID string) {
+// StopTerminalSessionWindows returns true if it actually removed a session (useful for watcher/kill coordination)
+func StopTerminalSessionWindows(sessionID string) bool {
 	winTermMu.Lock()
 	sess, ok := winTerms[sessionID]
 	if ok {
 		delete(winTerms, sessionID)
 	}
 	winTermMu.Unlock()
+
 	if !ok {
-		return
+		return false
 	}
 	cleanupWinSession(sess)
+	return true
 }
 
 func KillTerminalSessionWindows(sessionID string) error {
@@ -191,8 +189,6 @@ func KillTerminalSessionWindows(sessionID string) error {
 	winTermMu.Unlock()
 
 	if !ok {
-		// add WARN here
-		fmt.Println("KillTerminalSessionWindows: session already gone: %s", sessionID)
 		return nil
 	}
 
@@ -209,6 +205,7 @@ func FeedTerminalInputWindows(sessionID string, input string) error {
 	winTermMu.Lock()
 	sess, ok := winTerms[sessionID]
 	winTermMu.Unlock()
+
 	if !ok {
 		return fmt.Errorf("session not found: %s", sessionID)
 	}
@@ -216,7 +213,6 @@ func FeedTerminalInputWindows(sessionID string, input string) error {
 		return fmt.Errorf("stdin pipe not initialized for session: %s", sessionID)
 	}
 
-	// Xterm sends UTF-8 bytes; ConPTY stdin expects bytes as-is.
 	_, err := sess.inW.Write([]byte(input))
 	return err
 }
@@ -225,9 +221,11 @@ func ResizeTerminalSessionWindows(sessionID string, rows, cols int) error {
 	if rows <= 0 || cols <= 0 {
 		return nil
 	}
+
 	winTermMu.Lock()
 	sess, ok := winTerms[sessionID]
 	winTermMu.Unlock()
+
 	if !ok {
 		return fmt.Errorf("session not found: %s", sessionID)
 	}
@@ -236,8 +234,6 @@ func ResizeTerminalSessionWindows(sessionID string, rows, cols int) error {
 	}
 	return resizePseudoConsole(sess.hPC, int16(cols), int16(rows))
 }
-
-// ---------------------- Streaming + done ----------------------
 
 func streamTerminalOutputWindows(agentID, sessionID string, out *os.File, nc *nats.Conn) {
 	topic := agentID + ".terminal." + sessionID
@@ -248,9 +244,12 @@ func streamTerminalOutputWindows(agentID, sessionID string, out *os.File, nc *na
 	for {
 		n, err := out.Read(buf)
 		if err != nil {
+			if err != io.EOF && strings.Contains(err.Error(), "file already closed") {
+				// normal during cleanup/kill
+				return
+			}
 			if err != io.EOF {
-				// add WARN here
-				fmt.Println("ConPTY output closed for session %s: %v", sessionID, err)
+				fmt.Printf("[WARN] Stream read error: session=%s err=%v", sessionID, err)
 			}
 			return
 		}
@@ -258,11 +257,11 @@ func streamTerminalOutputWindows(agentID, sessionID string, out *os.File, nc *na
 		var resp []byte
 		enc := codec.NewEncoderBytes(&resp, &mh)
 		if err := enc.Encode(buf[:n]); err != nil {
-			fmt.Println("msgpack encode failed for session %s: %v", sessionID, err)
+			fmt.Printf("[WARN] MSGPACK encode failed: session=%s err=%v", sessionID, err)
 			return
 		}
 		if err := nc.Publish(topic, resp); err != nil {
-			fmt.Println("nats publish failed for session %s: %v", sessionID, err)
+			fmt.Printf("[WARN] NATS publish failed: session=%s err=%v", sessionID, err)
 			return
 		}
 	}
@@ -281,8 +280,6 @@ func sendTerminalDoneWindows(agentID, sessionID string, exitCode int, nc *nats.C
 	_ = enc.Encode(payload)
 	_ = nc.Publish(topic, resp)
 }
-
-// ---------------------- Helpers (ConPTY) ----------------------
 
 var (
 	kernel32                = windows.NewLazySystemDLL("kernel32.dll")
@@ -315,7 +312,6 @@ func cleanupWinSession(sess *winTerminalSession) {
 		return
 	}
 
-	// Prevent double cleanup if called twice somehow
 	if sess.closed {
 		return
 	}
@@ -347,7 +343,6 @@ func pickWindowsShellExe(shell string) string {
 	case "cmd", "cmd.exe":
 		return getCMDExe()
 	default:
-		// allow full exe path
 		if strings.HasSuffix(s, ".exe") {
 			return shell
 		}
