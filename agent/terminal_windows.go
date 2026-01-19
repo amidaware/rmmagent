@@ -35,6 +35,23 @@ var (
 	winTerms  = map[string]*winTerminalSession{}
 )
 
+func resolveWindowsHomeDir() string {
+	if v := strings.TrimSpace(os.Getenv("HOME")); v != "" {
+		return v
+	}
+
+	if v := strings.TrimSpace(os.Getenv("USERPROFILE")); v != "" {
+		return v
+	}
+
+	hd := strings.TrimSpace(os.Getenv("HOMEDRIVE"))
+	hp := strings.TrimSpace(os.Getenv("HOMEPATH"))
+	if hd != "" && hp != "" {
+		return hd + hp
+	}
+	return ""
+}
+
 func StartTerminalSessionWindows(agentID string, sessionID string, shell string, nc *nats.Conn) error {
 	if sessionID == "" {
 		return fmt.Errorf("missing session_id")
@@ -119,6 +136,18 @@ func StartTerminalSessionWindows(agentID string, sessionID string, shell string,
 	}
 	defer deleteProcThreadAttrList(attr)
 
+	home := resolveWindowsHomeDir()
+	if home != "" {
+		if st, err := os.Stat(home); err != nil || !st.IsDir() {
+			home = ""
+		}
+	}
+
+	var cwd *uint16
+	if home != "" {
+		cwd = windows.StringToUTF16Ptr(home)
+	}
+
 	// Create process attached to pseudo console
 	cmdline := windows.StringToUTF16Ptr(quoteIfNeeded(exe))
 	var pi windows.ProcessInformation
@@ -131,7 +160,7 @@ func StartTerminalSessionWindows(agentID string, sessionID string, shell string,
 		true,
 		EXTENDED_STARTUPINFO_PRESENT,
 		nil,
-		nil,
+		cwd,
 		&siEx.StartupInfo,
 		&pi,
 	)
