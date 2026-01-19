@@ -848,6 +848,11 @@ func (a *Agent) StartTerminalSession(sessionID, shell string, nc *nats.Conn) err
 	// Create shell command
 	cmd := exec.Command(shell)
 
+	// Start in $HOME if available
+	if home, err := os.UserHomeDir(); err == nil && home != "" {
+		cmd.Dir = home
+	}
+
 	// Create PTY
 	ptmx, err := pty.Start(cmd)
 	if err != nil {
