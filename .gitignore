@@ -12,4 +12,4 @@ build/Output
 tacticalagent-v*
 
 # Allow WinPTY agent binary (runtime dependency)
-!build/winpty_bins/**/winpty-agent.exe
+!agent/winpty_bins/**/winpty-agent.exe
