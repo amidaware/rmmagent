@@ -27,7 +27,9 @@ require (
 )
 
 require (
+	github.com/creack/pty v1.1.24
 	github.com/fourcorelabs/wintoken v1.0.0
+	github.com/iamacarpet/go-winpty v1.0.4
 	github.com/jaypipes/ghw v0.12.0
 	github.com/kardianos/service v1.2.2
 	github.com/spf13/viper v1.19.0
@@ -35,7 +37,6 @@ require (
 )
 
 require (
-	github.com/creack/pty v1.1.24 // indirect
 	github.com/elastic/go-windows v1.0.1 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/ghodss/yaml v1.0.0 // indirect

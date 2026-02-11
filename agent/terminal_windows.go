@@ -10,6 +10,7 @@ import (
 	"sync"
 	"unsafe"
 
+	winpty "github.com/iamacarpet/go-winpty"
 	"github.com/nats-io/nats.go"
 	"github.com/ugorji/go/codec"
 	"golang.org/x/sys/windows"
@@ -18,16 +19,20 @@ import (
 type winTerminalSession struct {
 	id string
 
-	hPC windows.Handle
+	backend string // "conpty" | "winpty"
 
-	// Process handle for hard kill
+	// ConPTY
+	hPC  windows.Handle
 	proc windows.Handle
-
 	inW  *os.File
 	outR *os.File
 
-	// used to avoid double cleanup
-	closed bool
+	// WinPTY
+	wp    *winpty.WinPTY
+	wpIn  *os.File
+	wpOut *os.File
+
+	closeOnce sync.Once
 }
 
 var (
@@ -52,7 +57,7 @@ func resolveWindowsHomeDir() string {
 	return ""
 }
 
-func StartTerminalSessionWindows(agentID string, sessionID string, shell string, nc *nats.Conn) error {
+func startTerminalSessionConPTY(agentID string, sessionID string, shell string, nc *nats.Conn) error {
 	if sessionID == "" {
 		return fmt.Errorf("missing session_id")
 	}
@@ -102,11 +107,12 @@ func StartTerminalSessionWindows(agentID string, sessionID string, shell string,
 
 	// Create session object NOW (proc will be set after CreateProcess)
 	sess := &winTerminalSession{
-		id:   sessionID,
-		hPC:  hPC,
-		proc: 0,
-		inW:  inWFile,
-		outR: outRFile,
+		id:      sessionID,
+		backend: "conpty",
+		hPC:     hPC,
+		proc:    0,
+		inW:     inWFile,
+		outR:    outRFile,
 	}
 
 	// Register early so resize won't race (only needs hPC)
@@ -221,11 +227,10 @@ func KillTerminalSessionWindows(sessionID string) error {
 		return nil
 	}
 
-	// hard kill process
+	// Hard kill if we have a process handle (works for both backends)
 	if sess.proc != 0 {
 		_ = windows.TerminateProcess(sess.proc, 1)
 	}
-	// cleanup (closes proc handle too)
 	cleanupWinSession(sess)
 	return nil
 }
@@ -238,10 +243,19 @@ func FeedTerminalInputWindows(sessionID string, input string) error {
 	if !ok {
 		return fmt.Errorf("session not found: %s", sessionID)
 	}
+
+	if sess.backend == "winpty" {
+		if sess.wpIn == nil {
+			return fmt.Errorf("stdin not initialized for winpty session: %s", sessionID)
+		}
+		_, err := sess.wpIn.Write([]byte(input))
+		return err
+	}
+
+	// ConPTY path (your existing)
 	if sess.inW == nil {
 		return fmt.Errorf("stdin pipe not initialized for session: %s", sessionID)
 	}
-
 	_, err := sess.inW.Write([]byte(input))
 	return err
 }
@@ -258,6 +272,17 @@ func ResizeTerminalSessionWindows(sessionID string, rows, cols int) error {
 	if !ok {
 		return fmt.Errorf("session not found: %s", sessionID)
 	}
+
+	if sess.backend == "winpty" {
+		if sess.wp == nil {
+			return fmt.Errorf("winpty not initialized for session: %s", sessionID)
+		}
+		// winpty expects (cols, rows) :contentReference[oaicite:8]{index=8}
+		sess.wp.SetSize(uint32(cols), uint32(rows))
+		return nil
+	}
+
+	// ConPTY path (your existing)
 	if sess.hPC == 0 {
 		return fmt.Errorf("pseudoconsole handle is nil for session: %s", sessionID)
 	}
@@ -341,27 +366,40 @@ func cleanupWinSession(sess *winTerminalSession) {
 		return
 	}
 
-	if sess.closed {
-		return
-	}
-	sess.closed = true
+	sess.closeOnce.Do(func() {
+		// ConPTY
+		if sess.inW != nil {
+			_ = sess.inW.Close()
+			sess.inW = nil
+		}
+		if sess.outR != nil {
+			_ = sess.outR.Close()
+			sess.outR = nil
+		}
+		if sess.hPC != 0 {
+			closePseudoConsole(sess.hPC)
+			sess.hPC = 0
+		}
+		if sess.proc != 0 {
+			_ = windows.CloseHandle(sess.proc)
+			sess.proc = 0
+		}
 
-	if sess.inW != nil {
-		_ = sess.inW.Close()
-		sess.inW = nil
-	}
-	if sess.outR != nil {
-		_ = sess.outR.Close()
-		sess.outR = nil
-	}
-	if sess.hPC != 0 {
-		closePseudoConsole(sess.hPC)
-		sess.hPC = 0
-	}
-	if sess.proc != 0 {
-		_ = windows.CloseHandle(sess.proc)
-		sess.proc = 0
-	}
+		// WinPTY
+		if sess.wp != nil {
+			sess.wp.Close()
+			sess.wp = nil
+		}
+		// These may already be closed by wp.Close(), but safe to suppress errors.
+		if sess.wpIn != nil {
+			_ = sess.wpIn.Close()
+			sess.wpIn = nil
+		}
+		if sess.wpOut != nil {
+			_ = sess.wpOut.Close()
+			sess.wpOut = nil
+		}
+	})
 }
 
 func pickWindowsShellExe(shell string) string {

@@ -86,6 +86,8 @@ github.com/hpcloud/tail v1.0.0/go.mod h1:ab1qPbhIpdTxEkNHXyeSf5vhxWSCs/tWer42PpO
 github.com/iamacarpet/go-win64api v0.0.0-20210311141720-fe38760bed28/go.mod h1:oGJx9dz0Ny7HC7U55RZ0Smd6N9p3hXP/+hOFtuYrAxM=
 github.com/iamacarpet/go-win64api v0.0.0-20230324134531-ef6dbdd6db97 h1:VjwKCN2PMLlMKM2k9AW8QQsfmEH43ldlX+JGeWW9cEE=
 github.com/iamacarpet/go-win64api v0.0.0-20230324134531-ef6dbdd6db97/go.mod h1:B7zFQPAznj+ujXel5X+LUoK3LgY6VboCdVYHZNn7gpg=
+github.com/iamacarpet/go-winpty v1.0.4 h1:r42xaLLRZcUqjX6vHZeHos2haACfWkooOJTnFdogBfI=
+github.com/iamacarpet/go-winpty v1.0.4/go.mod h1:50yLtqN2hFb5sYO5Qm2LegB166oAEw/PZYRn+FPWj0Q=
 github.com/jaypipes/ghw v0.12.0 h1:xU2/MDJfWmBhJnujHY9qwXQLs3DBsf0/Xa9vECY0Tho=
 github.com/jaypipes/ghw v0.12.0/go.mod h1:jeJGbkRB2lL3/gxYzNYzEDETV1ZJ56OKr+CSeSEym+g=
 github.com/jaypipes/pcidb v1.0.0 h1:vtZIfkiCUE42oYbJS0TAq9XSfSmcsgo9IdxSm9qzYU8=
