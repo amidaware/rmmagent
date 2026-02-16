@@ -15,22 +15,6 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-// winptyPrefixDir returns the directory where winpty.dll and winpty-agent.exe are located.
-func winptyPrefixDir() string {
-	if v := strings.TrimSpace(`C:\Users\Administrator\rmmagent`); v != "" {
-		return v
-	}
-	return "."
-}
-
-// func winptyPrefixDir() string {
-// 	_, dir, _, ok := runtime.Caller(0)
-// 	if !ok {
-// 		return ""
-// 	}
-// 	return filepath.Dir(dir)
-// }
-
 func startTerminalSessionWinPTY(agentID, sessionID, shell string, nc *nats.Conn) error {
 	// Prevent duplicate session IDs
 	winTermMu.Lock()
@@ -40,10 +24,9 @@ func startTerminalSessionWinPTY(agentID, sessionID, shell string, nc *nats.Conn)
 	}
 	winTermMu.Unlock()
 
-	// prefix := winptyPrefixDir()
 	prefix, err := EnsureWinPTY(false)
 	if err != nil {
-		return fmt.Errorf("EnsureWinPTY():", err)
+		return fmt.Errorf("EnsureWinPTY() %v", err)
 	}
 
 	// Validate required WinPTY files exist next to the agent
@@ -160,3 +143,11 @@ func winptyCommandLine(shell string) string {
 		return quoteIfNeeded(cmd)
 	}
 }
+
+// winptyPrefixDir returns the directory where winpty.dll and winpty-agent.exe are located. ( local go run main.go workaround )
+// func winptyPrefixDir() string {
+// 	if v := strings.TrimSpace(`C:\Users\Administrator\rmmagent`); v != "" {
+// 		return v
+// 	}
+// 	return "."
+// }

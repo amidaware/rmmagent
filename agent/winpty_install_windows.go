@@ -5,7 +5,7 @@ package agent
 import (
 	"crypto/sha256"
 	"errors"
-	"io/fs"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -13,12 +13,15 @@ import (
 
 func EnsureWinPTY(force bool) (string, error) {
 	const progFilesName = "TacticalAgent"
-	pd := filepath.Join(os.Getenv("ProgramFiles"), progFilesName)
-	targetDir := pd
-
+	targetDir := filepath.Join(os.Getenv("ProgramFiles"), progFilesName)
 	arch := runtime.GOARCH
 	if arch != "amd64" && arch != "386" {
 		return "", errors.New("EnsureWinPTY(): unsupported arch: " + arch)
+	}
+
+	// Ensure target directory exists
+	if stat, err := os.Stat(targetDir); err != nil || !stat.IsDir() {
+		return "", fmt.Errorf("expected install directory not found: %s", targetDir)
 	}
 
 	dstDLL := filepath.Join(targetDir, "winpty.dll")
@@ -30,16 +33,17 @@ func EnsureWinPTY(force bool) (string, error) {
 	}
 
 	// Read embedded files
-	dllEmbed := filepath.ToSlash(filepath.Join("build", "winpty_bins", arch, "winpty.dll"))
-	agentEmbed := filepath.ToSlash(filepath.Join("build", "winpty_bins", arch, "winpty-agent.exe"))
+	dllEmbedPath := fmt.Sprintf("winpty_bins/%s/winpty.dll", arch)
+	agentEmbedPath := fmt.Sprintf("winpty_bins/%s/winpty-agent.exe", arch)
 
-	dllBytes, err := fs.ReadFile(winptyFS, dllEmbed)
+	dllBytes, err := winptyFS.ReadFile(dllEmbedPath)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to read embedded DLL: %w", err)
 	}
-	agentBytes, err := fs.ReadFile(winptyFS, agentEmbed)
+
+	agentBytes, err := winptyFS.ReadFile(agentEmbedPath)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to read embedded EXE: %w", err)
 	}
 
 	// Skip rewrite if identical
@@ -49,12 +53,13 @@ func EnsureWinPTY(force bool) (string, error) {
 		return targetDir, nil
 	}
 
-	// Atomic write
+	// Write files atomically
 	if err := writeAtomic(dstDLL, dllBytes, 0o644); err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to write DLL: %w", err)
 	}
+
 	if err := writeAtomic(dstAgent, agentBytes, 0o755); err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to write agent: %w", err)
 	}
 
 	return targetDir, nil
@@ -66,11 +71,11 @@ func fileExists(p string) bool {
 }
 
 func sameContent(path string, want []byte) bool {
-	b, err := os.ReadFile(path)
+	have, err := os.ReadFile(path)
 	if err != nil {
 		return false
 	}
-	return sha256.Sum256(b) == sha256.Sum256(want)
+	return sha256.Sum256(have) == sha256.Sum256(want)
 }
 
 func writeAtomic(dst string, content []byte, perm os.FileMode) error {
