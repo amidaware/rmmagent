@@ -115,8 +115,24 @@ var limitNatsData = []string{"agent-winsvc", "agent-wmi"}
 func New(logger *logrus.Logger, version string, openframeSecret string, openframeTokenPath string) *Agent {
 	host, _ := ps.Host()
 	info := host.Info()
-	pd := filepath.Join(os.Getenv("ProgramFiles"), progFilesName)
-	exe := filepath.Join(pd, winExeName)
+
+	ac := NewAgentConfig()
+
+	var pd, exe string
+	if ac.OpenframeMode {
+		actualExe, err := os.Executable()
+		if err != nil || actualExe == "" {
+			actualExe = filepath.Join(os.Getenv("ProgramFiles"), progFilesName, winExeName)
+		}
+		exe = actualExe
+		pd = filepath.Dir(exe)
+		logger.Infof("Agent: %s", exe)
+        logger.Infof("Agent ProgramDir: %s", pd)
+	} else {
+		pd = filepath.Join(os.Getenv("ProgramFiles"), progFilesName)
+		exe = filepath.Join(pd, winExeName)
+	}
+
 	sd := os.Getenv("SystemDrive")
 	winTempDir := defaultWinTmpDir
 	winRunAsUserTmpDir := defaultWinTmpDir
@@ -161,8 +177,6 @@ func New(logger *logrus.Logger, version string, openframeSecret string, openfram
 	default:
 		denoBin = filepath.Join(nixAgentBinDir, "deno")
 	}
-
-	ac := NewAgentConfig()
 
 	encryptionService := NewOpenframeEncryptionService(openframeSecret)
 	tokenExtractor := NewOpenframeTokenExtractor(encryptionService, openframeTokenPath)
