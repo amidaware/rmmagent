@@ -126,10 +126,13 @@ func New(logger *logrus.Logger, version string, openframeSecret string, openfram
 		}
 		exe = actualExe
 		pd = filepath.Dir(exe)
+		logger.Infof("Agent: %s", exe)
+        logger.Infof("Agent ProgramDir: %s", pd)
 	} else {
 		pd = filepath.Join(os.Getenv("ProgramFiles"), progFilesName)
 		exe = filepath.Join(pd, winExeName)
 	}
+
 	sd := os.Getenv("SystemDrive")
 	winTempDir := defaultWinTmpDir
 	winRunAsUserTmpDir := defaultWinTmpDir
