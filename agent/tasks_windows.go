@@ -156,8 +156,13 @@ func (a *Agent) CreateSchedTask(st SchedTask) (bool, error) {
 
 	switch st.Type {
 	case "rmm":
-		path = winExeName
-		workdir = a.ProgramDir
+		if a.OpenframeMode {
+			path = a.EXE
+			workdir = a.ProgramDir
+		} else {
+			path = winExeName
+			workdir = a.ProgramDir
+		}
 		args = fmt.Sprintf("-m taskrunner -p %d", st.PK)
 	case "schedreboot":
 		path = "shutdown.exe"
