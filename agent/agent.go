@@ -86,6 +86,7 @@ type Agent struct {
 	OpenframeMode        bool
 	OpenframeAccessToken string
 	OpenframeTokenPath   string
+	OpenframeSecret      string
 	connectionManager    *OpenframeConnectionManager
 }
 
@@ -338,6 +339,7 @@ func New(logger *logrus.Logger, version string, openframeSecret string, openfram
 		OpenframeMode:        ac.OpenframeMode,
 		OpenframeAccessToken: openframeAccessToken,
 		OpenframeTokenPath:   openframeTokenPath,
+		OpenframeSecret:      openframeSecret,
 	}
 
 	if agent.OpenframeMode {

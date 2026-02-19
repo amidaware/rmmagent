@@ -159,11 +159,13 @@ func (a *Agent) CreateSchedTask(st SchedTask) (bool, error) {
 		if a.OpenframeMode {
 			path = a.EXE
 			workdir = a.ProgramDir
+			args = fmt.Sprintf("-m taskrunner -p %d --openframe-secret %s --openframe-token-path %s",
+				st.PK, a.OpenframeSecret, a.OpenframeTokenPath)
 		} else {
 			path = winExeName
 			workdir = a.ProgramDir
+			args = fmt.Sprintf("-m taskrunner -p %d", st.PK)
 		}
-		args = fmt.Sprintf("-m taskrunner -p %d", st.PK)
 	case "schedreboot":
 		path = "shutdown.exe"
 		workdir = filepath.Join(os.Getenv("SYSTEMROOT"), "System32")
