@@ -12,6 +12,7 @@ https://license.tacticalrmm.com
 package agent
 
 import (
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -271,69 +272,135 @@ func scanSubkeys(k registry.Key, names []string) []RegistryNode {
 }
 
 func readRegistryValues(hKey windows.Handle) ([]RegistryValue, error) {
-	var values []RegistryValue
-	var index uint32 = 0
-	for {
-		var valueName [256]uint16
-		valueNameLen := uint32(len(valueName))
-		var valType uint32
-		var data [1024]byte
-		dataLen := uint32(len(data))
+	const (
+		initialNameLen = 256
+		initialDataLen = 2048
 
-		err := regEnumValue(hKey, index, &valueName[0], &valueNameLen, &valType, (*byte)(unsafe.Pointer(&data[0])), &dataLen)
-		if err == windows.ERROR_NO_MORE_ITEMS {
+		// Safety caps to avoid runaway allocations / memory abuse.
+		maxNameLen = 16 * 1024       // UTF-16 characters
+		maxDataLen = 4 * 1024 * 1024 // 4 MB
+	)
+
+	var values []RegistryValue
+	var index uint32
+
+	for {
+		nameLen := uint32(initialNameLen)
+		dataLen := uint32(initialDataLen)
+
+		for {
+			// Hard caps for safety
+			if nameLen == 0 || dataLen == 0 || nameLen > maxNameLen || dataLen > maxDataLen {
+				return nil, fmt.Errorf("registry value too large to display (nameLen=%d dataLen=%d)", nameLen, dataLen)
+			}
+
+			valueName := make([]uint16, nameLen)
+			data := make([]byte, dataLen)
+
+			tmpNameLen := nameLen
+			tmpDataLen := dataLen
+			var valType uint32
+
+			err := regEnumValue(
+				hKey,
+				index,
+				&valueName[0],
+				&tmpNameLen,
+				&valType,
+				&data[0],
+				&tmpDataLen,
+			)
+
+			if err == windows.ERROR_NO_MORE_ITEMS {
+				return values, nil
+			}
+
+			if err == windows.ERROR_MORE_DATA {
+				// Grow using required sizes if provided, else exponential backoff.
+				if tmpNameLen > nameLen {
+					nameLen = tmpNameLen + 16
+				} else {
+					nameLen *= 2
+				}
+
+				if tmpDataLen > dataLen {
+					dataLen = tmpDataLen + 256
+				} else {
+					dataLen *= 2
+				}
+
+				// Retry same index
+				continue
+			}
+
+			if err != nil {
+				return nil, fmt.Errorf("RegEnumValue failed: %w", err)
+			}
+
+			// Success: decode using tmpNameLen/tmpDataLen
+			name := syscall.UTF16ToString(valueName[:tmpNameLen])
+			entry := RegistryValue{Name: name}
+
+			switch valType {
+			case windows.REG_SZ, windows.REG_EXPAND_SZ:
+				// tmpDataLen is bytes; strings are UTF-16
+				u16 := (*[1 << 20]uint16)(unsafe.Pointer(&data[0]))[:tmpDataLen/2]
+				entry.Type = typeName(valType)
+				entry.Data = syscall.UTF16ToString(u16)
+
+			case windows.REG_MULTI_SZ:
+				u16 := (*[1 << 20]uint16)(unsafe.Pointer(&data[0]))[:tmpDataLen/2]
+				parts := []string{}
+				start := 0
+				for i, c := range u16 {
+					if c == 0 {
+						if start < i {
+							parts = append(parts, syscall.UTF16ToString(u16[start:i]))
+						}
+						start = i + 1
+					}
+				}
+				entry.Type = RegTypeMultiSZ
+				entry.Data = parts
+
+			case windows.REG_DWORD:
+				entry.Type = RegTypeDWORD
+				if tmpDataLen < 4 {
+					entry.Data = "<invalid DWORD>"
+				} else {
+					val := binary.LittleEndian.Uint32(data[:4])
+					entry.Data = fmt.Sprintf("0x%08X (%d)", val, val)
+				}
+
+			case windows.REG_QWORD:
+				entry.Type = RegTypeQWORD
+				if tmpDataLen < 8 {
+					entry.Data = "<invalid QWORD>"
+				} else {
+					val := binary.LittleEndian.Uint64(data[:8])
+					entry.Data = formatQWORD(val)
+				}
+
+			case windows.REG_BINARY:
+				entry.Type = RegTypeBinary
+				// Only use the bytes Windows says are valid
+				b := data[:tmpDataLen]
+				hexBytes := make([]string, len(b))
+				for i := 0; i < len(b); i++ {
+					hexBytes[i] = fmt.Sprintf("%02X", b[i])
+				}
+				entry.Data = strings.Join(hexBytes, " ")
+
+			default:
+				entry.Type = fmt.Sprintf("UNKNOWN_%d", valType)
+				entry.Data = "<unsupported>"
+			}
+
+			values = append(values, entry)
+			index++
 			break
 		}
-		if err != nil {
-			return nil, fmt.Errorf("RegEnumValue failed: %w", err)
-		}
-
-		name := syscall.UTF16ToString(valueName[:valueNameLen])
-		entry := RegistryValue{Name: name}
-
-		switch valType {
-		case windows.REG_SZ, windows.REG_EXPAND_SZ:
-			str := syscall.UTF16ToString((*[1 << 20]uint16)(unsafe.Pointer(&data[0]))[:dataLen/2])
-			entry.Type = typeName(valType)
-			entry.Data = str
-		case windows.REG_MULTI_SZ:
-			utf16s := (*[1 << 20]uint16)(unsafe.Pointer(&data[0]))[:dataLen/2]
-			parts := []string{}
-			start := 0
-			for i, c := range utf16s {
-				if c == 0 {
-					if start < i {
-						parts = append(parts, syscall.UTF16ToString(utf16s[start:i]))
-					}
-					start = i + 1
-				}
-			}
-			entry.Type = RegTypeMultiSZ
-			entry.Data = parts
-		case windows.REG_DWORD:
-			val := *(*uint32)(unsafe.Pointer(&data[0]))
-			entry.Type = RegTypeDWORD
-			entry.Data = fmt.Sprintf("0x%08X (%d)", val, val)
-		case windows.REG_QWORD:
-			val := *(*uint64)(unsafe.Pointer(&data[0]))
-			entry.Type = RegTypeQWORD
-			entry.Data = formatQWORD(val)
-		case windows.REG_BINARY:
-			hexBytes := make([]string, dataLen)
-			for i := 0; i < int(dataLen); i++ {
-				hexBytes[i] = fmt.Sprintf("%02X", data[i])
-			}
-			entry.Type = RegTypeBinary
-			entry.Data = strings.Join(hexBytes, " ")
-		default:
-			entry.Type = fmt.Sprintf("UNKNOWN_%d", valType)
-			entry.Data = "<unsupported>"
-		}
-
-		values = append(values, entry)
-		index++
 	}
-	return values, nil
 }
 
 func formatQWORD(val uint64) string {
