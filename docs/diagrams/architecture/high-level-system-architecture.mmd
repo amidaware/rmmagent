@@ -1,0 +1,45 @@
+graph TB
+    subgraph "Management Server"
+        Server[Tactical RMM Server / OpenFrame Gateway]
+        API[REST API Endpoints]
+        NATS[NATS Message Broker]
+    end
+    
+    subgraph "Agent Process"
+        Main[Main Service Process]
+        Checkin[Check-in Manager]
+        Checks[Check Runner]
+        RPC[RPC Handler]
+        Monitor[System Monitor]
+    end
+    
+    subgraph "System Resources"
+        OS[Operating System]
+        Services[System Services]
+        Processes[Running Processes]
+        Hardware[Hardware Info]
+        Updates[Windows Updates]
+    end
+    
+    Server --> API
+    Server --> NATS
+    
+    Main --> Checkin
+    Main --> Checks
+    Main --> RPC
+    Main --> Monitor
+    
+    API <--> RPC
+    NATS <--> RPC
+    
+    Monitor --> OS
+    Monitor --> Services
+    Monitor --> Processes
+    Monitor --> Hardware
+    
+    Checks --> Services
+    Checks --> Updates
+    
+    style Main fill:#FFC109
+    style Server fill:#666666
+    style Monitor fill:#4A90E2

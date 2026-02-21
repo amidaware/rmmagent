@@ -1,220 +1,236 @@
-div align="center">
+<div align="center">
   <picture>
-    <!-- Dark theme -->
-    <source media="(prefers-color-scheme: dark)" srcset="https://github.com/flamingo-stack/openframe-oss-tenant/blob/d82f21ba18735dac29eb0f3be5d3edf661bb0060/docs/assets/logo-openframe-full-dark-bg.png">
-    <!-- Light theme -->
-    <source media="(prefers-color-scheme: light)" srcset="https://github.com/flamingo-stack/openframe-oss-tenant/blob/d82f21ba18735dac29eb0f3be5d3edf661bb0060/docs/assets/logo-openframe-full-light-bg.png">
-    <!-- Default / fallback -->
-    <img alt="OpenFrame Logo" src="docs/assets/logo-openframe-full-light-bg.png" width="400">
+    <source media="(prefers-color-scheme: dark)" srcset="https://shdrojejslhgnojzkzak.supabase.co/storage/v1/object/public/public/doc-orchestrator/logos/1771558472590-c1pckl-1771371901777-lc3cse-logo-openframe-full-dark-bg.png">
+    <source media="(prefers-color-scheme: light)" srcset="https://shdrojejslhgnojzkzak.supabase.co/storage/v1/object/public/public/doc-orchestrator/logos/1771558474818-vusc7-1771372526604-k3y1w-logo-openframe-full-light-bg.png">
+    <img alt="OpenFrame Logo" src="https://shdrojejslhgnojzkzak.supabase.co/storage/v1/object/public/public/doc-orchestrator/logos/1771558474818-vusc7-1771372526604-k3y1w-logo-openframe-full-light-bg.png" width="400">
   </picture>
-
-  <h1>Tactical RMM Agent</h1>
-
-  <p><b>Cross-platform Rust agent for remote monitoring, automation, and secure device management in the OpenFrame ecosystem.</b></p>
-
-  <p>
-    <a href="LICENSE.md">
-      <img alt="License"
-           src="https://img.shields.io/badge/LICENSE-FLAMINGO%20AI%20Unified%20v1.0-%23FFC109?style=for-the-badge&labelColor=white">
-    </a>
-    <a href="https://www.flamingo.run/knowledge-base">
-      <img alt="Docs"
-           src="https://img.shields.io/badge/DOCS-flamingo.run-%23FFC109?style=for-the-badge&labelColor=white">
-    </a>
-    <a href="https://www.openmsp.ai/">
-      <img alt="Community"
-           src="https://img.shields.io/badge/COMMUNITY-openmsp.ai-%23FFC109?style=for-the-badge&labelColor=white">
-    </a>
-  </p>
 </div>
 
----
+<p align="center">
+  <a href="LICENSE.md"><img alt="License" src="https://img.shields.io/badge/LICENSE-FLAMINGO%20AI%20Unified%20v1.0-%23FFC109?style=for-the-badge&labelColor=white"></a>
+</p>
 
-## Quick Links
-- [Overview](#overview)  
-- [Quick Start](#quick-start)  
-- [Architecture](#architecture)  
-- [Security](#security)  
-- [Contributing](#contributing)
+# Tactical RMM Agent
 
----
+A powerful, cross-platform remote monitoring and management (RMM) agent written in Go that enables enterprise-grade endpoint management across Windows, macOS, and Linux systems. The agent provides real-time system monitoring, remote command execution, automated patch management, and comprehensive device oversight through secure client-server communication.
 
-## Overview
+## Features
 
-**Tactical RMM Agent** is a powerful cross-platform remote monitoring and management agent designed for secure device management and automation. Originally part of the Tactical RMM project, it has been enhanced and integrated into the OpenFrame ecosystem to provide enterprise-grade monitoring and management capabilities.
+- **🔍 Comprehensive System Monitoring**: Real-time collection of CPU usage, memory consumption, disk space, running services, and hardware inventory
+- **🚀 Remote Command Execution**: Secure execution of PowerShell, Bash, and Python scripts with sandboxed environments and resource limits
+- **📊 Automated Health Checks**: Built-in monitoring for disk space, system performance, network connectivity, and custom script validation
+- **🔧 Cross-Platform Service Management**: Native service lifecycle management with start/stop/restart operations across all supported platforms
+- **🔐 Enterprise Security**: Token-based authentication with automatic refresh, encrypted HTTPS/NATS communication, and OpenFrame integration
+- **📈 Real-Time Communication**: NATS-based messaging for instant command execution and status updates with 35-120 second check-in intervals
+- **🖥️ Windows Update Management**: Complete Windows Update integration including patch installation, reboot scheduling, and update history tracking
+- **⚙️ Task Scheduling**: Automated maintenance tasks, scheduled operations, and custom job execution with cron-like scheduling
 
-The agent enables:
-- **System Monitoring** - Real-time tracking of CPU, memory, disk, services, and processes
-- **Remote Execution** - Run commands, scripts, and automate tasks across your fleet
-- **Service Management** - Start, stop, restart services remotely
-- **Package Deployment** - Deploy software and updates seamlessly
-- **Event Collection** - Gather system events for security and compliance
-- **Automated Remediation** - Execute automated responses to system events
+## Technology Stack
 
-In OpenFrame, the Tactical RMM Agent provides the foundation for remote device management, integrating with Fleet for comprehensive endpoint visibility and control.
-
-**Official Tactical RMM Documentation:** [docs.tacticalrmm.com](https://docs.tacticalrmm.com/)  
-**GitHub Repository:** [github.com/amidaware/tacticalrmm](https://github.com/amidaware/tacticalrmm)
-
----
-
-## Highlights
-
-- System Monitoring – CPU, memory, disk, services, processes  
-- Remote Execution – commands, service restart, package deployment  
-- Secure Communication – gRPC/WebSocket over TLS with JWT  
-- Automatic Updates – Velopack-based, zero-downtime  
-- Cross-Platform – Windows, macOS, Linux  
-- Extensible – collectors and plugins  
-- **Integrated installation** through OpenFrame UI - no manual setup required
-
----
-
-## Architecture
-
-The RMM Agent runs locally on endpoints and connects securely to OpenFrame Gateway:
-
-```mermaid
-flowchart LR
-    subgraph OpenFrame Frontend
-        OUI[Openframe UI / AI agent]
-    end
-    
-    OUI -- Run Script --> G[OpenFrame Gateway]
-    
-    subgraph OpenFrame Backend
-        G -- Run Script --> API[(Tactical RMM Service API)]
-        API --> DB[(DB)]
-        DB --> S[Stream]
-        S --> K[(Kafka)]
-        K --> C[(Cassandra)]
-        K --> P[(Pinot Analytics)]
-        API <-- Run Script --> G
-    end
-    
-    G <-- Run Script --> FA[RMM Agent]
-    
-
-    style OUI fill:#FFC109,stroke:#1A1A1A,color:#FAFAFA
-    style G fill:#666666,stroke:#1A1A1A,color:#FAFAFA
-```
+- **Language**: Go 1.20+
+- **Messaging**: NATS for real-time bidirectional communication
+- **HTTP Client**: Resty v2.13+ for REST API communication
+- **System Integration**: gopsutil v3 for cross-platform system information
+- **Service Management**: kardianos/service for cross-platform service operations
+- **Logging**: Logrus for structured logging with multiple output formats
+- **Configuration**: Viper for Unix/Linux configuration management
 
 ## Quick Start
 
 ### Prerequisites
 
-**No manual compilation required!** The Tactical RMM Agent is automatically deployed through OpenFrame's device enrollment process.
-
-Requirements:
-- OpenFrame instance running with Tactical RMM service enabled
-- Access to OpenFrame UI
-- Supported operating system on target endpoints:
-  - **Linux:** Ubuntu 20.04+, Debian 11+, CentOS 8+, RHEL 8+
-  - **macOS:** 10.15+ (Catalina and later)
-  - **Windows:** Windows 10, Windows Server 2016+
+- Supported OS: Windows 7+, macOS 10.13+, Linux (Ubuntu 16.04+, RHEL 7+, Debian 9+)
+- Network: Outbound HTTPS (443) and NATS (4222) access to your Tactical RMM server
+- Privileges: Administrator (Windows) or root/sudo (Unix/Linux/macOS) for installation
 
 ### Installation
 
-1. **Log in to OpenFrame UI**
+**Linux/macOS:**
+```bash
+# Download and make executable
+wget https://your-rmm-server.com/agents/rmmagent
+chmod +x rmmagent
 
-2. **Navigate to the Devices tab**
-   - Click on **"Devices"** in the left sidebar
-   - Click **"Add Device"** or **"Enroll New Device"** button
+# Install with server parameters
+sudo ./rmmagent -m install \
+  -api "https://your-rmm-server.com" \
+  -client-id 1 \
+  -site-id 2 \
+  -auth "your-installation-token" \
+  -desc "Production Server" \
+  -agent-type "server"
+```
 
-3. **Get the installation link**
-   - OpenFrame will generate a unique enrollment link/script for your device
-   - This link contains:
-     - Tactical RMM Agent installer
-     - Your OpenFrame server configuration
-     - Enrollment credentials for secure authentication
-     - Fleet agent integration (includes Osquery)
+**Windows (PowerShell as Administrator):**
+```powershell
+# Download and install
+Invoke-WebRequest -Uri "https://your-rmm-server.com/agents/rmmagent.exe" -OutFile "rmmagent.exe"
+.\rmmagent.exe -m install -api "https://your-rmm-server.com" -client-id 1 -site-id 2 -auth "your-token" -desc "Production Server"
+```
 
-4. **Run the installation on your endpoint**
-   
-   **For Linux/macOS:**
-   ```bash
-   # The UI will provide a command similar to:
-   curl -sSL https://your-openframe-instance.com/api/v1/fleet/enroll?token=xxx | sudo bash
-   ```
+### Verification
 
-   **For Windows (PowerShell as Administrator):**
-   ```powershell
-   # The UI will provide a command similar to:
-   Invoke-WebRequest -Uri "https://your-openframe-instance.com/api/v1/fleet/enroll?token=xxx" -UseBasicParsing | Invoke-Expression
-   ```
+Check service status:
 
-5. **Verify installation**
-   - Return to the **Devices** tab in OpenFrame UI
-   - Your newly enrolled device should appear within 30-60 seconds
-   - Status should show as **"Online"**
-   - The RMM Agent will begin reporting system metrics immediately
+```bash
+# Linux
+systemctl status tacticalrmm
 
-### Running Your First Script
+# macOS
+sudo launchctl list | grep tacticalrmm
 
-Once your device is enrolled:
+# Windows
+Get-Service -Name "Tactical RMM Agent"
+```
 
-1. **Navigate to your device** in the OpenFrame UI
-2. **Go to the "Scripts" tab** or use the **AI Agent** interface
-3. **Select a pre-defined script** or **write your own**
-4. **Execute the script** and view real-time results directly in the UI
+Your agent should appear online in your Tactical RMM web console within 2-3 minutes.
 
-For more information on script execution and automation, visit the [Tactical RMM Documentation](https://docs.tacticalrmm.com/).
+## Architecture
 
----
+The agent follows a service-oriented architecture with concurrent operations:
 
-## Security
+```mermaid
+graph TB
+    subgraph "Management Server"
+        Server[Tactical RMM Server / OpenFrame Gateway]
+        API[REST API Endpoints]
+        NATS[NATS Message Broker]
+    end
+    
+    subgraph "Agent Process"
+        Main[Main Service Process]
+        Checkin[Check-in Manager]
+        Checks[Check Runner]
+        RPC[RPC Handler]
+        Monitor[System Monitor]
+    end
+    
+    subgraph "System Resources"
+        OS[Operating System]
+        Services[System Services]
+        Processes[Running Processes]
+        Hardware[Hardware Info]
+        Updates[Windows Updates]
+    end
+    
+    Server --> API
+    Server --> NATS
+    
+    Main --> Checkin
+    Main --> Checks
+    Main --> RPC
+    Main --> Monitor
+    
+    API <--> RPC
+    NATS <--> RPC
+    
+    Monitor --> OS
+    Monitor --> Services
+    Monitor --> Processes
+    Monitor --> Hardware
+    
+    Checks --> Services
+    Checks --> Updates
+    
+    style Main fill:#FFC109
+    style Server fill:#666666
+    style Monitor fill:#4A90E2
+```
 
-- TLS 1.3 enforced for all communication  
-- OAuth2/OIDC → JWT for authentication (via Gateway)  
-- Supports authentication via token or key  
-- Minimal client-side privileges required  
-- Safeguards against unsafe command execution  
-- Least privilege mode on endpoints  
+### Core Components
 
-Found a vulnerability? Email **security@flamingo.run** instead of opening a public issue.  
+| Component | Responsibilities |
+|-----------|------------------|
+| **Agent Core** | Main service initialization, configuration management, platform-specific implementations |
+| **Service Manager** | Service lifecycle, periodic check-ins, task scheduling |
+| **RPC Handler** | NATS message processing, remote command execution with security validation |
+| **Check System** | Health checks for disk space, CPU, memory, ping, and custom script execution |
+| **System Monitor** | Process monitoring, service management, and hardware inventory collection |
+| **OpenFrame Integration** | Token management, enhanced security, and connection handling for enterprise deployments |
 
----
+## CLI Commands
 
-## Compatibility Notes
+The agent supports multiple operational modes:
 
-- Inspired by and compatible with the **Tactical RMM Agent**  
-- Supports similar build patterns (`go build` with `GOOS`/`GOARCH`)  
-- Extended with OpenFrame integration:  
-  - Kafka & Pinot streaming pipeline  
-  - Unified API layer with OpenFrame Gateway  
-  - Multi-tenant security and advanced monitoring  
+### Service Operations
+```bash
+# Install as system service
+tacticalrmm -m installsvc
 
----
+# Run as service (typically called by service manager)
+tacticalrmm -m svc
+
+# Run RPC handler directly (for debugging)
+tacticalrmm -m rpc
+```
+
+### Installation with OpenFrame Integration
+```bash
+# Standard installation
+tacticalrmm -m install -api "https://rmm.example.com" -auth "token123" \
+  -client-id 1 -site-id 1 -agent-type server -desc "Production Server"
+
+# OpenFrame mode
+tacticalrmm -m install -openframe-mode -openframe-secret "key" \
+  -openframe-token-path "/path/to/token"
+```
+
+### Monitoring and Diagnostics
+```bash
+# Manual operations
+tacticalrmm -m checkin          # Force check-in
+tacticalrmm -m runchecks        # Run all health checks
+tacticalrmm -m software         # Send installed software list
+tacticalrmm -pk                 # Show agent primary key
+tacticalrmm -agentid           # Show agent ID
+```
+
+## Documentation
+
+📚 See the [Documentation](./docs/README.md) for comprehensive guides including:
+
+- **Getting Started**: Prerequisites, quick start, and first steps
+- **Development**: Architecture, setup, testing, and contributing guidelines
+- **Reference**: Technical specifications and API documentation
+
+## System Requirements
+
+| Platform | Versions | Architecture |
+|----------|----------|--------------|
+| **Windows** | 7 SP1+, Server 2008 R2+, 10, 11, Server 2016/2019/2022 | x86_64, x86 |
+| **macOS** | 10.13 High Sierra and later | x86_64, arm64 (Apple Silicon) |
+| **Linux** | Ubuntu 16.04+, RHEL/CentOS 7+, Debian 9+, SUSE 12+, Alpine 3.8+ | x86_64, arm64 |
+
+**Minimum Requirements:**
+- CPU: 1 core
+- RAM: 512 MB available
+- Disk: 100 MB free space
+- Network: Persistent internet connection with outbound HTTPS and NATS access
+
+## Security Features
+
+- **Token-Based Authentication**: Secure API access with automatic token refresh
+- **Encrypted Communication**: All server communication uses HTTPS and secure NATS messaging
+- **Input Validation**: Comprehensive validation and sanitization of all external input
+- **Sandboxed Execution**: Command execution in controlled environments with resource limits
+- **Privilege Management**: Operates with minimal required system privileges
+- **OpenFrame Integration**: Enhanced security for enterprise deployments
 
 ## Contributing
 
-We welcome PRs! Please follow these guidelines:  
+We welcome contributions! Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for detailed guidelines on:
 
-- Use branching strategy: `feature/...`, `bugfix/...`  
-- Add descriptions to the **CHANGELOG**  
-- Follow consistent code style (`cargo fmt` for Rust, `go fmt` + linters for Go)  
-- Keep documentation updated in `docs/`  
-
----
+- Code style and conventions
+- Development workflow and testing
+- Pull request process and review standards
+- Security best practices
 
 ## License
 
-This project is licensed under the **Flamingo Unified License v1.0** ([LICENSE.md](LICENSE.md)).
+This project is licensed under the Flamingo AI Unified License v1.0. See [LICENSE.md](./LICENSE.md) for details.
 
 ---
 
 <div align="center">
-  <table border="0" cellspacing="0" cellpadding="0">
-    <tr>
-      <td align="center">
-        Built with 💛 by the <a href="https://www.flamingo.run/about"><b>Flamingo</b></a> team
-      </td>
-      <td align="center">
-        <a href="https://www.flamingo.run">Website</a> • 
-        <a href="https://www.flamingo.run/knowledge-base">Knowledge Base</a> • 
-        <a href="https://www.linkedin.com/showcase/openframemsp/about/">LinkedIn</a> • 
-        <a href="https://www.openmsp.ai/">Community</a>
-      </td>
-    </tr>
-  </table>
+  Built with 💛 by the <a href="https://www.flamingo.run/about"><b>Flamingo</b></a> team
 </div>

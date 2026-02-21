@@ -1,0 +1,19 @@
+sequenceDiagram
+    participant Agent
+    participant Timer
+    participant Collector
+    participant API
+    participant NATS
+    
+    Timer->>Agent: Periodic Check-in Trigger
+    Agent->>Collector: Gather System Info
+    Collector->>Agent: CPU, Memory, Disk, Services
+    Agent->>API: POST /api/v3/checkin/
+    API-->>Agent: 200 OK
+    
+    Agent->>Collector: Get Check Tasks
+    Collector->>Agent: Disk, Ping, Script Checks
+    Agent->>NATS: Publish Results
+    NATS-->>Agent: ACK
+    
+    Note over Agent,NATS: Check-ins occur every 35-120 seconds

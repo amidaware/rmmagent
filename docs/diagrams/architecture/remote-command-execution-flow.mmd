@@ -1,0 +1,26 @@
+sequenceDiagram
+    participant Server
+    participant NATS
+    participant Agent
+    participant OS
+    participant Script
+    
+    Server->>NATS: Publish Command Message
+    NATS->>Agent: Receive RPC Message
+    Agent->>Agent: Decode Message Payload
+    
+    alt Script Execution
+        Agent->>Script: Create Temp Script File
+        Agent->>OS: Execute Script (PowerShell/Bash/Python)
+        OS-->>Agent: Return Output + Exit Code
+        Agent->>Script: Cleanup Temp Files
+    else Service Control
+        Agent->>OS: Start/Stop/Restart Service
+        OS-->>Agent: Service Status
+    else Task Management
+        Agent->>OS: Create/Delete Scheduled Task
+        OS-->>Agent: Task Operation Result
+    end
+    
+    Agent->>NATS: Publish Response
+    NATS-->>Server: Deliver Response

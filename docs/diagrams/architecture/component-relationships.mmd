@@ -1,0 +1,60 @@
+graph TB
+    subgraph "Core Layer"
+        Agent[Agent Core]
+        Config[Configuration]
+    end
+    
+    subgraph "Communication Layer"
+        RPC[RPC Handler]
+        REST[REST Client]
+        NATS[NATS Connection]
+        OpenFrame[OpenFrame Integration]
+    end
+    
+    subgraph "Execution Layer"
+        Service[Service Manager]
+        Checks[Check Runner]
+        Tasks[Task Scheduler]
+        Scripts[Script Execution]
+    end
+    
+    subgraph "System Interface Layer"
+        Monitor[System Monitor]
+        WinSvc[Windows Services]
+        WUA[Windows Update Agent]
+        Process[Process Manager]
+    end
+    
+    subgraph "Platform Layer"
+        Windows[Windows APIs]
+        Unix[Unix/Linux APIs]
+        Darwin[macOS APIs]
+    end
+    
+    Agent --> Config
+    Agent --> Service
+    Agent --> OpenFrame
+    
+    Service --> RPC
+    Service --> REST
+    Service --> Checks
+    
+    RPC --> NATS
+    RPC --> Scripts
+    RPC --> Tasks
+    
+    Checks --> Monitor
+    Checks --> WinSvc
+    
+    Monitor --> Process
+    Tasks --> Windows
+    WUA --> Windows
+    WinSvc --> Windows
+    
+    OpenFrame --> REST
+    OpenFrame --> NATS
+    
+    style Agent fill:#FFC109
+    style Service fill:#4A90E2
+    style RPC fill:#50C878
+    style OpenFrame fill:#FF6B6B

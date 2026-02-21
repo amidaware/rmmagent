@@ -1,74 +1,139 @@
-### Tactical RMM License Version 1.0
+# The Flamingo AI Unified License v1.0
 
-Text of license:&emsp;&emsp;&emsp;Copyright © 2023 AmidaWare Inc.  All rights reserved.<br>
-&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&nbsp;Amending the text of this license is not permitted.
+**Copyright © 2025 Flamingo AI, Inc. All rights reserved.**
 
-Trade Mark:&emsp;&emsp;&emsp;&emsp;"Tactical RMM" is a trade mark of AmidaWare Inc.
+---
 
-Licensor:&emsp;&emsp;&emsp;&emsp;&emsp;&nbsp;&nbsp;AmidaWare Inc. of 1968 S Coast Hwy PMB 3847 Laguna Beach, CA, USA.
+## 1. Preamble
 
-Licensed Software:&emsp;&nbsp;The software known as Tactical RMM Version v0.12.0 (and all subsequent releases and versions) and the Tactical RMM Agent v2.0.0 (and all subsequent releases and versions).
+This License governs all Flamingo AI products, including OpenFrame, OpenMSP, and the Flamingo Website.  
+It serves as both the **License** and the **Terms of Use**.  
 
-### 1. Preamble
-The Licensed Software is designed to facilitate the remote monitoring and management (RMM) of networks, systems, servers, computers and other devices.  The Licensed Software is made available primarily for use by organisations and managed service providers for monitoring and management purposes.
+Flamingo AI software includes components developed by Flamingo AI as well as upstream projects that remain under their original licenses.  
+This License applies **only** to Flamingo AI contributions. For upstream components, You must comply with their respective licenses (see Appendix).  
 
-The Tactical RMM License is not an open-source software license.  This license contains certain restrictions on the use of the Licensed Software.  For example the functionality of the Licensed Software may not be made available as part of a SaaS (Software-as-a-Service) service or product to provide a commercial or for-profit service without the express prior permission of the Licensor.
+---
 
-### 2. License Grant
-Permission is hereby granted, free of charge, on a non-exclusive basis, to copy, modify, create derivative works and use the Licensed Software in source and binary forms subject to the following terms and conditions.  No additional rights will be implied under this license.
+## 2. Definitions
 
-* The hosting and use of the Licensed Software to monitor and manage in-house networks/systems and/or customer networks/systems is permitted.
+**2.1 “Licensor”** means Flamingo AI, Inc.  
 
-This license does not allow the functionality of the Licensed Software (whether in whole or in part) or a modified version of the Licensed Software or a derivative work to be used or otherwise made available as part of any other commercial or for-profit service, including, without limitation, any of the following:
-* a service allowing third parties to interact remotely through a computer network;
-* as part of a SaaS service or product;
-* as part of the provision of a managed hosting service or product;
-* the offering of installation and/or configuration services;
-* the offer for sale, distribution or sale of any service or product (whether or not branded as Tactical RMM).
+**2.2 “Flamingo Software”** means any and all software code, binaries, object code, libraries, scripts, user interface designs, documentation, specifications, and other works of authorship created, authored, or contributed to by Flamingo AI, Inc., whether released in source or binary form, and licensed under this License.  
 
-The prior written approval of AmidaWare Inc. must be obtained for all commercial use and/or for-profit service use of the (i) Licensed Software (whether in whole or in part), (ii) a modified version of the Licensed Software and/or (iii) a derivative work.
+Flamingo Software includes:  
+- Core platform code developed by Flamingo AI, including orchestration layers, integration modules, APIs, user interface components, and custom agents.  
+- All derivative works, modifications, enhancements, bug fixes, and extensions authored by Flamingo AI.  
+- Contributions made by third parties that have been accepted into Flamingo AI repositories under this License.  
 
-The terms of this license apply to all copies of the Licensed Software (including modified versions) and derivative works.
+**Exclusions:** Flamingo Software does not include **Upstream Components**, which remain subject to their original licenses (see Appendix).  
 
-All use of the Licensed Software must immediately cease if use breaches the terms of this license.
+**2.3 “Upstream Components”** means third-party software incorporated into Flamingo Software that remain governed by their original licenses.  
 
-### 3. Derivative Works
-If a derivative work is created which is based on or otherwise incorporates all or any part of the Licensed Software, and the derivative work is made available to any other person, the complete corresponding machine readable source code (including all changes made to the Licensed Software) must accompany the derivative work and be made publicly available online.
+**2.4 “Network Use”** means making Flamingo Software available to third parties over a computer network.  
 
-### 4. Copyright Notice
-The following copyright notice shall be included in all copies of the Licensed Software:
+**2.5 “Commercial Managed Service”** means offering Flamingo Software, in whole or in part, as a paid hosted or managed service where the primary value is the operation of Flamingo Software.  
 
-&emsp;&emsp;&emsp;Copyright © 2023 AmidaWare Inc.
+**2.6 “Contribution”** means any modification, patch, enhancement, or other work that You create and distribute based on Flamingo Software.  
 
-&emsp;&emsp;&emsp;Licensed under the Tactical RMM License Version 1.0 (the “License”).<br>
-&emsp;&emsp;&emsp;You may only use the Licensed Software in accordance with the License.<br>
-&emsp;&emsp;&emsp;A copy of the License is available at: https://license.tacticalrmm.com
+---
 
-### 5. Disclaimer of Warranty
-THE LICENSED SOFTWARE IS PROVIDED "AS IS".  TO THE FULLEST EXTENT PERMISSIBLE AT LAW ALL CONDITIONS, WARRANTIES OR OTHER TERMS OF ANY KIND WHICH MIGHT HAVE EFFECT OR BE IMPLIED OR INCORPORATED, WHETHER BY STATUTE, COMMON LAW OR OTHERWISE ARE HEREBY EXCLUDED, INCLUDING THE CONDITIONS, WARRANTIES OR OTHER TERMS AS TO SATISFACTORY QUALITY AND/OR MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, THE USE OF REASONABLE SKILL AND CARE AND NON-INFRINGEMENT.
+## 3. Grant of Rights
 
-### 6. Limits of Liability
-THE FOLLOWING EXCLUSIONS SHALL APPLY TO THE FULLEST EXTENT PERMISSIBLE AT LAW.  NEITHER THE AUTHORS NOR THE COPYRIGHT HOLDERS SHALL IN ANY CIRCUMSTANCES HAVE ANY LIABILITY FOR ANY CLAIM, LOSSES, DAMAGES OR OTHER LIABILITY, WHETHER THE SAME ARE SUFFERED DIRECTLY OR INDIRECTLY OR ARE IMMEDIATE OR CONSEQUENTIAL, AND WHETHER THE SAME ARISE IN CONTRACT, TORT OR DELICT (INCLUDING NEGLIGENCE) OR OTHERWISE HOWSOEVER ARISING FROM, OUT OF OR IN CONNECTION WITH THE LICENSED SOFTWARE OR THE USE OR INABILITY TO USE THE LICENSED SOFTWARE OR OTHER DEALINGS IN THE LICENSED SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH LOSS OR DAMAGE.  THE FOREGOING EXCLUSIONS SHALL INCLUDE, WITHOUT LIMITATION, LIABILITY FOR ANY LOSSES OR DAMAGES WHICH FALL WITHIN ANY OF THE FOLLOWING CATEGORIES: SPECIAL, EXEMPLARY, OR INCIDENTAL LOSS OR DAMAGE, LOSS OF PROFITS, LOSS OF ANTICIPATED SAVINGS, LOSS OF BUSINESS OPPORTUNITY, LOSS OF GOODWILL, AND LOSS OR CORRUPTION OF DATA.
+Subject to this License:  
+- You may use, copy, modify, and distribute Flamingo Software.  
+- You may self-host Flamingo Software for internal or external purposes.  
+- You may create derivative works, provided they are licensed under this License.  
+- You may publish modifications, which Flamingo AI may reuse freely.  
 
-### 7. Termination
-This license shall terminate with immediate effect if there is a material breach of any of its terms.
+---
 
-### 8. No partnership, agency or joint venture
-Nothing in this license agreement is intended to, or shall be deemed to, establish any partnership or joint venture or any relationship of agency between AmidaWare Inc. and any other person.
+## 4. Copyleft and Contribution-Back
 
-### 9. No endorsement
-The names of the authors and/or the copyright holders must not be used to promote or endorse any products or services which are in any way derived from the Licensed Software without prior written consent.
+**4.1 Copyleft Obligation.** All forks, modifications, or redistributions of Flamingo Software, including via Network Use, must be licensed under this License.  
 
-### 10. Trademarks
-No permission is granted to use the trademark “Tactical RMM” or any other trade name, trademark, service mark or product name of AmidaWare Inc. except to the extent necessary to comply with the notice requirements in Section 4 (Copyright Notice).
+**4.2 Contribution-Back.** By publishing modifications, You grant Flamingo AI an irrevocable, worldwide, royalty-free license to use, modify, and relicense such modifications.  
 
-### 11. Entire agreement
-This license contains the whole agreement relating to its subject matter.
+**4.3 Attribution.** You must preserve copyright notices, attribution to Flamingo AI, and all notices of Upstream Component licensing.  
 
+**4.4 Upstream Compliance.** You must comply with the licenses of all Upstream Components.  
 
+**4.5 Trademarks.** This License does not grant rights to Flamingo AI trademarks or logos, except as required for attribution.  
 
-### 12. Severance
-If any provision or part-provision of this license is or becomes invalid, illegal or unenforceable, it shall be deemed deleted, but that shall not affect the validity and enforceability of the rest of this license.
+---
 
-### 13. Acceptance of these terms
-The terms and conditions of this license are accepted by copying, downloading, installing, redistributing, or otherwise using the Licensed Software.
+## 5. Restrictions
+
+- **5.1 No Competing SaaS.** You may not provide Flamingo Software as a Commercial Managed Service without a separate commercial license from Flamingo AI.  
+- **5.2 No Relicensing.** You may not relicense Flamingo Software under other terms.  
+- **5.3 No Removal of Attribution.** You may not remove or alter copyright or license notices.  
+- **5.4 Acceptable Use.** You may not use Flamingo Software, OpenMSP, or the Website for illegal activity, scraping, spamming, reverse engineering, or abusive purposes.  
+
+---
+
+## 6. Product-Specific Terms
+
+### 6.1 OpenFrame  
+- OpenFrame integrates upstream software (Fleet, MeshCentral, Osquery, Tactical RMM) and Flamingo contributions.  
+- Upstream components remain under their original licenses (see Appendix).  
+- SaaS restriction applies fully to Flamingo contributions.  
+
+### 6.2 OpenMSP  
+- Covers community knowledge base and contributions.  
+- Contributions may be reused by Flamingo AI commercially.  
+- No scraping, resale, or redistribution without consent.  
+
+### 6.3 Flamingo Website  
+- Website content is Flamingo AI intellectual property.  
+- Users must not scrape, clone, or misuse content.  
+- Acceptable use restrictions apply.  
+
+---
+
+## 7. DMCA and Copyright Compliance
+
+If You believe your copyrighted material has been used in violation of this License, You may submit a notice to: **legal@flamingo.so**.  
+
+---
+
+## 8. Warranty Disclaimer & Limitation of Liability
+
+**Disclaimer.** The Flamingo Software, OpenMSP, and Website are provided **“AS IS”**, without warranties of any kind.  
+
+**Liability.** To the maximum extent permitted by law, Flamingo AI shall have **zero liability** for any damages, losses, or claims, whether in contract, tort, or otherwise. Users assume all risks of deploying and operating Flamingo Software.  
+
+---
+
+## 9. Termination
+
+- This License terminates immediately upon breach.  
+- Upon termination, all rights cease.  
+
+---
+
+## 10. Governing Law
+
+This License is governed by the laws of the State of Delaware, USA.  
+
+---
+
+## 11. Miscellaneous
+
+- If any provision is unenforceable, the remainder remains in effect.  
+- This License is the full agreement between You and Flamingo AI.  
+
+---
+
+## Appendix: Upstream Licenses
+
+The following upstream components are incorporated into Flamingo Software and remain under their original licenses. This License does not alter their terms:  
+
+- **Tactical RMM** — Tactical RMM License v1.0 (proprietary, AmidaWare LLC).  
+- **Fleet** — MIT License (with documentation under CC BY-SA 4.0).  
+- **Osquery** — Dual-licensed under Apache-2.0 OR GPL-2.0-only.  
+- **MeshCentral Agent** — Apache-2.0.  
+
+You must comply with these licenses in addition to the Flamingo AI Unified License v1.0.  
+
+---
+
+**Contact for Commercial Licensing:** legal@flamingo.so  
