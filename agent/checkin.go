@@ -16,9 +16,16 @@ import (
 	"time"
 
 	nats "github.com/nats-io/nats.go"
+	timezone "github.com/thlib/go-timezone-local/tzlocal"
 	"github.com/ugorji/go/codec"
 	trmm "github.com/wh1te909/trmm-shared"
 )
+
+// AgentInfoOpenframe extends AgentInfoNats with timezone for Openframe mode
+type AgentInfoOpenframe struct {
+	trmm.AgentInfoNats
+	Timezone string `json:"timezone"`
+}
 
 func (a *Agent) NatsMessage(nc *nats.Conn, mode string) {
 	var resp []byte
@@ -42,7 +49,7 @@ func (a *Agent) NatsMessage(nc *nats.Conn, mode string) {
 		if err != nil {
 			reboot = false
 		}
-		payload = trmm.AgentInfoNats{
+		agentInfo := trmm.AgentInfoNats{
 			Agentid:      a.AgentID,
 			Username:     a.LoggedOnUser(),
 			Hostname:     a.Hostname,
@@ -52,6 +59,16 @@ func (a *Agent) NatsMessage(nc *nats.Conn, mode string) {
 			BootTime:     a.BootTime(),
 			RebootNeeded: reboot,
 			GoArch:       a.GoArch,
+		}
+		// Openframe mode: extend agent info with timezone
+		if a.OpenframeMode {
+			tz, _ := timezone.RuntimeTZ()
+			payload = AgentInfoOpenframe{
+				AgentInfoNats: agentInfo,
+				Timezone:      tz,
+			}
+		} else {
+			payload = agentInfo
 		}
 	case "agent-wmi":
 		payload = trmm.WinWMINats{
