@@ -24,7 +24,7 @@ import (
 // AgentInfoOpenframe extends AgentInfoNats with timezone for Openframe mode
 type AgentInfoOpenframe struct {
 	trmm.AgentInfoNats
-	Timezone string `json:"timezone"`
+	Timezone string `json:"timezone" codec:"timezone"`
 }
 
 func (a *Agent) NatsMessage(nc *nats.Conn, mode string) {
