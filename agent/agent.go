@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"math/rand"
 	"net/url"
 	"os"
 	"os/exec"
@@ -566,12 +567,39 @@ func (a *Agent) SyncMeshNodeID() {
 	}
 }
 
+const (
+	natsBackoffBase    = 5 * time.Second
+	natsBackoffMax     = 5 * time.Minute
+	natsBackoffJitter  = 0.3
+)
+
+func (a *Agent) natsReconnectDelay(attempts int) time.Duration {
+
+	delay := time.Duration(float64(natsBackoffBase) * math.Pow(2, float64(attempts)))
+	if delay > natsBackoffMax {
+		delay = natsBackoffMax
+	}
+	jitter := time.Duration(float64(delay) * natsBackoffJitter * (rand.Float64()*2 - 1))
+	delay += jitter
+	if delay < natsBackoffBase {
+		delay = natsBackoffBase
+	}
+	a.Logger.Infof("NATS reconnect attempt %d, waiting %s", attempts, delay)
+	return delay
+}
+
 func (a *Agent) setupNatsOptions() []nats.Option {
 	reconnectWait := randRange(2, 8)
 	opts := make([]nats.Option, 0)
 	opts = append(opts, nats.Name(a.AgentID))
 	opts = append(opts, nats.UserInfo(a.AgentID, a.Token))
-	opts = append(opts, nats.ReconnectWait(time.Duration(reconnectWait)*time.Second))
+
+	if a.OpenframeMode {
+        opts = append(opts, nats.CustomReconnectDelay(a.natsReconnectDelay))
+    } else {
+        opts = append(opts, nats.ReconnectWait(time.Duration(reconnectWait)*time.Second))
+    }
+
 	opts = append(opts, nats.RetryOnFailedConnect(true))
 	opts = append(opts, nats.IgnoreAuthErrorAbort())
 	opts = append(opts, nats.PingInterval(time.Duration(a.NatsPingInterval)*time.Second))
