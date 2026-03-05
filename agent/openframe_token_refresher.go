@@ -13,6 +13,7 @@ type OpenframeTokenRefresher struct {
 	tokenExtractor    *OpenframeTokenExtractor
 	cron              *cron.Cron
 	logger            *logrus.Logger
+	extractErrCount   int
 }
 
 func NewOpenframeTokenRefresher(
@@ -31,40 +32,39 @@ func NewOpenframeTokenRefresher(
 }
 
 func (tr *OpenframeTokenRefresher) Start() error {
-	tr.logger.Println("Scheduling token refresh job")
 	_, err := tr.cron.AddFunc("*/5 * * * * *", tr.refreshToken)
 	if err != nil {
 		return fmt.Errorf("failed to schedule token refresh job: %v", err)
 	}
 	tr.cron.Start()
-	tr.logger.Println("Token refresh job started")
+	tr.logger.Infoln("Token refresh job started")
 	return nil
 }
 
 func (tr *OpenframeTokenRefresher) Stop() {
 	if tr.cron != nil {
-		tr.logger.Println("Stopping token refresh job")
 		tr.cron.Stop()
-		tr.logger.Println("Token refresh job stopped")
+		tr.logger.Infoln("Token refresh job stopped")
 	}
 }
 
 func (tr *OpenframeTokenRefresher) refreshToken() {
-	tr.logger.Println("Refreshing token")
-
 	token, err := tr.tokenExtractor.ExtractToken()
 	if err != nil {
-		tr.logger.Printf("Error extracting token: %v", err)
+		tr.extractErrCount++
+		if tr.extractErrCount % openframeTokenRefreshErrorLogInterval == 1 {
+			tr.logger.Errorf("Error extracting token: %v", err)
+		}
 		return
 	}
+	tr.extractErrCount = 0
 
 	if tr.a.OpenframeAccessToken == token {
-		tr.logger.Debugln("Openframe token is the same, skipping refresh")
 		return
 	}
 
 	tr.a.OpenframeAccessToken = token
-	tr.logger.Debugln("Openframe token updated")
+	tr.logger.Infoln("Openframe token refreshed")
 
 	tr.connectionManager.UpdateRestClient(token)
 	tr.connectionManager.UpdateNatsConnection(token)

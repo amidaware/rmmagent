@@ -5,31 +5,38 @@ import (
 	"crypto/cipher"
 	"encoding/base64"
 	"fmt"
-	"log"
+	"github.com/sirupsen/logrus"
 )
 
 type OpenframeEncryptionService struct {
-	encryptionKey string
+	encryptionKey   string
+	logger          *logrus.Logger
+	decryptErrCount int
 }
 
-func NewOpenframeEncryptionService(encryptionKey string) *OpenframeEncryptionService {
+func NewOpenframeEncryptionService(encryptionKey string, logger *logrus.Logger) *OpenframeEncryptionService {
 	return &OpenframeEncryptionService{
 		encryptionKey: encryptionKey,
+		logger:        logger,
 	}
 }
 
-
 func (es *OpenframeEncryptionService) Decrypt(data string) ([]byte, error) {
-	// Decode base64 string to bytes
 	encryptedData, err := base64.StdEncoding.DecodeString(data)
 	if err != nil {
-		log.Printf("Error decoding base64 data: %v", err)
+		es.decryptErrCount++
+		if es.decryptErrCount%openframeTokenRefreshErrorLogInterval == 1 {
+			es.logger.Errorf("Error decoding base64 data: %v", err)
+		}
 		return nil, err
 	}
 
 	block, err := aes.NewCipher([]byte(es.encryptionKey))
 	if err != nil {
-		log.Printf("Error creating cipher: %v", err)
+		es.decryptErrCount++
+		if es.decryptErrCount % openframeTokenRefreshErrorLogInterval == 1 {
+			es.logger.Errorf("Error creating cipher: %v", err)
+		}
 		return nil, err
 	}
 
@@ -48,8 +55,13 @@ func (es *OpenframeEncryptionService) Decrypt(data string) ([]byte, error) {
 
 	plaintext, err := gcm.Open(nil, nonce, ciphertext, nil)
 	if err != nil {
+		es.decryptErrCount++
+		if es.decryptErrCount % openframeTokenRefreshErrorLogInterval == 1 {
+			es.logger.Errorf("Error decrypting data: %v", err)
+		}
 		return nil, err
 	}
+	es.decryptErrCount = 0
 
 	return plaintext, nil
 }

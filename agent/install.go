@@ -59,7 +59,7 @@ type Installer struct {
 func (a *Agent) Install(i *Installer) {
 	a.checkExistingAndRemove(i.Silent)
 
-	tokenExtractor := NewOpenframeTokenExtractor(NewOpenframeEncryptionService(i.OpenframeSecret), i.OpenframeTokenPath)
+	tokenExtractor := NewOpenframeTokenExtractor(NewOpenframeEncryptionService(i.OpenframeSecret, a.Logger), i.OpenframeTokenPath, a.Logger)
 	openframeToken, err := tokenExtractor.ExtractToken()
 	if err != nil {
 		a.Logger.Errorln("Failed to extract token:", err)

@@ -1,34 +1,39 @@
 package agent
 
 import (
-	"log"
 	"os"
+	"github.com/sirupsen/logrus"
 )
 
 type OpenframeTokenExtractor struct {
 	encryptionService *OpenframeEncryptionService
 	filePath          string
+	logger            *logrus.Logger
+	readErrCount      int
 }
 
-func NewOpenframeTokenExtractor(encryptionService *OpenframeEncryptionService, filePath string) *OpenframeTokenExtractor {
+func NewOpenframeTokenExtractor(encryptionService *OpenframeEncryptionService, filePath string, logger *logrus.Logger) *OpenframeTokenExtractor {
 	return &OpenframeTokenExtractor{
 		encryptionService: encryptionService,
 		filePath:          filePath,
+		logger:            logger,
 	}
 }
 
 func (te *OpenframeTokenExtractor) ExtractToken() (string, error) {
-	// Read the encrypted token from file
 	encryptedData, err := os.ReadFile(te.filePath)
 	if err != nil {
-		log.Printf("Error reading token file: %v", err)
+		te.readErrCount++
+		if te.readErrCount % openframeTokenRefreshErrorLogInterval == 1 {
+			te.logger.Errorf("Error reading token file: %v", err)
+		}
 		return "", err
 	}
+	te.readErrCount = 0
 
-	// Decrypt the data
 	decryptedData, err := te.encryptionService.Decrypt(string(encryptedData))
 	if err != nil {
-		log.Printf("Error decrypting data: %v", err)
+		te.logger.Errorf("Error decrypting data: %v", err)
 		return "", err
 	}
 

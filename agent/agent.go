@@ -107,6 +107,7 @@ const (
 	macPlistName         = "tacticalagent"
 	defaultMacMeshSvcDir = "/usr/local/mesh_services"
 	wsProxyPathTemplate  = "ws/tools/agent/tactical-rmm/natsws?authorization=%s"
+	openframeTokenRefreshErrorLogInterval = 100
 )
 
 var defaultWinTmpDir = filepath.Join(os.Getenv("PROGRAMDATA"), "TacticalRMM")
@@ -180,8 +181,8 @@ func New(logger *logrus.Logger, version string, openframeSecret string, openfram
 		denoBin = filepath.Join(nixAgentBinDir, "deno")
 	}
 
-	encryptionService := NewOpenframeEncryptionService(openframeSecret)
-	tokenExtractor := NewOpenframeTokenExtractor(encryptionService, openframeTokenPath)
+	encryptionService := NewOpenframeEncryptionService(openframeSecret, logger)
+	tokenExtractor := NewOpenframeTokenExtractor(encryptionService, openframeTokenPath, logger)
 	openframeAccessToken, err := tokenExtractor.ExtractToken()
 	if err != nil {
 		logger.Errorln("Error extracting token:", err)
