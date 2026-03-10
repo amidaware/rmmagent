@@ -458,6 +458,15 @@ func (s *IUpdateSession) GetWUAUpdateCollection(query string) (*IUpdateCollectio
 	searcher := searcherRaw.ToIDispatch()
 	defer searcher.Release()
 
+	// The IUpdateSearcher::IncludePotentiallySupersededUpdates method sets whether the
+	// results include updates that are superseded by other updates in the search results.
+	// This default to true so agent reports missing patches that have been superseded by newer patch versions/revisions.  
+	// https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-uamg/b3521681-cc20-419a-87d2-b0dc7ae2b9ff
+	_, err = searcher.PutProperty("IncludePotentiallySupersededUpdates", false)
+	if err != nil {
+		return nil, fmt.Errorf("error setting IncludePotentiallySupersededUpdates: %v", err)
+	}
+	
 	// returns ISearchResult
 	// https://msdn.microsoft.com/en-us/library/windows/desktop/aa386077(v=vs.85).aspx
 	resultRaw, err := searcher.CallMethod("Search", query)
