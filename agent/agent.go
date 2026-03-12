@@ -569,22 +569,24 @@ func (a *Agent) SyncMeshNodeID() {
 }
 
 const (
-	natsBackoffBase    = 5 * time.Second
-	natsBackoffMax     = 5 * time.Minute
-	natsBackoffJitter  = 0.3
+	natsBackoffBase           = 5 * time.Second
+	natsBackoffMax            = 5 * time.Minute
+	natsBackoffJitter         = 0.3
+	natsBackoffMaxAttemptsCap = 6
 )
 
 func (a *Agent) natsReconnectDelay(attempts int) time.Duration {
-
-	delay := time.Duration(float64(natsBackoffBase) * math.Pow(2, float64(attempts)))
+	// At very large attempts, math.Pow(2, attempts) → Inf → reconnect storm.
+	effAttempts := attempts
+	if effAttempts > natsBackoffMaxAttemptsCap {
+		effAttempts = natsBackoffMaxAttemptsCap
+	}
+	delay := time.Duration(float64(natsBackoffBase) * math.Pow(2, float64(effAttempts)))
 	if delay > natsBackoffMax {
 		delay = natsBackoffMax
 	}
 	jitter := time.Duration(float64(delay) * natsBackoffJitter * (rand.Float64()*2 - 1))
 	delay += jitter
-	if delay < natsBackoffBase {
-		delay = natsBackoffBase
-	}
 	a.Logger.Infof("NATS reconnect attempt %d, waiting %s", attempts, delay)
 	return delay
 }

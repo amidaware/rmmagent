@@ -13,6 +13,7 @@ In default (non-Openframe) mode, the original fixed random delay of 2–8 second
 | Base delay | 5s |
 | Max delay | 5m |
 | Jitter | ±30% |
+| Max attempts cap | 6 |
 | Max reconnects | unlimited |
 
 ## Backoff table
@@ -25,36 +26,33 @@ In default (non-Openframe) mode, the original fixed random delay of 2–8 second
 | 3 | 40s | 28s – 52s |
 | 4 | 1m 20s | 56s – 1m 44s |
 | 5 | 2m 40s | 1m 52s – 3m 28s |
-| 6+ | 5m (max) | 3m 30s – 5m* |
+| 6+ | 5m (max) | ~3m 30s – ~6m 30s |
 
-\* Delay is clamped to a minimum of 5s after jitter is applied.
+Attempts 7 and above use the same delay as attempt 6 (effAttempts capped at 6).
 
 ## Implementation
 
-The NATS options are split into two separate methods:
-
-- `setupDefaultNatsOptions()` — original behavior with fixed `ReconnectWait` (random 2–8s)
-- `setupOpenframeNatsOptions()` — exponential backoff via `nats.CustomReconnectDelay`
-
-The backoff delay is computed in `natsReconnectDelay(attempts int) time.Duration`:
+In Openframe mode, `setupNatsOptions()` uses `nats.CustomReconnectDelay(a.natsReconnectDelay)`. The delay is computed in `natsReconnectDelay(attempts int) time.Duration`:
 
 ```go
-delay = baseDelay * 2^attempts       // exponential growth
-delay = min(delay, maxDelay)          // cap at 5 minutes
-delay += delay * jitter * random()    // add ±30% jitter
-delay = max(delay, baseDelay)         // floor at 1 second
+effAttempts = min(attempts, natsBackoffMaxAttemptsCap)   // cap at 6
+delay = baseDelay * 2^effAttempts                        // exponential growth
+delay = min(delay, maxDelay)                             // cap at 5 minutes
+delay += delay * jitter * (random in [-1, 1])            // add ±30% jitter
 ```
+
+The attempts cap avoids overflow: at attempt 31+, `5*2^attempts` nanoseconds overflows int64, which would produce garbage durations (e.g. "2385479h" or 5s) and cause a reconnect storm.
 
 ## Logging
 
 Reconnect events are logged at **Info** level in Openframe mode:
 
 ```
-INFO  NATS reconnect attempt 0, waiting 1.2s
+INFO  NATS reconnect attempt 0, waiting 5.2s
 INFO  NATS disconnected: <error>
 INFO  NATS reconnected
 ```
 
-## Files changed
+## Files
 
-- `agent/agent.go` — Added `natsReconnectDelay()`, `setupOpenframeNatsOptions()`, `setupDefaultNatsOptions()`
+- `agent/agent.go` — constants `natsBackoffBase`, `natsBackoffMax`, `natsBackoffJitter`, `natsBackoffMaxAttemptsCap`; `natsReconnectDelay()`; `setupNatsOptions()` uses `CustomReconnectDelay` when `OpenframeMode` is true.
