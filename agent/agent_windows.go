@@ -380,7 +380,7 @@ func CMDShell(shell string, cmdArgs []string, command string, timeout int, detac
 		}
 		defer token.Close()
 		sysProcAttr.Token = syscall.Token(token.Token())
-		sysProcAttr.HideWindow = true
+		sysProcAttr.CreationFlags |= windows.CREATE_NO_WINDOW
 	}
 
 	cmd.SysProcAttr = sysProcAttr
