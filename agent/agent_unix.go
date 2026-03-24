@@ -32,10 +32,10 @@ import (
 	"github.com/go-resty/resty/v2"
 	"github.com/jaypipes/ghw"
 	"github.com/kardianos/service"
+	nats "github.com/nats-io/nats.go"
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/disk"
 	psHost "github.com/shirou/gopsutil/v3/host"
-	nats "github.com/nats-io/nats.go"
 	"github.com/spf13/viper"
 	trmm "github.com/wh1te909/trmm-shared"
 	"golang.org/x/text/cases"
@@ -993,6 +993,10 @@ func ModifyRegistryValue(path string, name string, valType string, data interfac
 
 func StartTerminalSessionWindows(agentID string, sessionID string, shell string, nc *nats.Conn) error {
 	return errors.New("failed to start terminal session on windows")
+}
+
+func SendTerminalError(agentID, sessionID, message string, nc *nats.Conn) {
+	// no-op on non-windows builds
 }
 
 func ResizeTerminalSessionWindows(sessionID string, rows, cols int) error {

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"unsafe"
@@ -57,6 +58,58 @@ func resolveWindowsHomeDir() string {
 	return ""
 }
 
+func resolveWindowsShellExe(shell string) (string, error) {
+	s := strings.TrimSpace(shell)
+	sl := strings.ToLower(s)
+
+	switch sl {
+	case "":
+		return getCMDExe(), nil
+	case "cmd", "cmd.exe":
+		return getCMDExe(), nil
+	case "powershell", "powershell.exe":
+		return getPowershellExe(), nil
+	default:
+		s = filepath.Clean(s)
+
+		if !isAbsoluteWindowsExePath(s) {
+			return "", fmt.Errorf("invalid custom shell path: must be an absolute .exe path")
+		}
+
+		if _, err := os.Stat(s); err != nil {
+			if os.IsNotExist(err) {
+				return "", fmt.Errorf("custom shell not found: %s", s)
+			}
+			return "", fmt.Errorf("custom shell is not accessible: %s", s)
+		}
+
+		return s, nil
+	}
+}
+
+func isAbsoluteWindowsExePath(path string) bool {
+	p := strings.TrimSpace(path)
+	if p == "" {
+		return false
+	}
+
+	if strings.ContainsAny(p, "\"\n\r") {
+		return false
+	}
+
+	p = filepath.Clean(p)
+
+	if !filepath.IsAbs(p) {
+		return false
+	}
+
+	if !strings.EqualFold(filepath.Ext(p), ".exe") {
+		return false
+	}
+
+	return true
+}
+
 func startTerminalSessionConPTY(agentID string, sessionID string, shell string, nc *nats.Conn) error {
 	if sessionID == "" {
 		return fmt.Errorf("missing session_id")
@@ -70,7 +123,10 @@ func startTerminalSessionConPTY(agentID string, sessionID string, shell string, 
 	}
 	winTermMu.Unlock()
 
-	exe := pickWindowsShellExe(shell)
+	exe, err := resolveWindowsShellExe(shell)
+	if err != nil {
+		return err
+	}
 
 	// Create inheritable pipes
 	inR, inW, err := createInheritablePipe()
@@ -402,20 +458,6 @@ func cleanupWinSession(sess *winTerminalSession) {
 	})
 }
 
-func pickWindowsShellExe(shell string) string {
-	s := strings.ToLower(strings.TrimSpace(shell))
-	switch s {
-	case "", "/bin/bash", "powershell", "powershell.exe":
-		return getPowershellExe()
-	case "cmd", "cmd.exe":
-		return getCMDExe()
-	default:
-		if strings.HasSuffix(s, ".exe") {
-			return shell
-		}
-		return getPowershellExe()
-	}
-}
 
 func quoteIfNeeded(s string) string {
 	if strings.ContainsAny(s, " \t") && !(strings.HasPrefix(s, `"`) && strings.HasSuffix(s, `"`)) {
