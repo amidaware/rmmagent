@@ -848,6 +848,11 @@ func (a *Agent) StartTerminalSession(sessionID, shell string, nc *nats.Conn) err
 	// Create shell command
 	cmd := exec.Command(shell)
 
+	env := os.Environ()
+	env = append(env, "TERM=xterm-256color") // need this or stuff like htop doesn't work
+	env = append(env, "COLORTERM=truecolor")
+	cmd.Env = env
+
 	// Start in $HOME if available
 	if home, err := os.UserHomeDir(); err == nil && home != "" {
 		cmd.Dir = home
