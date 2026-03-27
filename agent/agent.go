@@ -47,49 +47,50 @@ import (
 
 // Agent struct
 type Agent struct {
-	Hostname           string
-	Arch               string
-	AgentID            string
-	BaseURL            string
-	ApiURL             string
-	Token              string
-	AgentPK            int
-	Cert               string
-	ProgramDir         string
-	EXE                string
-	SystemDrive        string
-	WinTmpDir          string
-	UnixTmpDir         string
-	WinRunAsUserTmpDir string
-	MeshInstaller      string
-	MeshSystemEXE      string
-	MeshSVC            string
-	PyBin              string
-	PyVer              string
-	PyBaseDir          string
-	PyDir              string
-	NuBin              string
-	DenoBin            string
-	AgentHeader        string
-	Headers            map[string]string
-	Logger             *logrus.Logger
-	Version            string
-	Debug              bool
-	rClient            *resty.Client
-	Proxy              string
-	LogTo              string
-	LogFile            *os.File
-	Platform           string
-	GoArch             string
-	ServiceConfig      *service.Config
-	NatsServer         string
-	NatsProxyPath      string
-	NatsProxyPort      string
-	NatsPingInterval   int
-	NatsWSCompression  bool
-	Insecure           bool
-	TerminalSessions   map[string]*TerminalSession
-	TerminalSessionsMu sync.Mutex
+	Hostname               string
+	Arch                   string
+	AgentID                string
+	BaseURL                string
+	ApiURL                 string
+	Token                  string
+	AgentPK                int
+	Cert                   string
+	ProgramDir             string
+	EXE                    string
+	SystemDrive            string
+	WinTmpDir              string
+	UnixTmpDir             string
+	WinRunAsUserTmpDir     string
+	MeshInstaller          string
+	MeshSystemEXE          string
+	MeshSVC                string
+	PyBin                  string
+	PyVer                  string
+	PyBaseDir              string
+	PyDir                  string
+	NuBin                  string
+	DenoBin                string
+	AgentHeader            string
+	Headers                map[string]string
+	Logger                 *logrus.Logger
+	Version                string
+	Debug                  bool
+	rClient                *resty.Client
+	Proxy                  string
+	LogTo                  string
+	LogFile                *os.File
+	Platform               string
+	GoArch                 string
+	ServiceConfig          *service.Config
+	NatsServer             string
+	NatsProxyPath          string
+	NatsProxyPort          string
+	NatsPingInterval       int
+	NatsWSCompression      bool
+	Insecure               bool
+	TerminalSessions       map[string]*TerminalSession
+	TerminalSessionsMu     sync.Mutex
+	PendingTerminalResizes map[string]PendingTerminalResize
 }
 
 const (
@@ -262,45 +263,46 @@ func New(logger *logrus.Logger, version string) *Agent {
 	}
 
 	return &Agent{
-		Hostname:           hostname,
-		BaseURL:            ac.BaseURL,
-		AgentID:            ac.AgentID,
-		ApiURL:             ac.APIURL,
-		Token:              ac.Token,
-		AgentPK:            ac.PK,
-		Cert:               ac.Cert,
-		ProgramDir:         pd,
-		EXE:                exe,
-		SystemDrive:        sd,
-		WinTmpDir:          winTempDir,
-		WinRunAsUserTmpDir: winRunAsUserTmpDir,
-		UnixTmpDir:         ac.UnixTmpDir,
-		MeshInstaller:      "meshagent.exe",
-		MeshSystemEXE:      MeshSysExe,
-		MeshSVC:            meshSvcName,
-		PyBin:              pybin,
-		PyVer:              pyver,
-		PyBaseDir:          pyBaseDir,
-		PyDir:              pydir,
-		NuBin:              nuBin,
-		DenoBin:            denoBin,
-		Headers:            headers,
-		AgentHeader:        agentHeader,
-		Logger:             logger,
-		Version:            version,
-		Debug:              logger.IsLevelEnabled(logrus.DebugLevel),
-		rClient:            restyC,
-		Proxy:              ac.Proxy,
-		Platform:           runtime.GOOS,
-		GoArch:             runtime.GOARCH,
-		ServiceConfig:      svcConf,
-		NatsServer:         natsServer,
-		NatsProxyPath:      natsProxyPath,
-		NatsProxyPort:      natsProxyPort,
-		NatsPingInterval:   natsPingInterval,
-		NatsWSCompression:  natsWsCompression,
-		Insecure:           insecure,
-		TerminalSessions:   make(map[string]*TerminalSession),
+		Hostname:               hostname,
+		BaseURL:                ac.BaseURL,
+		AgentID:                ac.AgentID,
+		ApiURL:                 ac.APIURL,
+		Token:                  ac.Token,
+		AgentPK:                ac.PK,
+		Cert:                   ac.Cert,
+		ProgramDir:             pd,
+		EXE:                    exe,
+		SystemDrive:            sd,
+		WinTmpDir:              winTempDir,
+		WinRunAsUserTmpDir:     winRunAsUserTmpDir,
+		UnixTmpDir:             ac.UnixTmpDir,
+		MeshInstaller:          "meshagent.exe",
+		MeshSystemEXE:          MeshSysExe,
+		MeshSVC:                meshSvcName,
+		PyBin:                  pybin,
+		PyVer:                  pyver,
+		PyBaseDir:              pyBaseDir,
+		PyDir:                  pydir,
+		NuBin:                  nuBin,
+		DenoBin:                denoBin,
+		Headers:                headers,
+		AgentHeader:            agentHeader,
+		Logger:                 logger,
+		Version:                version,
+		Debug:                  logger.IsLevelEnabled(logrus.DebugLevel),
+		rClient:                restyC,
+		Proxy:                  ac.Proxy,
+		Platform:               runtime.GOOS,
+		GoArch:                 runtime.GOARCH,
+		ServiceConfig:          svcConf,
+		NatsServer:             natsServer,
+		NatsProxyPath:          natsProxyPath,
+		NatsProxyPort:          natsProxyPort,
+		NatsPingInterval:       natsPingInterval,
+		NatsWSCompression:      natsWsCompression,
+		Insecure:               insecure,
+		TerminalSessions:       make(map[string]*TerminalSession),
+		PendingTerminalResizes: make(map[string]PendingTerminalResize),
 	}
 }
 
@@ -842,6 +844,60 @@ type TerminalSession struct {
 	Ptmx *os.File
 }
 
+type PendingTerminalResize struct {
+	Rows int
+	Cols int
+}
+
+func (a *Agent) storePendingTerminalResize(sessionID string, rows, cols int) {
+	if sessionID == "" || rows <= 0 || cols <= 0 {
+		return
+	}
+
+	a.TerminalSessionsMu.Lock()
+	defer a.TerminalSessionsMu.Unlock()
+
+	if a.PendingTerminalResizes == nil {
+		a.PendingTerminalResizes = make(map[string]PendingTerminalResize)
+	}
+
+	a.PendingTerminalResizes[sessionID] = PendingTerminalResize{
+		Rows: rows,
+		Cols: cols,
+	}
+}
+
+func (a *Agent) popPendingTerminalResize(sessionID string) (int, int, bool) {
+	a.TerminalSessionsMu.Lock()
+	defer a.TerminalSessionsMu.Unlock()
+
+	if a.PendingTerminalResizes == nil {
+		return 0, 0, false
+	}
+
+	r, ok := a.PendingTerminalResizes[sessionID]
+	if !ok {
+		return 0, 0, false
+	}
+
+	delete(a.PendingTerminalResizes, sessionID)
+	return r.Rows, r.Cols, true
+}
+
+func (a *Agent) applyPendingTerminalResize(sessionID string) {
+	rows, cols, ok := a.popPendingTerminalResize(sessionID)
+	if !ok {
+		return
+	}
+
+	if err := a.ResizeTerminalSession(sessionID, rows, cols); err != nil {
+		a.Logger.Debugf(
+			"applyPendingTerminalResize failed: session=%s rows=%d cols=%d err=%v",
+			sessionID, rows, cols, err,
+		)
+	}
+}
+
 func (a *Agent) StartTerminalSession(sessionID, shell string, nc *nats.Conn) error {
 	a.Logger.Debugf("StartTerminalSession: session=%s shell=%s", sessionID, shell)
 
@@ -869,15 +925,21 @@ func (a *Agent) StartTerminalSession(sessionID, shell string, nc *nats.Conn) err
 	if _, exists := a.TerminalSessions[sessionID]; exists {
 		a.TerminalSessionsMu.Unlock()
 		_ = ptmx.Close()
-		_ = cmd.Process.Kill()
-		return fmt.Errorf("Session already exists: %s", sessionID)
+		if cmd.Process != nil {
+			_ = cmd.Process.Kill()
+		}
+		return fmt.Errorf("session already exists: %s", sessionID)
 	}
+
 	a.TerminalSessions[sessionID] = &TerminalSession{
 		ID:   sessionID,
 		Cmd:  cmd,
 		Ptmx: ptmx,
 	}
 	a.TerminalSessionsMu.Unlock()
+
+	// Apply any resize that arrived before the session was fully registered.
+	a.applyPendingTerminalResize(sessionID)
 
 	a.Logger.Debugf("Registered terminal session %s", sessionID)
 
@@ -939,6 +1001,8 @@ func (a *Agent) StreamTerminalOutput(sessionID string, ptmx *os.File, nc *nats.C
 
 func (a *Agent) StopTerminalSession(sessionID string) {
 	a.TerminalSessionsMu.Lock()
+	defer a.TerminalSessionsMu.Unlock()
+
 	sess, ok := a.TerminalSessions[sessionID]
 	if ok {
 		if sess.Ptmx != nil {
@@ -946,7 +1010,10 @@ func (a *Agent) StopTerminalSession(sessionID string) {
 		}
 		delete(a.TerminalSessions, sessionID)
 	}
-	a.TerminalSessionsMu.Unlock()
+
+	if a.PendingTerminalResizes != nil {
+		delete(a.PendingTerminalResizes, sessionID)
+	}
 }
 
 func (a *Agent) SendTerminalDone(sessionID string, exitCode int, nc *nats.Conn) {
@@ -966,6 +1033,7 @@ func (a *Agent) SendTerminalDone(sessionID string, exitCode int, nc *nats.Conn) 
 
 func (a *Agent) FeedTerminalInput(sessionID string, input string) error {
 	a.Logger.Debugf("Input received for session %s: %.20s", sessionID, input)
+
 	a.TerminalSessionsMu.Lock()
 	sess, ok := a.TerminalSessions[sessionID]
 	a.TerminalSessionsMu.Unlock()
@@ -986,16 +1054,22 @@ func (a *Agent) FeedTerminalInput(sessionID string, input string) error {
 func (a *Agent) ResizeTerminalSession(sessionID string, rows, cols int) error {
 	a.Logger.Debugf("Resizing terminal session %s to %dx%d", sessionID, rows, cols)
 
+	if rows <= 0 || cols <= 0 {
+		return nil
+	}
+
 	a.TerminalSessionsMu.Lock()
 	sess, ok := a.TerminalSessions[sessionID]
 	a.TerminalSessionsMu.Unlock()
 
 	if !ok {
-		return fmt.Errorf("session not found: %s", sessionID)
+		a.storePendingTerminalResize(sessionID, rows, cols)
+		return nil
 	}
 
 	if sess.Ptmx == nil {
-		return fmt.Errorf("pty handle is nil for session: %s", sessionID)
+		a.storePendingTerminalResize(sessionID, rows, cols)
+		return nil
 	}
 
 	size := &pty.Winsize{
@@ -1010,11 +1084,12 @@ func (a *Agent) KillTerminalSession(sessionID string) error {
 	a.Logger.Debugf("Killing terminal session %s", sessionID)
 
 	var ok bool
+
 	a.TerminalSessionsMu.Lock()
 	sess, ok := a.TerminalSessions[sessionID]
 	if ok {
 		// Kill the process
-		if sess.Cmd.Process != nil {
+		if sess.Cmd != nil && sess.Cmd.Process != nil {
 			_ = sess.Cmd.Process.Kill()
 		}
 
@@ -1022,7 +1097,12 @@ func (a *Agent) KillTerminalSession(sessionID string) error {
 		if sess.Ptmx != nil {
 			_ = sess.Ptmx.Close()
 		}
+
 		delete(a.TerminalSessions, sessionID)
+	}
+
+	if a.PendingTerminalResizes != nil {
+		delete(a.PendingTerminalResizes, sessionID)
 	}
 	a.TerminalSessionsMu.Unlock()
 
@@ -1034,4 +1114,20 @@ func (a *Agent) KillTerminalSession(sessionID string) error {
 
 	a.Logger.Debugf("Terminal session %s force-killed", sessionID)
 	return nil
+}
+
+func (a *Agent) SendTerminalError(agentID, sessionID, message string, nc *nats.Conn) {
+	topic := agentID + ".terminal." + sessionID
+
+	payload := map[string]interface{}{
+		"output":     "[ERROR] " + message + "\r\n",
+		"session_id": sessionID,
+		"done":       true,
+		"exit_code":  1,
+	}
+
+	var resp []byte
+	enc := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
+	_ = enc.Encode(payload)
+	_ = nc.Publish(topic, resp)
 }

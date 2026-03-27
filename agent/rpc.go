@@ -842,6 +842,7 @@ func (a *Agent) RunRPC() {
 					}
 					if err := a.StartTerminalSession(sessionID, shell, nc); err != nil {
 						a.Logger.Errorln("terminal_start: StartTerminalSession:", err)
+						a.SendTerminalError(a.AgentID, sessionID, err.Error(), nc)
 					}
 				}
 			}(payload)

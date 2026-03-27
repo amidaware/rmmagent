@@ -37,9 +37,50 @@ type winTerminalSession struct {
 }
 
 var (
-	winTermMu sync.Mutex
-	winTerms  = map[string]*winTerminalSession{}
+	winTermMu         sync.Mutex
+	winTerms          = map[string]*winTerminalSession{}
+	pendingWinResizes = map[string]pendingWinResize{}
 )
+
+type pendingWinResize struct {
+	rows int
+	cols int
+}
+
+func storePendingResizeWindows(sessionID string, rows, cols int) {
+	if rows <= 0 || cols <= 0 {
+		return
+	}
+
+	winTermMu.Lock()
+	defer winTermMu.Unlock()
+	pendingWinResizes[sessionID] = pendingWinResize{
+		rows: rows,
+		cols: cols,
+	}
+}
+
+func popPendingResizeWindows(sessionID string) (int, int, bool) {
+	winTermMu.Lock()
+	defer winTermMu.Unlock()
+
+	r, ok := pendingWinResizes[sessionID]
+	if !ok {
+		return 0, 0, false
+	}
+	delete(pendingWinResizes, sessionID)
+	return r.rows, r.cols, true
+}
+
+func applyPendingResizeWindows(sessionID string) {
+	rows, cols, ok := popPendingResizeWindows(sessionID)
+	if !ok {
+		return
+	}
+	if err := ResizeTerminalSessionWindows(sessionID, rows, cols); err != nil {
+		fmt.Printf("[WARN] applyPendingResizeWindows failed: session=%s rows=%d cols=%d err=%v\n", sessionID, rows, cols, err)
+	}
+}
 
 func resolveWindowsHomeDir() string {
 	if v := strings.TrimSpace(os.Getenv("HOME")); v != "" {
@@ -184,6 +225,7 @@ func startTerminalSessionConPTY(agentID string, sessionID string, shell string, 
 	}
 	winTerms[sessionID] = sess
 	winTermMu.Unlock()
+	applyPendingResizeWindows(sessionID)
 
 	// From here onward: on any failure, remove session + cleanup via Stop()
 	cleanupRegistered := func() {
@@ -261,6 +303,7 @@ func StopTerminalSessionWindows(sessionID string) bool {
 	sess, ok := winTerms[sessionID]
 	if ok {
 		delete(winTerms, sessionID)
+		delete(pendingWinResizes, sessionID)
 	}
 	winTermMu.Unlock()
 
@@ -276,6 +319,7 @@ func KillTerminalSessionWindows(sessionID string) error {
 	sess, ok := winTerms[sessionID]
 	if ok {
 		delete(winTerms, sessionID)
+		delete(pendingWinResizes, sessionID)
 	}
 	winTermMu.Unlock()
 
@@ -326,21 +370,22 @@ func ResizeTerminalSessionWindows(sessionID string, rows, cols int) error {
 	winTermMu.Unlock()
 
 	if !ok {
-		return fmt.Errorf("session not found: %s", sessionID)
+		storePendingResizeWindows(sessionID, rows, cols)
+		return nil
 	}
 
 	if sess.backend == "winpty" {
 		if sess.wp == nil {
-			return fmt.Errorf("winpty not initialized for session: %s", sessionID)
+			storePendingResizeWindows(sessionID, rows, cols)
+			return nil
 		}
-		// winpty expects (cols, rows) :contentReference[oaicite:8]{index=8}
 		sess.wp.SetSize(uint32(cols), uint32(rows))
 		return nil
 	}
 
-	// ConPTY path (your existing)
 	if sess.hPC == 0 {
-		return fmt.Errorf("pseudoconsole handle is nil for session: %s", sessionID)
+		storePendingResizeWindows(sessionID, rows, cols)
+		return nil
 	}
 	return resizePseudoConsole(sess.hPC, int16(cols), int16(rows))
 }
@@ -457,7 +502,6 @@ func cleanupWinSession(sess *winTerminalSession) {
 		}
 	})
 }
-
 
 func quoteIfNeeded(s string) string {
 	if strings.ContainsAny(s, " \t") && !(strings.HasPrefix(s, `"`) && strings.HasSuffix(s, `"`)) {

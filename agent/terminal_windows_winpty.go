@@ -97,6 +97,8 @@ func startTerminalSessionWinPTY(agentID, sessionID, shell string, nc *nats.Conn)
 	winTerms[sessionID] = sess
 	winTermMu.Unlock()
 
+	applyPendingResizeWindows(sessionID)
+
 	// ownership transferred to session lifecycle (Stop/Kill should close wp in cleanupWinSession)
 	cleanup = false
 
