@@ -14,13 +14,13 @@ func conptySupported() bool {
 	return procCreatePseudoConsole.Find() == nil
 }
 
-func StartTerminalSessionWindows(agentID, sessionID, shell string, nc *nats.Conn) error {
+func StartTerminalSessionWindows(agentID, sessionID, shell string, runAsUser bool, nc *nats.Conn) error {
 	if sessionID == "" {
 		return fmt.Errorf("missing session_id")
 	}
 
 	if conptySupported() {
-		return startTerminalSessionConPTY(agentID, sessionID, shell, nc)
+		return startTerminalSessionConPTY(agentID, sessionID, shell, runAsUser, nc)
 	}
 	return startTerminalSessionWinPTY(agentID, sessionID, shell, nc)
 }
@@ -33,6 +33,22 @@ func SendTerminalError(agentID, sessionID, message string, nc *nats.Conn) {
 		"session_id": sessionID,
 		"done":       true,
 		"exit_code":  1,
+	}
+
+	var resp []byte
+	enc := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
+	_ = enc.Encode(payload)
+	_ = nc.Publish(topic, resp)
+}
+
+func SendTerminalInfo(agentID, sessionID, message string, nc *nats.Conn) {
+	topic := agentID + ".terminal." + sessionID
+
+	payload := map[string]interface{}{
+		"output":     "[INFO] " + message + "\r\n",
+		"session_id": sessionID,
+		"done":       false,
+		"exit_code":  0,
 	}
 
 	var resp []byte

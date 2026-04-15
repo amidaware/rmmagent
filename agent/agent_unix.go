@@ -991,7 +991,7 @@ func ModifyRegistryValue(path string, name string, valType string, data interfac
 	return nil, errors.New("modifying registry values is only supported on Windows")
 }
 
-func StartTerminalSessionWindows(agentID string, sessionID string, shell string, nc *nats.Conn) error {
+func StartTerminalSessionWindows(agentID string, sessionID string, shell string, runAsUser bool, nc *nats.Conn) error {
 	return errors.New("failed to start terminal session on windows")
 }
 

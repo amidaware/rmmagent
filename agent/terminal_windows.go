@@ -9,8 +9,10 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"syscall"
 	"unsafe"
 
+	"github.com/fourcorelabs/wintoken"
 	winpty "github.com/iamacarpet/go-winpty"
 	"github.com/nats-io/nats.go"
 	"github.com/ugorji/go/codec"
@@ -151,7 +153,60 @@ func isAbsoluteWindowsExePath(path string) bool {
 	return true
 }
 
-func startTerminalSessionConPTY(agentID string, sessionID string, shell string, nc *nats.Conn) error {
+func CreateProcessAsUser(
+	token syscall.Token,
+	applicationName *uint16,
+	commandLine *uint16,
+	processAttributes *windows.SecurityAttributes,
+	threadAttributes *windows.SecurityAttributes,
+	inheritHandles bool,
+	creationFlags uint32,
+	environment *uint16,
+	currentDirectory *uint16,
+	startupInfo *windows.StartupInfo,
+	processInformation *windows.ProcessInformation,
+) error {
+	var inherit uintptr
+	if inheritHandles {
+		inherit = 1
+	}
+
+	ret, _, err := procCreateProcessAsUserW.Call(
+		uintptr(token),
+		uintptr(unsafe.Pointer(applicationName)),
+		uintptr(unsafe.Pointer(commandLine)),
+		uintptr(unsafe.Pointer(processAttributes)),
+		uintptr(unsafe.Pointer(threadAttributes)),
+		inherit,
+		uintptr(creationFlags),
+		uintptr(unsafe.Pointer(environment)),
+		uintptr(unsafe.Pointer(currentDirectory)),
+		uintptr(unsafe.Pointer(startupInfo)),
+		uintptr(unsafe.Pointer(processInformation)),
+	)
+	if ret == 0 {
+		if err != nil && err != syscall.Errno(0) {
+			return err
+		}
+		return syscall.EINVAL
+	}
+	return nil
+}
+
+func getTerminalUserToken() (*wintoken.Token, error) {
+	token, err := wintoken.GetInteractiveToken(wintoken.TokenLinked)
+	if err == nil {
+		return token, nil
+	}
+	return wintoken.GetInteractiveToken(wintoken.TokenPrimary)
+}
+
+func startTerminalSessionConPTY(agentID string, sessionID string, shell string, runAsUser bool, nc *nats.Conn) error {
+	fmt.Println("*************")
+	fmt.Println("*************")
+	fmt.Println("runAsUser -> ", runAsUser)
+	fmt.Println("*************")
+	fmt.Println("*************")
 	if sessionID == "" {
 		return fmt.Errorf("missing session_id")
 	}
@@ -252,22 +307,93 @@ func startTerminalSessionConPTY(agentID string, sessionID string, shell string, 
 		cwd = windows.StringToUTF16Ptr(home)
 	}
 
+	var (
+		token        *wintoken.Token
+		envBlock     *uint16
+		launchAsUser = false
+	)
+
+	if runAsUser {
+		token, err = getTerminalUserToken()
+		if err != nil {
+			fmt.Println("*************")
+			fmt.Println("*************")
+			fmt.Println("[WARN] terminal user token unavailable for session= ", sessionID)
+			fmt.Println("[WARN]  Falling back to SYSTEM.: ", err)
+			fmt.Println("*************")
+			fmt.Println("*************")
+
+			fmt.Printf("[WARN] terminal user token unavailable for session=%s: %v. Falling back to SYSTEM.\n", sessionID, err)
+		} else {
+			fmt.Println("*************")
+			fmt.Println("*************")
+			fmt.Println("ELSE part executed!! ")
+			fmt.Println("*************")
+			fmt.Println("*************")
+			launchAsUser = true
+			defer token.Close()
+
+			envBlock, err = CreateEnvironmentBlock(syscall.Token(token.Token()))
+			if err != nil {
+				fmt.Printf("[WARN] terminal user environment unavailable for session=%s: %v. Falling back to SYSTEM.\n", sessionID, err)
+				launchAsUser = false
+			} else {
+				defer DestroyEnvironmentBlock(envBlock)
+			}
+		}
+	}
+
+	if runAsUser && !launchAsUser {
+		SendTerminalInfo(
+			agentID,
+			sessionID,
+			"Run as user was not available. Falling back to SYSTEM.",
+			nc,
+		)
+	}
+
 	// Create process attached to pseudo console
 	cmdline := windows.StringToUTF16Ptr(quoteIfNeeded(exe))
 	var pi windows.ProcessInformation
 
-	err = windows.CreateProcess(
-		nil,
-		cmdline,
-		nil,
-		nil,
-		true,
-		EXTENDED_STARTUPINFO_PRESENT,
-		nil,
-		cwd,
-		&siEx.StartupInfo,
-		&pi,
-	)
+	if launchAsUser {
+		fmt.Println("*************")
+		fmt.Println("*************")
+		fmt.Println("launchAsUser is running: ")
+		fmt.Println("*************")
+		fmt.Println("*************")
+		err = CreateProcessAsUser(
+			syscall.Token(token.Token()),
+			nil,
+			cmdline,
+			nil,
+			nil,
+			true,
+			EXTENDED_STARTUPINFO_PRESENT|windows.CREATE_UNICODE_ENVIRONMENT,
+			envBlock,
+			cwd,
+			&siEx.StartupInfo,
+			&pi,
+		)
+	} else {
+		fmt.Println("*************")
+		fmt.Println("*************")
+		fmt.Println("system is running: ")
+		fmt.Println("*************")
+		fmt.Println("*************")
+		err = windows.CreateProcess(
+			nil,
+			cmdline,
+			nil,
+			nil,
+			true,
+			EXTENDED_STARTUPINFO_PRESENT,
+			nil,
+			cwd,
+			&siEx.StartupInfo,
+			&pi,
+		)
+	}
 	if err != nil {
 		cleanupRegistered()
 		return fmt.Errorf("CreateProcess: %w", err)
