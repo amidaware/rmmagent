@@ -339,6 +339,17 @@ func startTerminalSessionConPTY(agentID string, sessionID string, shell string, 
 				launchAsUser = false
 			} else {
 				defer DestroyEnvironmentBlock(envBlock)
+
+				// get users homedir
+				var size uint32
+				_ = windows.GetUserProfileDirectory(windows.Token(token.Token()), nil, &size)
+				if size > 0 {
+					buf := make([]uint16, size)
+					if err := windows.GetUserProfileDirectory(windows.Token(token.Token()), &buf[0], &size); err == nil {
+						userHome := windows.UTF16ToString(buf)
+						cwd = windows.StringToUTF16Ptr(userHome)
+					}
+				}
 			}
 		}
 	}
