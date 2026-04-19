@@ -22,7 +22,7 @@ func StartTerminalSessionWindows(agentID, sessionID, shell string, runAsUser boo
 	if conptySupported() {
 		return startTerminalSessionConPTY(agentID, sessionID, shell, runAsUser, nc)
 	}
-	return startTerminalSessionWinPTY(agentID, sessionID, shell, nc)
+	return startTerminalSessionWinPTY(agentID, sessionID, shell, runAsUser, nc)
 }
 
 func SendTerminalError(agentID, sessionID, message string, nc *nats.Conn) {

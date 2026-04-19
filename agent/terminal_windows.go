@@ -202,11 +202,6 @@ func getTerminalUserToken() (*wintoken.Token, error) {
 }
 
 func startTerminalSessionConPTY(agentID string, sessionID string, shell string, runAsUser bool, nc *nats.Conn) error {
-	fmt.Println("*************")
-	fmt.Println("*************")
-	fmt.Println("runAsUser -> ", runAsUser)
-	fmt.Println("*************")
-	fmt.Println("*************")
 	if sessionID == "" {
 		return fmt.Errorf("missing session_id")
 	}
@@ -316,20 +311,8 @@ func startTerminalSessionConPTY(agentID string, sessionID string, shell string, 
 	if runAsUser {
 		token, err = getTerminalUserToken()
 		if err != nil {
-			fmt.Println("*************")
-			fmt.Println("*************")
-			fmt.Println("[WARN] terminal user token unavailable for session= ", sessionID)
-			fmt.Println("[WARN]  Falling back to SYSTEM.: ", err)
-			fmt.Println("*************")
-			fmt.Println("*************")
-
 			fmt.Printf("[WARN] terminal user token unavailable for session=%s: %v. Falling back to SYSTEM.\n", sessionID, err)
 		} else {
-			fmt.Println("*************")
-			fmt.Println("*************")
-			fmt.Println("ELSE part executed!! ")
-			fmt.Println("*************")
-			fmt.Println("*************")
 			launchAsUser = true
 			defer token.Close()
 
@@ -368,11 +351,6 @@ func startTerminalSessionConPTY(agentID string, sessionID string, shell string, 
 	var pi windows.ProcessInformation
 
 	if launchAsUser {
-		fmt.Println("*************")
-		fmt.Println("*************")
-		fmt.Println("launchAsUser is running: ")
-		fmt.Println("*************")
-		fmt.Println("*************")
 		err = CreateProcessAsUser(
 			syscall.Token(token.Token()),
 			nil,
@@ -387,11 +365,6 @@ func startTerminalSessionConPTY(agentID string, sessionID string, shell string, 
 			&pi,
 		)
 	} else {
-		fmt.Println("*************")
-		fmt.Println("*************")
-		fmt.Println("system is running: ")
-		fmt.Println("*************")
-		fmt.Println("*************")
 		err = windows.CreateProcess(
 			nil,
 			cmdline,

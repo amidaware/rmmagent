@@ -6,16 +6,79 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
+	"runtime"
+	"syscall"
+	"unsafe"
 
-	// "runtime"
-
+	"github.com/fourcorelabs/wintoken"
 	winpty "github.com/iamacarpet/go-winpty"
 	"github.com/nats-io/nats.go"
 	"golang.org/x/sys/windows"
 )
 
-func startTerminalSessionWinPTY(agentID, sessionID, shell string, nc *nats.Conn) error {
+var (
+	adapi32                     = windows.NewLazySystemDLL("advapi32.dll")
+	procImpersonateLoggedOnUser = adapi32.NewProc("ImpersonateLoggedOnUser")
+	procRevertToSelf            = adapi32.NewProc("RevertToSelf")
+)
+
+func impersonateLoggedOnUser(token windows.Token) error {
+	r1, _, e1 := procImpersonateLoggedOnUser.Call(uintptr(token))
+	if r1 == 0 {
+		return e1
+	}
+	return nil
+}
+
+func revertToSelf() {
+	_, _, _ = procRevertToSelf.Call()
+}
+
+// buildUserEnvSlice converts a Windows environment block (*uint16, double-null terminated) into a []string slice compatible with winpty.Options.Env.
+// Windows guarantees env vars are <= 32767 UTF-16 chars (MAX_PATH * 2), so the [1 << 15]uint16 cast is safe.
+func buildUserEnvSlice(token syscall.Token) ([]string, error) {
+	block, err := CreateEnvironmentBlock(token)
+	if err != nil {
+		return nil, err
+	}
+	defer DestroyEnvironmentBlock(block)
+
+	var env []string
+	p := unsafe.Pointer(block)
+	for {
+		// Read one null-terminated UTF-16 string
+		ptr := (*[1 << 15]uint16)(p)
+		var i int
+		for i = 0; ptr[i] != 0; i++ {
+		}
+		if i == 0 {
+			break
+		}
+		env = append(env, windows.UTF16ToString(ptr[:i]))
+		p = unsafe.Pointer(uintptr(p) + uintptr((i+1)*2))
+	}
+	return env, nil
+}
+
+// resolveUserHomeDir retrieves the profile directory for the given token.
+// Falls back to resolveWindowsHomeDir() (SYSTEM context) on any error.
+func resolveUserHomeDir(token windows.Token) string {
+	var size uint32
+	_ = windows.GetUserProfileDirectory(token, nil, &size)
+	if size > 0 {
+		buf := make([]uint16, size)
+		if err := windows.GetUserProfileDirectory(token, &buf[0], &size); err == nil {
+			if dir := windows.UTF16ToString(buf); dir != "" {
+				if st, err := os.Stat(dir); err == nil && st.IsDir() {
+					return dir
+				}
+			}
+		}
+	}
+	return resolveWindowsHomeDir()
+}
+
+func startTerminalSessionWinPTY(agentID, sessionID, shell string, runAsUser bool, nc *nats.Conn) error {
 	// Prevent duplicate session IDs
 	winTermMu.Lock()
 	if _, exists := winTerms[sessionID]; exists {
@@ -29,7 +92,7 @@ func startTerminalSessionWinPTY(agentID, sessionID, shell string, nc *nats.Conn)
 		return fmt.Errorf("EnsureWinPTY() %v", err)
 	}
 
-	// Validate required WinPTY files exist next to the agent
+	// Validate required WinPTY files exist
 	dll := filepath.Join(prefix, "winpty.dll")
 	agentExe := filepath.Join(prefix, "winpty-agent.exe")
 
@@ -41,37 +104,121 @@ func startTerminalSessionWinPTY(agentID, sessionID, shell string, nc *nats.Conn)
 	}
 
 	cmdline := winptyCommandLine(shell)
-	home := resolveWindowsHomeDir()
+
+	var (
+		userToken    *wintoken.Token // nil -> run as SYSTEM
+		userEnv      []string        // nil -> use os.Environ()
+		home         string
+		launchAsUser = false
+	)
+
+	if runAsUser {
+		userToken, err = getTerminalUserToken()
+		if err != nil {
+			fmt.Printf("[WARN] winpty user token unavailable for session=%s: %v. Falling back to SYSTEM.\n", sessionID, err)
+		} else {
+			env, envErr := buildUserEnvSlice(syscall.Token(userToken.Token()))
+			if envErr != nil {
+				fmt.Printf("[WARN] winpty user env unavailable for session=%s: %v. Falling back to SYSTEM.\n", sessionID, envErr)
+				userToken.Close()
+				userToken = nil
+			} else {
+				userEnv = env
+				home = resolveUserHomeDir(windows.Token(userToken.Token()))
+				launchAsUser = true
+			}
+		}
+	}
+
+	if !launchAsUser {
+		// SYSTEM path
+		home = resolveWindowsHomeDir()
+		userEnv = os.Environ()
+	}
+
 	if home != "" {
 		if st, err := os.Stat(home); err != nil || !st.IsDir() {
 			home = ""
 		}
 	}
 
+	if runAsUser && !launchAsUser {
+		SendTerminalInfo(agentID, sessionID,
+			"Run as user was not available. Falling back to SYSTEM.", nc)
+	}
+
 	opts := winpty.Options{
 		DLLPrefix:   prefix,
-		AppName:     "",
 		Command:     cmdline,
 		Dir:         home,
-		Env:         os.Environ(),
-		Flags:       0,
+		Env:         userEnv,
 		InitialCols: 120,
 		InitialRows: 30,
 	}
 
-	// Keep logs low-noise: don't print env (may contain secrets).
-	// If you have an agent logger available in this package, replace this with it.
-	fmt.Printf("winpty opts => cmd=%q dir=%q prefix=%q flags=%d\n", opts.Command, opts.Dir, opts.DLLPrefix, opts.Flags)
+	// impersonate -> OpenWithOptions -> revert
 
-	wp, err := winpty.OpenWithOptions(opts)
-	if err != nil {
+	// winpty.OpenWithOptions calls CreateProcess internally so we cannot pass a
+	// token directly (unlike the ConPTY path which uses CreateProcessAsUser).
+	// Instead we impersonate the interactive user token on the current OS thread
+	// immediately before the call, then revert straight after.
+
+	impersonationActive := false
+
+	if launchAsUser {
+		runtime.LockOSThread()
+
+		if iErr := impersonateLoggedOnUser(windows.Token(userToken.Token())); iErr != nil {
+			// Impersonation never took effect, unlock immediately, no revert needed.
+			runtime.UnlockOSThread()
+			userToken.Close()
+			userToken = nil
+			launchAsUser = false
+
+			fmt.Printf("[WARN] ImpersonateLoggedOnUser failed for session=%s: %v. Falling back to SYSTEM.\n", sessionID, iErr)
+			SendTerminalInfo(agentID, sessionID,
+				"Impersonation failed. Falling back to SYSTEM.", nc)
+
+			opts.Env = os.Environ()
+			opts.Dir = resolveWindowsHomeDir()
+		} else {
+			impersonationActive = true
+		}
+	}
+
+	// Panic-safe backstop fires ONLY if OpenWithOptions panics.
+	// On the normal path, the explicit block below runs first and sets
+	// impersonationActive = false, so this defer becomes a no-op.
+	defer func() {
+		if impersonationActive {
+			revertToSelf()
+			runtime.UnlockOSThread()
+		}
+	}()
+
+	wp, openErr := winpty.OpenWithOptions(opts)
+
+	// revert + unlock immediately so impersonation does not bleed into session registration or goroutine launches below.
+	// revertToSelf -> UnlockOSThread -> Close token (order is mandatory).
+	if impersonationActive {
+		revertToSelf()
+		runtime.UnlockOSThread()
+		impersonationActive = false // disarms the defer above
+	}
+
+	if launchAsUser && userToken != nil {
+		userToken.Close()
+		userToken = nil
+	}
+
+	if openErr != nil {
 		return fmt.Errorf(
 			"winpty open failed (cmd=%q dir=%q prefix=%q): %+v",
-			opts.Command, opts.Dir, opts.DLLPrefix, err,
+			opts.Command, opts.Dir, opts.DLLPrefix, openErr,
 		)
 	}
 
-	// If anything fails after we opened, close WinPTY to avoid leaking winpty-agent.exe
+	// If anything fails after we opened WinPTY, close it to avoid leaking winpty-agent.exe
 	cleanup := true
 	defer func() {
 		if cleanup {
@@ -87,31 +234,28 @@ func startTerminalSessionWinPTY(agentID, sessionID, shell string, nc *nats.Conn)
 		wpOut:   wp.StdOut,
 	}
 
-	// Process handle (if exposed by the library version)
 	if ph := wp.GetProcHandle(); ph != 0 {
 		sess.proc = windows.Handle(ph)
 	}
 
-	// Register only after WinPTY successfully opened
 	winTermMu.Lock()
 	winTerms[sessionID] = sess
 	winTermMu.Unlock()
 
 	applyPendingResizeWindows(sessionID)
 
-	// ownership transferred to session lifecycle (Stop/Kill should close wp in cleanupWinSession)
 	cleanup = false
 
-	// Stream output to NATS (same function as your ConPTY stream path)
 	go streamTerminalOutputWindows(agentID, sessionID, sess.wpOut, nc)
 
-	// Exit watcher
+	procHandle := sess.proc
+
 	go func() {
-		if sess.proc != 0 {
-			_, _ = windows.WaitForSingleObject(sess.proc, windows.INFINITE)
+		if procHandle != 0 {
+			_, _ = windows.WaitForSingleObject(procHandle, windows.INFINITE)
 
 			var code uint32
-			_ = windows.GetExitCodeProcess(sess.proc, &code)
+			_ = windows.GetExitCodeProcess(procHandle, &code)
 
 			if StopTerminalSessionWindows(sessionID) {
 				sendTerminalDoneWindows(agentID, sessionID, int(code), nc)
@@ -119,7 +263,6 @@ func startTerminalSessionWinPTY(agentID, sessionID, shell string, nc *nats.Conn)
 			return
 		}
 
-		// If no proc handle is available, best-effort cleanup.
 		_ = StopTerminalSessionWindows(sessionID)
 	}()
 
@@ -127,23 +270,11 @@ func startTerminalSessionWinPTY(agentID, sessionID, shell string, nc *nats.Conn)
 }
 
 func winptyCommandLine(shell string) string {
-	s := strings.ToLower(strings.TrimSpace(shell))
-
-	switch s {
-	case "powershell", "powershell.exe":
-		ps := getPowershellExe()
-		// Keep it simple/stable on legacy hosts.
-		return quoteIfNeeded(ps)
-
-	case "cmd", "cmd.exe", "":
-		cmd := getCMDExe()
-		return quoteIfNeeded(cmd)
-
-	default:
-		// Strict allowlist fallback.
-		cmd := getCMDExe()
-		return quoteIfNeeded(cmd)
+	exe, err := resolveWindowsShellExe(shell)
+	if err != nil {
+		exe = getCMDExe()
 	}
+	return quoteIfNeeded(exe)
 }
 
 // winptyPrefixDir returns the directory where winpty.dll and winpty-agent.exe are located. ( local go run main.go workaround )
