@@ -14,7 +14,7 @@ func conptySupported() bool {
 	return procCreatePseudoConsole.Find() == nil
 }
 
-func StartTerminalSessionWindows(agentID, sessionID, shell string, runAsUser bool, nc *nats.Conn) error {
+func StartTerminalSessionWindows(agentID, programDir, sessionID, shell string, runAsUser bool, nc *nats.Conn) error {
 	if sessionID == "" {
 		return fmt.Errorf("missing session_id")
 	}
@@ -22,7 +22,7 @@ func StartTerminalSessionWindows(agentID, sessionID, shell string, runAsUser boo
 	if conptySupported() {
 		return startTerminalSessionConPTY(agentID, sessionID, shell, runAsUser, nc)
 	}
-	return startTerminalSessionWinPTY(agentID, sessionID, shell, runAsUser, nc)
+	return startTerminalSessionWinPTY(agentID, programDir, sessionID, shell, runAsUser, nc)
 }
 
 func SendTerminalError(agentID, sessionID, message string, nc *nats.Conn) {

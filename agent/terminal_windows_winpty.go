@@ -13,7 +13,7 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-func startTerminalSessionWinPTY(agentID, sessionID, shell string, runAsUser bool, nc *nats.Conn) error {
+func startTerminalSessionWinPTY(agentID, programDir, sessionID, shell string, runAsUser bool, nc *nats.Conn) error {
 	// Prevent duplicate session IDs
 	winTermMu.Lock()
 	if _, exists := winTerms[sessionID]; exists {
@@ -31,7 +31,7 @@ func startTerminalSessionWinPTY(agentID, sessionID, shell string, runAsUser bool
 		)
 	}
 
-	prefix, err := EnsureWinPTY(false)
+	prefix, err := EnsureWinPTY(programDir, false)
 	if err != nil {
 		return fmt.Errorf("EnsureWinPTY() %v", err)
 	}

@@ -11,28 +11,23 @@ import (
 	"runtime"
 )
 
-func EnsureWinPTY(force bool) (string, error) {
-	const progFilesName = "TacticalAgent"
-	targetDir := filepath.Join(os.Getenv("ProgramFiles"), progFilesName)
+func EnsureWinPTY(programDir string, force bool) (string, error) {
 	arch := runtime.GOARCH
 	if arch != "amd64" && arch != "386" {
 		return "", errors.New("EnsureWinPTY(): unsupported arch: " + arch)
 	}
 
-	// Ensure target directory exists
-	if stat, err := os.Stat(targetDir); err != nil || !stat.IsDir() {
-		return "", fmt.Errorf("expected install directory not found: %s", targetDir)
+	if stat, err := os.Stat(programDir); err != nil || !stat.IsDir() {
+		return "", fmt.Errorf("expected install directory not found: %s", programDir)
 	}
 
-	dstDLL := filepath.Join(targetDir, "winpty.dll")
-	dstAgent := filepath.Join(targetDir, "winpty-agent.exe")
+	dstDLL := filepath.Join(programDir, "winpty.dll")
+	dstAgent := filepath.Join(programDir, "winpty-agent.exe")
 
-	// Fast path: already present
 	if !force && fileExists(dstDLL) && fileExists(dstAgent) {
-		return targetDir, nil
+		return programDir, nil
 	}
 
-	// Read embedded files
 	dllEmbedPath := fmt.Sprintf("winpty_bins/%s/winpty.dll", arch)
 	agentEmbedPath := fmt.Sprintf("winpty_bins/%s/winpty-agent.exe", arch)
 
@@ -46,14 +41,12 @@ func EnsureWinPTY(force bool) (string, error) {
 		return "", fmt.Errorf("failed to read embedded EXE: %w", err)
 	}
 
-	// Skip rewrite if identical
 	if !force &&
 		sameContent(dstDLL, dllBytes) &&
 		sameContent(dstAgent, agentBytes) {
-		return targetDir, nil
+		return programDir, nil
 	}
 
-	// Write files atomically
 	if err := writeAtomic(dstDLL, dllBytes, 0o644); err != nil {
 		return "", fmt.Errorf("failed to write DLL: %w", err)
 	}
@@ -62,7 +55,7 @@ func EnsureWinPTY(force bool) (string, error) {
 		return "", fmt.Errorf("failed to write agent: %w", err)
 	}
 
-	return targetDir, nil
+	return programDir, nil
 }
 
 func fileExists(p string) bool {
