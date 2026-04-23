@@ -93,17 +93,37 @@ const (
 	winExeName           = "tacticalrmm.exe"
 	winSvcName           = "tacticalrmm"
 	meshSvcName          = "mesh agent"
-	etcConfig            = "/etc/tacticalagent"
-	nixAgentDir          = "/opt/tacticalagent"
-	nixMeshDir           = "/opt/tacticalmesh"
-	nixAgentBin          = nixAgentDir + "/tacticalagent"
-	nixAgentBinDir       = nixAgentDir + "/bin"
-	nixAgentEtcDir       = nixAgentDir + "/etc"
-	nixMeshAgentBin      = nixMeshDir + "/meshagent"
 	macPlistPath         = "/Library/LaunchDaemons/tacticalagent.plist"
 	macPlistName         = "tacticalagent"
 	defaultMacMeshSvcDir = "/usr/local/mesh_services"
 )
+
+// Unix paths are prefixed with installPrefix so the agent can run on systems where /etc and /opt are read-only.
+// I.e. NixOS, TrueNAS Scale, diskless images.
+var (
+	installPrefix   = ""
+	etcConfig       = "/etc/tacticalagent"
+	nixAgentDir     = "/opt/tacticalagent"
+	nixMeshDir      = "/opt/tacticalmesh"
+	nixAgentBin     = nixAgentDir + "/tacticalagent"
+	nixAgentBinDir  = nixAgentDir + "/bin"
+	nixAgentEtcDir  = nixAgentDir + "/etc"
+	nixMeshAgentBin = nixMeshDir + "/meshagent"
+)
+
+// SetInstallPrefix relocates the Unix agent/config/mesh trees under a single
+// writable root. Must be called before Agent.New or any install/read path so
+// the derived paths observe the prefix.
+func SetInstallPrefix(prefix string) {
+	installPrefix = strings.TrimRight(prefix, "/")
+	etcConfig = installPrefix + "/etc/tacticalagent"
+	nixAgentDir = installPrefix + "/opt/tacticalagent"
+	nixMeshDir = installPrefix + "/opt/tacticalmesh"
+	nixAgentBin = nixAgentDir + "/tacticalagent"
+	nixAgentBinDir = nixAgentDir + "/bin"
+	nixAgentEtcDir = nixAgentDir + "/etc"
+	nixMeshAgentBin = nixMeshDir + "/meshagent"
+}
 
 var defaultWinTmpDir = filepath.Join(os.Getenv("PROGRAMDATA"), "TacticalRMM")
 var winMeshDir = filepath.Join(os.Getenv("PROGRAMFILES"), "Mesh Agent")
