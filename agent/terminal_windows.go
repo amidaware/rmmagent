@@ -15,6 +15,7 @@ import (
 	"github.com/fourcorelabs/wintoken"
 	winpty "github.com/iamacarpet/go-winpty"
 	"github.com/nats-io/nats.go"
+	"github.com/sirupsen/logrus"
 	"github.com/ugorji/go/codec"
 	"golang.org/x/sys/windows"
 )
@@ -74,13 +75,13 @@ func popPendingResizeWindows(sessionID string) (int, int, bool) {
 	return r.rows, r.cols, true
 }
 
-func applyPendingResizeWindows(sessionID string) {
+func applyPendingResizeWindows(sessionID string, logger *logrus.Logger) {
 	rows, cols, ok := popPendingResizeWindows(sessionID)
 	if !ok {
 		return
 	}
 	if err := ResizeTerminalSessionWindows(sessionID, rows, cols); err != nil {
-		fmt.Printf("[WARN] applyPendingResizeWindows failed: session=%s rows=%d cols=%d err=%v\n", sessionID, rows, cols, err)
+		logger.Debugf("applyPendingResizeWindows failed: session=%s rows=%d cols=%d err=%v", sessionID, rows, cols, err)
 	}
 }
 
@@ -201,7 +202,7 @@ func getTerminalUserToken() (*wintoken.Token, error) {
 	return wintoken.GetInteractiveToken(wintoken.TokenPrimary)
 }
 
-func startTerminalSessionConPTY(agentID string, sessionID string, shell string, runAsUser bool, nc *nats.Conn) error {
+func startTerminalSessionConPTY(agentID string, sessionID string, shell string, runAsUser bool, nc *nats.Conn, logger *logrus.Logger) error {
 	if sessionID == "" {
 		return fmt.Errorf("missing session_id")
 	}
@@ -275,7 +276,7 @@ func startTerminalSessionConPTY(agentID string, sessionID string, shell string, 
 	}
 	winTerms[sessionID] = sess
 	winTermMu.Unlock()
-	applyPendingResizeWindows(sessionID)
+	applyPendingResizeWindows(sessionID, logger)
 
 	// From here onward: on any failure, remove session + cleanup via Stop()
 	cleanupRegistered := func() {
@@ -311,14 +312,14 @@ func startTerminalSessionConPTY(agentID string, sessionID string, shell string, 
 	if runAsUser {
 		token, err = getTerminalUserToken()
 		if err != nil {
-			fmt.Printf("[WARN] terminal user token unavailable for session=%s: %v. Falling back to SYSTEM.\n", sessionID, err)
+			logger.Debugf("terminal user token unavailable for session=%s: %v. Falling back to SYSTEM.", sessionID, err)
 		} else {
 			launchAsUser = true
 			defer token.Close()
 
 			envBlock, err = CreateEnvironmentBlock(syscall.Token(token.Token()))
 			if err != nil {
-				fmt.Printf("[WARN] terminal user environment unavailable for session=%s: %v. Falling back to SYSTEM.\n", sessionID, err)
+				logger.Debugf("terminal user environment unavailable for session=%s: %v. Falling back to SYSTEM.", sessionID, err)
 				launchAsUser = false
 			} else {
 				defer DestroyEnvironmentBlock(envBlock)
@@ -389,7 +390,7 @@ func startTerminalSessionConPTY(agentID string, sessionID string, shell string, 
 	sess.proc = pi.Process
 
 	// Stream output
-	go streamTerminalOutputWindows(agentID, sessionID, outRFile, nc)
+	go streamTerminalOutputWindows(agentID, sessionID, outRFile, nc, logger)
 
 	// Exit watcher
 	go func() {
@@ -500,7 +501,7 @@ func ResizeTerminalSessionWindows(sessionID string, rows, cols int) error {
 	return resizePseudoConsole(sess.hPC, int16(cols), int16(rows))
 }
 
-func streamTerminalOutputWindows(agentID, sessionID string, out *os.File, nc *nats.Conn) {
+func streamTerminalOutputWindows(agentID, sessionID string, out *os.File, nc *nats.Conn, logger *logrus.Logger) {
 	topic := agentID + ".terminal." + sessionID
 
 	var mh codec.MsgpackHandle
@@ -514,7 +515,7 @@ func streamTerminalOutputWindows(agentID, sessionID string, out *os.File, nc *na
 				return
 			}
 			if err != io.EOF {
-				fmt.Printf("[WARN] Stream read error: session=%s err=%v", sessionID, err)
+				logger.Debugf("terminal stream read error: session=%s err=%v", sessionID, err)
 			}
 			return
 		}
@@ -522,11 +523,11 @@ func streamTerminalOutputWindows(agentID, sessionID string, out *os.File, nc *na
 		var resp []byte
 		enc := codec.NewEncoderBytes(&resp, &mh)
 		if err := enc.Encode(buf[:n]); err != nil {
-			fmt.Printf("[WARN] MSGPACK encode failed: session=%s err=%v", sessionID, err)
+			logger.Errorf("terminal msgpack encode failed: session=%s err=%v", sessionID, err)
 			return
 		}
 		if err := nc.Publish(topic, resp); err != nil {
-			fmt.Printf("[WARN] NATS publish failed: session=%s err=%v", sessionID, err)
+			logger.Errorf("terminal NATS publish failed: session=%s err=%v", sessionID, err)
 			return
 		}
 	}

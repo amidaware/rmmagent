@@ -333,11 +333,6 @@ func CMD(exe string, args []string, timeout int, detached bool) (output [2]strin
 }
 
 func CMDShell(shell string, cmdArgs []string, command string, timeout int, detached bool, runasuser bool, stream bool, agentID *string, cmdID *string, nc *nats.Conn) (output [2]string, e error) {
-	fmt.Println("******")
-	fmt.Println("******")
-	fmt.Println("runasuser -> ",runasuser)
-	fmt.Println("******")
-	fmt.Println("******")
 	var (
 		outb         bytes.Buffer
 		errb         bytes.Buffer
@@ -380,12 +375,6 @@ func CMDShell(shell string, cmdArgs []string, command string, timeout int, detac
 
 	if runasuser {
 		token, err := wintoken.GetInteractiveToken(wintoken.TokenImpersonation)
-		fmt.Println("******")
-		fmt.Println("******")
-		fmt.Println("runasuser token -> ",token)
-		fmt.Println("runasuser err -> ",err)
-		fmt.Println("******")
-		fmt.Println("******")
 		if err != nil {
 			return [2]string{"", CleanString(err.Error())}, err
 		}

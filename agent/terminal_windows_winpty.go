@@ -10,10 +10,11 @@ import (
 
 	winpty "github.com/iamacarpet/go-winpty"
 	"github.com/nats-io/nats.go"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/windows"
 )
 
-func startTerminalSessionWinPTY(agentID, programDir, sessionID, shell string, runAsUser bool, nc *nats.Conn) error {
+func startTerminalSessionWinPTY(agentID, programDir, sessionID, shell string, runAsUser bool, nc *nats.Conn, logger *logrus.Logger) error {
 	// Prevent duplicate session IDs
 	winTermMu.Lock()
 	if _, exists := winTerms[sessionID]; exists {
@@ -66,7 +67,13 @@ func startTerminalSessionWinPTY(agentID, programDir, sessionID, shell string, ru
 		InitialRows: 30,
 	}
 
-	fmt.Printf("winpty opts => cmd=%q dir=%q prefix=%q flags=%d\n", opts.Command, opts.Dir, opts.DLLPrefix, opts.Flags)
+	logger.Debugf(
+		"winpty opts: cmd=%q dir=%q prefix=%q flags=%d",
+		opts.Command,
+		opts.Dir,
+		opts.DLLPrefix,
+		opts.Flags,
+	)
 
 	wp, err := winpty.OpenWithOptions(opts)
 	if err != nil {
@@ -101,9 +108,9 @@ func startTerminalSessionWinPTY(agentID, programDir, sessionID, shell string, ru
 	winTerms[sessionID] = sess
 	winTermMu.Unlock()
 
-	applyPendingResizeWindows(sessionID)
+	applyPendingResizeWindows(sessionID, logger)
 	cleanup = false
-	go streamTerminalOutputWindows(agentID, sessionID, sess.wpOut, nc)
+	go streamTerminalOutputWindows(agentID, sessionID, sess.wpOut, nc, logger)
 
 	go func() {
 		if sess.proc != 0 {

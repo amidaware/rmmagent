@@ -832,7 +832,7 @@ func (a *Agent) RunRPC() {
 					if shell == "" {
 						shell = "cmd" // default assign
 					}
-					if err := StartTerminalSessionWindows(a.AgentID, a.ProgramDir, sessionID, shell, p.RunAsUser, nc); err != nil {
+					if err := StartTerminalSessionWindows(a.AgentID, a.ProgramDir, sessionID, shell, p.RunAsUser, nc, a.Logger); err != nil {
 						a.Logger.Errorln("terminal_start: StartTerminalSessionWindows:", err)
 						SendTerminalError(a.AgentID, sessionID, err.Error(), nc)
 					}

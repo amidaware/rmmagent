@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	nats "github.com/nats-io/nats.go"
+	"github.com/sirupsen/logrus"
 	"github.com/ugorji/go/codec"
 )
 
@@ -14,15 +15,15 @@ func conptySupported() bool {
 	return procCreatePseudoConsole.Find() == nil
 }
 
-func StartTerminalSessionWindows(agentID, programDir, sessionID, shell string, runAsUser bool, nc *nats.Conn) error {
+func StartTerminalSessionWindows(agentID, programDir, sessionID, shell string, runAsUser bool, nc *nats.Conn, logger *logrus.Logger) error {
 	if sessionID == "" {
 		return fmt.Errorf("missing session_id")
 	}
 
 	if conptySupported() {
-		return startTerminalSessionConPTY(agentID, sessionID, shell, runAsUser, nc)
+		return startTerminalSessionConPTY(agentID, sessionID, shell, runAsUser, nc, logger)
 	}
-	return startTerminalSessionWinPTY(agentID, programDir, sessionID, shell, runAsUser, nc)
+	return startTerminalSessionWinPTY(agentID, programDir, sessionID, shell, runAsUser, nc, logger)
 }
 
 func SendTerminalError(agentID, sessionID, message string, nc *nats.Conn) {

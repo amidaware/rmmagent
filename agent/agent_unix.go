@@ -36,6 +36,7 @@ import (
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/disk"
 	psHost "github.com/shirou/gopsutil/v3/host"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	trmm "github.com/wh1te909/trmm-shared"
 	"golang.org/x/text/cases"
@@ -991,7 +992,7 @@ func ModifyRegistryValue(path string, name string, valType string, data interfac
 	return nil, errors.New("modifying registry values is only supported on Windows")
 }
 
-func StartTerminalSessionWindows(agentID string, programDir string, sessionID string, shell string, runAsUser bool, nc *nats.Conn) error {
+func StartTerminalSessionWindows(agentID string, programDir string, sessionID string, shell string, runAsUser bool, nc *nats.Conn, logger *logrus.Logger) error {
 	return errors.New("failed to start terminal session on windows")
 }
 
