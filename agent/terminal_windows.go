@@ -194,7 +194,7 @@ func CreateProcessAsUser(
 	return nil
 }
 
-func getTerminalUserToken() (*wintoken.Token, error) {
+func getUserToken() (*wintoken.Token, error) {
 	token, err := wintoken.GetInteractiveToken(wintoken.TokenLinked)
 	if err == nil {
 		return token, nil
@@ -310,7 +310,7 @@ func startTerminalSessionConPTY(agentID string, sessionID string, shell string, 
 	)
 
 	if runAsUser {
-		token, err = getTerminalUserToken()
+		token, err = getUserToken()
 		if err != nil {
 			logger.Debugf("terminal user token unavailable for session=%s: %v. Falling back to SYSTEM.", sessionID, err)
 		} else {
