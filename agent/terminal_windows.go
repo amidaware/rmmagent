@@ -36,6 +36,9 @@ type winTerminalSession struct {
 
 	backend string // "conpty" | "winpty"
 
+	// Job object for process tree cleanup (runAsUser child processes)
+	job windows.Handle
+
 	// ConPTY
 	hPC  windows.Handle
 	proc windows.Handle
@@ -400,6 +403,23 @@ func startTerminalSessionConPTY(agentID string, sessionID string, shell string, 
 	// Save proc handle into session (now kill/watcher can use it)
 	sess.proc = pi.Process
 
+	// Assign process to a job object so the entire process tree is killed on cleanup.
+	job, jobErr := createTerminalJobObject()
+	if jobErr != nil {
+		logger.Errorf("terminal job object creation failed: session=%s err=%v", sessionID, jobErr)
+		_ = windows.TerminateProcess(pi.Process, 1)
+		cleanupRegistered()
+		return fmt.Errorf("failed to create terminal cleanup guard: %w", jobErr)
+	}
+	if assignErr := windows.AssignProcessToJobObject(job, pi.Process); assignErr != nil {
+		logger.Errorf("terminal job assignment failed: session=%s err=%v", sessionID, assignErr)
+		_ = windows.TerminateProcess(pi.Process, 1)
+		_ = windows.CloseHandle(job)
+		cleanupRegistered()
+		return fmt.Errorf("failed to assign terminal cleanup guard: %w", assignErr)
+	}
+	sess.job = job
+
 	// Stream output
 	go streamTerminalOutputWindows(agentID, sessionID, outRFile, nc, logger)
 
@@ -449,8 +469,10 @@ func KillTerminalSessionWindows(sessionID string) error {
 		return nil
 	}
 
-	// Hard kill if we have a process handle (works for both backends)
-	if sess.proc != 0 {
+	// Kill the entire process tree via job object when available otherwise fall back to killing just the direct process.
+	if sess.job != 0 {
+		_ = windows.TerminateJobObject(sess.job, 1)
+	} else if sess.proc != 0 {
 		_ = windows.TerminateProcess(sess.proc, 1)
 	}
 	cleanupWinSession(sess)
@@ -558,6 +580,65 @@ func sendTerminalDoneWindows(agentID, sessionID string, exitCode int, nc *nats.C
 	_ = nc.Publish(topic, resp)
 }
 
+type jobObjectBasicLimitInfo struct {
+	PerProcessUserTimeLimit int64
+	PerJobUserTimeLimit     int64
+	LimitFlags              uint32
+	MinimumWorkingSetSize   uintptr
+	MaximumWorkingSetSize   uintptr
+	ActiveProcessLimit      uint32
+	Affinity                uintptr
+	PriorityClass           uint32
+	SchedulingClass         uint32
+}
+
+type ioCounters struct {
+	ReadOperationCount  uint64
+	WriteOperationCount uint64
+	OtherOperationCount uint64
+	ReadTransferCount   uint64
+	WriteTransferCount  uint64
+	OtherTransferCount  uint64
+}
+
+type jobObjectExtendedLimitInfo struct {
+	BasicLimitInformation jobObjectBasicLimitInfo
+	IoInfo                ioCounters
+	ProcessMemoryLimit    uintptr
+	JobMemoryLimit        uintptr
+	PeakProcessMemoryUsed uintptr
+	PeakJobMemoryUsed     uintptr
+}
+
+const (
+	jobObjectExtendedLimitInformation = 9
+	jobObjectLimitKillOnJobClose      = 0x00002000
+)
+
+// createTerminalJobObject creates a windows Job Object configured with JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE. When the last handle to this job is
+// closed, windows automatically terminates every process still in the job ensuring no orphaned child processes survive a terminal session teardown.
+func createTerminalJobObject() (windows.Handle, error) {
+	job, err := windows.CreateJobObject(nil, nil)
+	if err != nil {
+		return 0, fmt.Errorf("CreateJobObject: %w", err)
+	}
+
+	info := jobObjectExtendedLimitInfo{}
+	info.BasicLimitInformation.LimitFlags = jobObjectLimitKillOnJobClose
+
+	if _, err := windows.SetInformationJobObject(
+		job,
+		jobObjectExtendedLimitInformation,
+		uintptr(unsafe.Pointer(&info)),
+		uint32(unsafe.Sizeof(info)),
+	); err != nil {
+		_ = windows.CloseHandle(job)
+		return 0, fmt.Errorf("SetInformationJobObject: %w", err)
+	}
+
+	return job, nil
+}
+
 var (
 	kernel32                = windows.NewLazySystemDLL("kernel32.dll")
 	procCreatePseudoConsole = kernel32.NewProc("CreatePseudoConsole")
@@ -590,6 +671,12 @@ func cleanupWinSession(sess *winTerminalSession) {
 	}
 
 	sess.closeOnce.Do(func() {
+		if sess.job != 0 {
+			_ = windows.TerminateJobObject(sess.job, 1)
+			_ = windows.CloseHandle(sess.job)
+			sess.job = 0
+		}
+
 		// ConPTY
 		if sess.inW != nil {
 			_ = sess.inW.Close()
