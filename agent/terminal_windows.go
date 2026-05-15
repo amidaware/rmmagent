@@ -32,24 +32,18 @@ import (
 )
 
 type winTerminalSession struct {
-	id string
-
-	backend string // "conpty" | "winpty"
-
-	// Job object for process tree cleanup (runAsUser child processes)
-	job windows.Handle
-
-	// ConPTY
+	id      string
+	backend string // "conpty" or "winpty"
+	job     windows.Handle
+	// conpty
 	hPC  windows.Handle
 	proc windows.Handle
 	inW  *os.File
 	outR *os.File
-
-	// WinPTY
-	wp    *winpty.WinPTY
-	wpIn  *os.File
-	wpOut *os.File
-
+	// winpty
+	wp        *winpty.WinPTY
+	wpIn      *os.File
+	wpOut     *os.File
 	closeOnce sync.Once
 }
 
@@ -85,6 +79,7 @@ func popPendingResizeWindows(sessionID string) (int, int, bool) {
 	if !ok {
 		return 0, 0, false
 	}
+
 	delete(pendingWinResizes, sessionID)
 	return r.rows, r.cols, true
 }
@@ -119,7 +114,6 @@ func resolveWindowsHomeDir() string {
 func resolveWindowsShellExe(shell string) (string, error) {
 	s := strings.TrimSpace(shell)
 	sl := strings.ToLower(s)
-
 	switch sl {
 	case "":
 		return getCMDExe(), nil
@@ -129,7 +123,6 @@ func resolveWindowsShellExe(shell string) (string, error) {
 		return getPowershellExe(), nil
 	default:
 		s = filepath.Clean(s)
-
 		if !isAbsoluteWindowsExePath(s) {
 			return "", fmt.Errorf("invalid custom shell path: must be an absolute .exe path")
 		}
@@ -140,7 +133,6 @@ func resolveWindowsShellExe(shell string) (string, error) {
 			}
 			return "", fmt.Errorf("custom shell is not accessible: %s", s)
 		}
-
 		return s, nil
 	}
 }
@@ -156,7 +148,6 @@ func isAbsoluteWindowsExePath(path string) bool {
 	}
 
 	p = filepath.Clean(p)
-
 	if !filepath.IsAbs(p) {
 		return false
 	}
@@ -164,7 +155,6 @@ func isAbsoluteWindowsExePath(path string) bool {
 	if !strings.EqualFold(filepath.Ext(p), ".exe") {
 		return false
 	}
-
 	return true
 }
 
@@ -221,7 +211,6 @@ func startTerminalSessionConPTY(agentID string, sessionID string, shell string, 
 		return fmt.Errorf("missing session_id")
 	}
 
-	// Prevent duplicates
 	winTermMu.Lock()
 	if _, exists := winTerms[sessionID]; exists {
 		winTermMu.Unlock()
@@ -234,11 +223,11 @@ func startTerminalSessionConPTY(agentID string, sessionID string, shell string, 
 		return err
 	}
 
-	// Create inheritable pipes
 	inR, inW, err := createInheritablePipe()
 	if err != nil {
 		return fmt.Errorf("create input pipe: %w", err)
 	}
+
 	outR, outW, err := createInheritablePipe()
 	if err != nil {
 		_ = windows.CloseHandle(inR)
@@ -253,21 +242,17 @@ func startTerminalSessionConPTY(agentID string, sessionID string, shell string, 
 		_ = windows.CloseHandle(outW)
 	}
 
-	// Create ConPTY (initial size)
 	hPC, err := createPseudoConsole(120, 30, inR, outW)
 	if err != nil {
 		cleanupHandles()
 		return fmt.Errorf("create pseudoconsole: %w", err)
 	}
 
-	// ConPTY uses inR + outW; we use inW + outR
 	_ = windows.CloseHandle(inR)
 	_ = windows.CloseHandle(outW)
-
 	inWFile := os.NewFile(uintptr(inW), "conpty-in")
 	outRFile := os.NewFile(uintptr(outR), "conpty-out")
 
-	// Create session object NOW (proc will be set after CreateProcess)
 	sess := &winTerminalSession{
 		id:      sessionID,
 		backend: "conpty",
@@ -277,27 +262,23 @@ func startTerminalSessionConPTY(agentID string, sessionID string, shell string, 
 		outR:    outRFile,
 	}
 
-	// Register early so resize won't race (only needs hPC)
 	winTermMu.Lock()
 	if _, exists := winTerms[sessionID]; exists {
 		winTermMu.Unlock()
-
 		_ = inWFile.Close()
 		_ = outRFile.Close()
 		closePseudoConsole(hPC)
-
 		return fmt.Errorf("session already exists: %s", sessionID)
 	}
+
 	winTerms[sessionID] = sess
 	winTermMu.Unlock()
 	applyPendingResizeWindows(sessionID, logger)
 
-	// From here onward: on any failure, remove session + cleanup via Stop()
 	cleanupRegistered := func() {
 		_ = StopTerminalSessionWindows(sessionID)
 	}
 
-	// Build STARTUPINFOEX
 	siEx, attr, err := buildStartupInfoEx(hPC)
 	if err != nil {
 		cleanupRegistered()
@@ -361,7 +342,6 @@ func startTerminalSessionConPTY(agentID string, sessionID string, shell string, 
 		)
 	}
 
-	// Create process attached to pseudo console
 	cmdline := windows.StringToUTF16Ptr(quoteIfNeeded(exe))
 	var pi windows.ProcessInformation
 
@@ -399,11 +379,7 @@ func startTerminalSessionConPTY(agentID string, sessionID string, shell string, 
 	}
 
 	_ = windows.CloseHandle(pi.Thread)
-
-	// Save proc handle into session (now kill/watcher can use it)
 	sess.proc = pi.Process
-
-	// Assign process to a job object so the entire process tree is killed on cleanup.
 	job, jobErr := createTerminalJobObject()
 	if jobErr != nil {
 		logger.Errorf("terminal job object creation failed: session=%s err=%v", sessionID, jobErr)
@@ -411,6 +387,7 @@ func startTerminalSessionConPTY(agentID string, sessionID string, shell string, 
 		cleanupRegistered()
 		return fmt.Errorf("failed to create terminal cleanup guard: %w", jobErr)
 	}
+
 	if assignErr := windows.AssignProcessToJobObject(job, pi.Process); assignErr != nil {
 		logger.Errorf("terminal job assignment failed: session=%s err=%v", sessionID, assignErr)
 		_ = windows.TerminateProcess(pi.Process, 1)
@@ -420,10 +397,7 @@ func startTerminalSessionConPTY(agentID string, sessionID string, shell string, 
 	}
 	sess.job = job
 
-	// Stream output
 	go streamTerminalOutputWindows(agentID, sessionID, outRFile, nc, logger)
-
-	// Exit watcher
 	go func() {
 		_, _ = windows.WaitForSingleObject(sess.proc, windows.INFINITE)
 
@@ -439,7 +413,7 @@ func startTerminalSessionConPTY(agentID string, sessionID string, shell string, 
 	return nil
 }
 
-// StopTerminalSessionWindows returns true if it actually removed a session (useful for watcher/kill coordination)
+// StopTerminalSessionWindows func returns true when session is removed.
 func StopTerminalSessionWindows(sessionID string) bool {
 	winTermMu.Lock()
 	sess, ok := winTerms[sessionID]
@@ -469,7 +443,6 @@ func KillTerminalSessionWindows(sessionID string) error {
 		return nil
 	}
 
-	// Kill the entire process tree via job object when available otherwise fall back to killing just the direct process.
 	if sess.job != 0 {
 		_ = windows.TerminateJobObject(sess.job, 1)
 	} else if sess.proc != 0 {
@@ -496,7 +469,6 @@ func FeedTerminalInputWindows(sessionID string, input string) error {
 		return err
 	}
 
-	// ConPTY path (your existing)
 	if sess.inW == nil {
 		return fmt.Errorf("stdin pipe not initialized for session: %s", sessionID)
 	}
@@ -539,7 +511,6 @@ func streamTerminalOutputWindows(agentID, sessionID string, out *os.File, nc *na
 
 	var mh codec.MsgpackHandle
 	buf := make([]byte, 2048)
-
 	for {
 		n, err := out.Read(buf)
 		if err != nil {
@@ -615,8 +586,7 @@ const (
 	jobObjectLimitKillOnJobClose      = 0x00002000
 )
 
-// createTerminalJobObject creates a windows Job Object configured with JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE. When the last handle to this job is
-// closed, windows automatically terminates every process still in the job ensuring no orphaned child processes survive a terminal session teardown.
+// createTerminalJobObject func is used for cleaning up all child processes when the terminal session ends.
 func createTerminalJobObject() (windows.Handle, error) {
 	job, err := windows.CreateJobObject(nil, nil)
 	if err != nil {
@@ -676,8 +646,7 @@ func cleanupWinSession(sess *winTerminalSession) {
 			_ = windows.CloseHandle(sess.job)
 			sess.job = 0
 		}
-
-		// ConPTY
+		// conpty
 		if sess.inW != nil {
 			_ = sess.inW.Close()
 			sess.inW = nil
@@ -694,13 +663,11 @@ func cleanupWinSession(sess *winTerminalSession) {
 			_ = windows.CloseHandle(sess.proc)
 			sess.proc = 0
 		}
-
-		// WinPTY
+		// winpty
 		if sess.wp != nil {
 			sess.wp.Close()
 			sess.wp = nil
 		}
-		// These may already be closed by wp.Close(), but safe to suppress errors.
 		if sess.wpIn != nil {
 			_ = sess.wpIn.Close()
 			sess.wpIn = nil
@@ -734,7 +701,6 @@ func createPseudoConsole(cols, rows int16, inR, outW windows.Handle) (windows.Ha
 	var hPC windows.Handle
 	c := coord{X: cols, Y: rows}
 	coordPacked := *(*uint32)(unsafe.Pointer(&c))
-
 	r1, _, e1 := procCreatePseudoConsole.Call(
 		uintptr(coordPacked),
 		uintptr(inR),
@@ -742,6 +708,7 @@ func createPseudoConsole(cols, rows int16, inR, outW windows.Handle) (windows.Ha
 		0,
 		uintptr(unsafe.Pointer(&hPC)),
 	)
+
 	if r1 != 0 {
 		return 0, error(e1)
 	}
@@ -751,11 +718,11 @@ func createPseudoConsole(cols, rows int16, inR, outW windows.Handle) (windows.Ha
 func resizePseudoConsole(hPC windows.Handle, cols, rows int16) error {
 	c := coord{X: cols, Y: rows}
 	coordPacked := *(*uint32)(unsafe.Pointer(&c))
-
 	r1, _, e1 := procResizePseudoConsole.Call(
 		uintptr(hPC),
 		uintptr(coordPacked),
 	)
+
 	if r1 != 0 {
 		return error(e1)
 	}
@@ -779,6 +746,7 @@ func buildStartupInfoEx(hPC windows.Handle) (*startupInfoEx, *byte, error) {
 		0,
 		uintptr(unsafe.Pointer(&size)),
 	)
+
 	if r1 == 0 {
 		return nil, nil, error(e1)
 	}
@@ -792,6 +760,7 @@ func buildStartupInfoEx(hPC windows.Handle) (*startupInfoEx, *byte, error) {
 		0,
 		0,
 	)
+
 	if r1 == 0 {
 		deleteProcThreadAttrList(attr)
 		return nil, nil, error(e1)

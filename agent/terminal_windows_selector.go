@@ -22,7 +22,6 @@ import (
 )
 
 func conptySupported() bool {
-	// procCreatePseudoConsole exists in your ConPTY file (terminal_windows.go)
 	return procCreatePseudoConsole.Find() == nil
 }
 

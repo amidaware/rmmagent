@@ -826,11 +826,10 @@ func (a *Agent) RunRPC() {
 					a.Logger.Errorln("terminal_start: missing session_id")
 					return
 				}
-
 				switch runtime.GOOS {
 				case "windows":
 					if shell == "" {
-						shell = "cmd" // default assign
+						shell = "cmd"
 					}
 					if err := StartTerminalSessionWindows(a.AgentID, a.ProgramDir, sessionID, shell, p.RunAsUser, nc, a.Logger); err != nil {
 						a.Logger.Errorln("terminal_start: StartTerminalSessionWindows:", err)
@@ -838,7 +837,7 @@ func (a *Agent) RunRPC() {
 					}
 				default:
 					if shell == "" {
-						shell = "/bin/bash" // default assign
+						shell = "/bin/bash"
 					}
 					if err := a.StartTerminalSession(sessionID, shell, nc); err != nil {
 						a.Logger.Errorln("terminal_start: StartTerminalSession:", err)
@@ -854,12 +853,10 @@ func (a *Agent) RunRPC() {
 					a.Logger.Errorln("terminal_input: missing session_id")
 					return
 				}
-
 				data := p.Data["data"]
 				if data == "" {
 					return
 				}
-
 				switch runtime.GOOS {
 				case "windows":
 					if err := FeedTerminalInputWindows(sessionID, data); err != nil {
@@ -879,19 +876,14 @@ func (a *Agent) RunRPC() {
 					a.Logger.Errorln("terminal_resize: missing session_id")
 					return
 				}
-
 				rowsStr := p.Data["rows"]
 				colsStr := p.Data["cols"]
-
 				rows, err1 := strconv.Atoi(rowsStr)
 				cols, err2 := strconv.Atoi(colsStr)
-
-				// Validate input strictly
 				if err1 != nil || err2 != nil || rows <= 0 || cols <= 0 {
 					a.Logger.Debugf("terminal_resize: failed to validate values: os=%s session=%s rows=%q cols=%q", runtime.GOOS, sessionID, rowsStr, colsStr)
 					return
 				}
-
 				switch runtime.GOOS {
 				case "windows":
 					if err := ResizeTerminalSessionWindows(sessionID, rows, cols); err != nil {
@@ -911,7 +903,6 @@ func (a *Agent) RunRPC() {
 					a.Logger.Errorln("terminal_kill: missing session_id")
 					return
 				}
-
 				switch runtime.GOOS {
 				case "windows":
 					if err := KillTerminalSessionWindows(sessionID); err != nil {

@@ -26,7 +26,6 @@ import (
 )
 
 func startTerminalSessionWinPTY(agentID, programDir, sessionID, shell string, runAsUser bool, nc *nats.Conn, logger *logrus.Logger) error {
-	// Prevent duplicate session IDs
 	winTermMu.Lock()
 	if _, exists := winTerms[sessionID]; exists {
 		winTermMu.Unlock()
@@ -48,13 +47,12 @@ func startTerminalSessionWinPTY(agentID, programDir, sessionID, shell string, ru
 		return fmt.Errorf("EnsureWinPTY() %v", err)
 	}
 
-	// Validate required WinPTY files exist next to the agent
 	dll := filepath.Join(prefix, "winpty.dll")
 	agentExe := filepath.Join(prefix, "winpty-agent.exe")
-
 	if _, err := os.Stat(dll); err != nil {
 		return fmt.Errorf("winpty missing winpty.dll at %s: %w", dll, err)
 	}
+
 	if _, err := os.Stat(agentExe); err != nil {
 		return fmt.Errorf("winpty missing winpty-agent.exe at %s: %w", agentExe, err)
 	}
@@ -94,7 +92,6 @@ func startTerminalSessionWinPTY(agentID, programDir, sessionID, shell string, ru
 		)
 	}
 
-	// If anything fails after we opened, close WinPTY to avoid leaking winpty-agent.exe
 	cleanup := true
 	defer func() {
 		if cleanup {

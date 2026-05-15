@@ -322,7 +322,7 @@ type CmdOptions struct {
 	Detached     bool
 	EnvVars      []string
 	Stream       bool
-	Nc           *nats.Conn // nats connection
+	Nc           *nats.Conn
 	CmdID        string
 }
 
@@ -901,26 +901,21 @@ func (a *Agent) applyPendingTerminalResize(sessionID string) {
 func (a *Agent) StartTerminalSession(sessionID, shell string, nc *nats.Conn) error {
 	a.Logger.Debugf("StartTerminalSession: session=%s shell=%s", sessionID, shell)
 
-	// Create shell command
 	cmd := exec.Command(shell)
-
 	env := os.Environ()
 	env = append(env, "TERM=xterm-256color") // need this or stuff like htop doesn't work
 	env = append(env, "COLORTERM=truecolor")
 	cmd.Env = env
 
-	// Start in $HOME if available
 	if home, err := os.UserHomeDir(); err == nil && home != "" {
 		cmd.Dir = home
 	}
 
-	// Create PTY
 	ptmx, err := pty.Start(cmd)
 	if err != nil {
 		return fmt.Errorf("failed to start PTY: %w", err)
 	}
 
-	// Single lock: check (prevent duplicate sessions) + insert
 	a.TerminalSessionsMu.Lock()
 	if _, exists := a.TerminalSessions[sessionID]; exists {
 		a.TerminalSessionsMu.Unlock()
@@ -938,22 +933,15 @@ func (a *Agent) StartTerminalSession(sessionID, shell string, nc *nats.Conn) err
 	}
 	a.TerminalSessionsMu.Unlock()
 
-	// Apply any resize that arrived before the session was fully registered.
 	a.applyPendingTerminalResize(sessionID)
-
 	a.Logger.Debugf("Registered terminal session %s", sessionID)
 
-	// Stream output
 	go a.StreamTerminalOutput(sessionID, ptmx, nc)
-
-	// Watch for exit
 	go func() {
 		waitErr := cmd.Wait()
 		a.Logger.Debugf("Terminal session %s exited: %v", sessionID, waitErr)
 
-		// cleanup
 		a.StopTerminalSession(sessionID)
-
 		exitCode := 0
 		if waitErr != nil {
 			if exitErr, ok := waitErr.(*exec.ExitError); ok {
@@ -970,12 +958,9 @@ func (a *Agent) StartTerminalSession(sessionID, shell string, nc *nats.Conn) err
 
 func (a *Agent) StreamTerminalOutput(sessionID string, ptmx *os.File, nc *nats.Conn) {
 	topic := a.AgentID + ".terminal." + sessionID
-
 	// Reuse msgpack handle (avoid allocating a new one per chunk)
 	var mh codec.MsgpackHandle
-
 	buf := make([]byte, 2048)
-
 	for {
 		n, err := ptmx.Read(buf)
 		if err != nil {
@@ -983,7 +968,6 @@ func (a *Agent) StreamTerminalOutput(sessionID string, ptmx *os.File, nc *nats.C
 			return
 		}
 
-		// Encode bytes using MsgPack
 		var resp []byte
 		enc := codec.NewEncoderBytes(&resp, &mh)
 		if err := enc.Encode(buf[:n]); err != nil {
@@ -991,7 +975,6 @@ func (a *Agent) StreamTerminalOutput(sessionID string, ptmx *os.File, nc *nats.C
 			return
 		}
 
-		// Stream to NATS
 		if err := nc.Publish(topic, resp); err != nil {
 			a.Logger.Debugf("nats publish failed for session %s: %v", sessionID, err)
 			return
@@ -1046,7 +1029,6 @@ func (a *Agent) FeedTerminalInput(sessionID string, input string) error {
 		return fmt.Errorf("PTY not initialized for session: %s", sessionID)
 	}
 
-	// Write input (UTF-8 bytes) directly to PTY
 	_, err := sess.Ptmx.Write([]byte(input))
 	return err
 }
@@ -1088,12 +1070,10 @@ func (a *Agent) KillTerminalSession(sessionID string) error {
 	a.TerminalSessionsMu.Lock()
 	sess, ok := a.TerminalSessions[sessionID]
 	if ok {
-		// Kill the process
 		if sess.Cmd != nil && sess.Cmd.Process != nil {
 			_ = sess.Cmd.Process.Kill()
 		}
 
-		// Close the PTY
 		if sess.Ptmx != nil {
 			_ = sess.Ptmx.Close()
 		}
@@ -1107,8 +1087,7 @@ func (a *Agent) KillTerminalSession(sessionID string) error {
 	a.TerminalSessionsMu.Unlock()
 
 	if !ok {
-		// session already cleaned up (duplicate kill)
-		a.Logger.Debugf("KillTerminalSession: session already gone: %s", sessionID)
+		a.Logger.Debugf("KillTerminalSession: session already cleaned up: %s", sessionID)
 		return nil
 	}
 
