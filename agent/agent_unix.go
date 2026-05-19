@@ -32,10 +32,11 @@ import (
 	"github.com/go-resty/resty/v2"
 	"github.com/jaypipes/ghw"
 	"github.com/kardianos/service"
+	nats "github.com/nats-io/nats.go"
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/disk"
 	psHost "github.com/shirou/gopsutil/v3/host"
-	nats "github.com/nats-io/nats.go"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	trmm "github.com/wh1te909/trmm-shared"
 	"golang.org/x/text/cases"
@@ -989,6 +990,26 @@ func RenameRegistryValue(path, oldName, newName string) (string, error) {
 
 func ModifyRegistryValue(path string, name string, valType string, data interface{}) (map[string]interface{}, error) {
 	return nil, errors.New("modifying registry values is only supported on Windows")
+}
+
+func StartTerminalSessionWindows(agentID string, programDir string, sessionID string, shell string, runAsUser bool, nc *nats.Conn, logger *logrus.Logger) error {
+	return errors.New("failed to start terminal session on windows")
+}
+
+func SendTerminalError(agentID, sessionID, message string, nc *nats.Conn) {
+	// no-op on non-windows builds
+}
+
+func ResizeTerminalSessionWindows(sessionID string, rows, cols int) error {
+	return errors.New("failed to resize terminal session on windows")
+}
+
+func KillTerminalSessionWindows(sessionID string) error {
+	return errors.New("failed to kill terminal session on windows")
+}
+
+func FeedTerminalInputWindows(sessionID string, input string) error {
+	return errors.New("failed to feed input terminal session on windows")
 }
 
 func CMD(exe string, args []string, timeout int, detached bool) (output [2]string, e error) {

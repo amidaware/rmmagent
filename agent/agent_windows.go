@@ -224,7 +224,7 @@ func (a *Agent) RunScript(code string, shell string, args []string, timeout int,
 	usingEnvVars := len(envVars) > 0
 	cmd := exec.Command(exe, cmdArgs...)
 	if runasuser {
-		token, err = wintoken.GetInteractiveToken(wintoken.TokenImpersonation)
+		token, err = getUserToken()
 		if err == nil {
 			defer token.Close()
 			cmd.SysProcAttr = &syscall.SysProcAttr{Token: syscall.Token(token.Token()), HideWindow: true}
@@ -374,7 +374,7 @@ func CMDShell(shell string, cmdArgs []string, command string, timeout int, detac
 	}
 
 	if runasuser {
-		token, err := wintoken.GetInteractiveToken(wintoken.TokenImpersonation)
+		token, err := getUserToken()
 		if err != nil {
 			return [2]string{"", CleanString(err.Error())}, err
 		}

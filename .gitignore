@@ -10,3 +10,6 @@
 *.bmp
 build/Output
 tacticalagent-v*
+
+# Allow WinPTY agent binary (runtime dependency)
+!agent/winpty_bins/**/winpty-agent.exe
