@@ -137,8 +137,10 @@ func New(logger *logrus.Logger, version string) *Agent {
 	if runtime.GOOS == "windows" {
 		major := info.OS.Major
 		minor := info.OS.Minor
-		if major > 6 || (major == 6 && minor >= 3) {
-			// Windows 8.1 or higher
+		if major >= 10 {
+			pyver = "3.14.5"
+		} else if major == 6 && minor >= 3 {
+			// Windows 8.1 or higher but less than 10
 			pyver = "3.11.9"
 		} else {
 			pyver = "3.8.7"
