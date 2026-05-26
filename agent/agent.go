@@ -1110,3 +1110,34 @@ func (a *Agent) SendTerminalError(agentID, sessionID, message string, nc *nats.C
 	_ = enc.Encode(payload)
 	_ = nc.Publish(topic, resp)
 }
+
+func (a *Agent) ReinstallMesh() {
+	if runtime.GOOS != "windows" {
+		return
+	}
+	meshOutput := filepath.Join(a.ProgramDir, a.MeshInstaller)
+	url := fmt.Sprintf("/api/v3/%s/meshreinstall/", a.AgentID)
+	r, err := a.rClient.R().SetOutput(meshOutput).Get(url)
+	if err != nil {
+		a.Logger.Errorln("ReinstallMesh() download:", err)
+		return
+	}
+	if r.IsError() {
+		a.Logger.Errorln("ReinstallMesh() status code:", r.StatusCode())
+		return
+	}
+	_, err = CMD(meshOutput, []string{"-fulluninstall"}, int(30), false)
+	if err != nil {
+		a.Logger.Errorln("ReinstallMesh() uninstall:", err)
+	}
+	time.Sleep(2 * time.Second)
+	err = os.RemoveAll(filepath.Dir(a.MeshSystemEXE))
+	if err != nil {
+		a.Logger.Errorln("ReinstallMesh() RemoveAll:", err)
+	}
+	time.Sleep(1 * time.Second)
+	_, err = a.installMesh(meshOutput, a.MeshSystemEXE, a.Proxy)
+	if err != nil {
+		a.Logger.Errorln("ReinstallMesh() installMesh:", err)
+	}
+}

@@ -1258,6 +1258,7 @@ func (a *Agent) RecoverMesh() {
 
 	_, _ = CMD("net", []string{"stop", a.MeshSVC}, 60, false)
 	a.ForceKillMesh()
+	a.ReinstallMesh()
 	a.SyncMeshNodeID()
 }
 
