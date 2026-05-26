@@ -111,6 +111,8 @@ func (a *Agent) AgentSvc(nc *nats.Conn) {
 	checkInSWTicker := time.NewTicker(time.Duration(conf.SW) * time.Second)
 	checkInWMITicker := time.NewTicker(time.Duration(conf.WMI) * time.Second)
 	syncMeshTicker := time.NewTicker(time.Duration(conf.SyncMesh) * time.Second)
+	extraTicker := a.extraTicker()
+	extraC := tickerChan(extraTicker)
 
 	for {
 		select {
@@ -130,8 +132,17 @@ func (a *Agent) AgentSvc(nc *nats.Conn) {
 			a.NatsMessage(nc, "agent-wmi")
 		case <-syncMeshTicker.C:
 			a.SyncMeshNodeID()
+		case <-extraC:
+			a.runExtra()
 		}
 	}
+}
+
+func tickerChan(t *time.Ticker) <-chan time.Time {
+	if t == nil {
+		return nil
+	}
+	return t.C
 }
 
 func (a *Agent) AgentStartup() {
