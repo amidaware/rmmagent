@@ -908,11 +908,13 @@ Out:
 }
 
 func (a *Agent) GetPython(force bool) {
-	if trmm.FileExists(a.PyBin) && !force {
+	exists := trmm.FileExists(a.PyBin)
+
+	if exists && !force {
 		return
 	}
 
-	if force {
+	if !exists || force {
 		os.RemoveAll(a.PyBaseDir)
 	}
 
