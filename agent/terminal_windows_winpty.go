@@ -37,7 +37,7 @@ func startTerminalSessionWinPTY(agentID, programDir, sessionID, shell string, ru
 		SendTerminalInfo(
 			agentID,
 			sessionID,
-			"Run as user is not supported on legacy Windows terminals. Continuing with SYSTEM.",
+			"This EOL Windows version does not support remote terminal 'Run as user'. Continuing as SYSTEM.",
 			nc,
 		)
 	}
