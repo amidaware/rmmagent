@@ -60,6 +60,11 @@ func (a *Agent) AgentSvc(nc *nats.Conn) {
 		}
 	}
 
+	// for right after install
+	if runtime.GOOS != "windows" {
+		go a.SyncMeshNodeID(true)
+	}
+
 	sleepDelay := randRange(7, 25)
 	a.Logger.Debugf("AgentSvc() sleeping for %v seconds", sleepDelay)
 	time.Sleep(time.Duration(sleepDelay) * time.Second)
@@ -91,7 +96,7 @@ func (a *Agent) AgentSvc(nc *nats.Conn) {
 		go a.InstallDeno(false)
 	}
 
-	go a.SyncMeshNodeID()
+	go a.SyncMeshNodeID(true)
 
 	time.Sleep(time.Duration(randRange(1, 3)) * time.Second)
 	if runtime.GOOS == "windows" && !conf.LimitData {
@@ -131,7 +136,7 @@ func (a *Agent) AgentSvc(nc *nats.Conn) {
 		case <-checkInWMITicker.C:
 			a.NatsMessage(nc, "agent-wmi")
 		case <-syncMeshTicker.C:
-			a.SyncMeshNodeID()
+			a.SyncMeshNodeID(false)
 		case <-extraC:
 			a.runExtra()
 		}

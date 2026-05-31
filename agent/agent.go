@@ -531,7 +531,7 @@ func (a *Agent) ForceKillMesh() {
 	}
 }
 
-func (a *Agent) SyncMeshNodeID() {
+func (a *Agent) SyncMeshNodeID(runSyncTask bool) {
 
 	id, err := a.getMeshNodeID()
 	if err != nil {
@@ -543,6 +543,10 @@ func (a *Agent) SyncMeshNodeID() {
 		Func:    "syncmesh",
 		Agentid: a.AgentID,
 		NodeID:  StripAll(id),
+	}
+
+	if runSyncTask {
+		payload.RunSyncTask = true
 	}
 
 	_, err = a.rClient.R().SetBody(payload).Post("/api/v3/syncmesh/")

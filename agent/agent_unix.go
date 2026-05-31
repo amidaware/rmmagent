@@ -440,7 +440,7 @@ func (a *Agent) RecoverMesh() {
 		opts.Command = def
 	}
 	a.CmdV2(opts)
-	a.SyncMeshNodeID()
+	a.SyncMeshNodeID(true)
 }
 
 func (a *Agent) GetWMIInfo() map[string]interface{} {
