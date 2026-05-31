@@ -551,18 +551,6 @@ func sendTerminalDoneWindows(agentID, sessionID string, exitCode int, nc *nats.C
 	_ = nc.Publish(topic, resp)
 }
 
-type jobObjectBasicLimitInfo struct {
-	PerProcessUserTimeLimit int64
-	PerJobUserTimeLimit     int64
-	LimitFlags              uint32
-	MinimumWorkingSetSize   uintptr
-	MaximumWorkingSetSize   uintptr
-	ActiveProcessLimit      uint32
-	Affinity                uintptr
-	PriorityClass           uint32
-	SchedulingClass         uint32
-}
-
 type ioCounters struct {
 	ReadOperationCount  uint64
 	WriteOperationCount uint64

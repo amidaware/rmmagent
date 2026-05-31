@@ -1,0 +1,35 @@
+//go:build windows && (386 || arm)
+
+/*
+Copyright 2026 AmidaWare Inc.
+
+Licensed under the Tactical RMM License Version 1.0 (the “License”).
+You may only use the Licensed Software in accordance with the License.
+A copy of the License is available at:
+
+https://license.tacticalrmm.com
+
+*/
+
+package agent
+
+import "unsafe"
+
+// need the blank [4]byte at end cuz windows wants struct to be exact size, so we pad it back out
+// only needed on 32bit, works fine on 64bit
+// prevents the confusing "command length is incorrect" error
+// compile time size check at bottom in case we change later
+type jobObjectBasicLimitInfo struct {
+	PerProcessUserTimeLimit int64
+	PerJobUserTimeLimit     int64
+	LimitFlags              uint32
+	MinimumWorkingSetSize   uintptr
+	MaximumWorkingSetSize   uintptr
+	ActiveProcessLimit      uint32
+	Affinity                uintptr
+	PriorityClass           uint32
+	SchedulingClass         uint32
+	_                       [4]byte
+}
+
+var _ = [1]struct{}{}[unsafe.Sizeof(jobObjectBasicLimitInfo{})-48]
