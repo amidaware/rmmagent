@@ -25,7 +25,7 @@ import (
 )
 
 var (
-	version = "2.10.0"
+	version = "2.11.0"
 	log     = logrus.New()
 	logFile *os.File
 )
@@ -132,7 +132,7 @@ func main() {
 		if len(os.Args) < 5 || *taskPK == 0 {
 			return
 		}
-		a.RunTask(*taskPK)
+		a.RunTask(*taskPK, true)
 	case "install":
 		if runtime.GOOS != "windows" {
 			u, err := user.Current()
