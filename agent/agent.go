@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"math/rand"
 	"net"
 	"net/url"
 	"os"
@@ -723,7 +724,11 @@ func createWinTempDir() error {
 	return nil
 }
 
-func (a *Agent) RunTask(id int) error {
+func (a *Agent) RunTask(id int, jitter bool) error {
+	if jitter {
+		time.Sleep(time.Duration(rand.Int63n(int64(10 * time.Second))))
+	}
+
 	data := rmm.AutomatedTask{}
 	url := fmt.Sprintf("/api/v3/%d/%s/taskrunner/", id, a.AgentID)
 	r1, gerr := a.rClient.R().Get(url)

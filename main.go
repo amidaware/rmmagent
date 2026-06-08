@@ -132,7 +132,7 @@ func main() {
 		if len(os.Args) < 5 || *taskPK == 0 {
 			return
 		}
-		a.RunTask(*taskPK)
+		a.RunTask(*taskPK, true)
 	case "install":
 		if runtime.GOOS != "windows" {
 			u, err := user.Current()
