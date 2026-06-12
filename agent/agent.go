@@ -726,7 +726,9 @@ func createWinTempDir() error {
 
 func (a *Agent) RunTask(id int, jitter bool) error {
 	if jitter {
-		time.Sleep(time.Duration(rand.Int63n(int64(10 * time.Second))))
+		delay := time.Duration(rand.Int63n(int64(15 * time.Second)))
+		a.Logger.Debugf("Applying startup jitter before task id %d: sleeping for %s seconds", id, delay)
+		time.Sleep(delay)
 	}
 
 	data := rmm.AutomatedTask{}
