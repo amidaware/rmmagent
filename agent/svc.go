@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"runtime"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	nats "github.com/nats-io/nats.go"
@@ -60,6 +61,11 @@ func (a *Agent) AgentSvc(nc *nats.Conn) {
 		}
 	}
 
+	// for right after install
+	if runtime.GOOS != "windows" {
+		go a.SyncMeshNodeID(true)
+	}
+
 	sleepDelay := randRange(7, 25)
 	a.Logger.Debugf("AgentSvc() sleeping for %v seconds", sleepDelay)
 	time.Sleep(time.Duration(sleepDelay) * time.Second)
@@ -91,7 +97,7 @@ func (a *Agent) AgentSvc(nc *nats.Conn) {
 		go a.InstallDeno(false)
 	}
 
-	go a.SyncMeshNodeID()
+	go a.SyncMeshNodeID(true)
 
 	time.Sleep(time.Duration(randRange(1, 3)) * time.Second)
 	if runtime.GOOS == "windows" && !conf.LimitData {
@@ -111,6 +117,10 @@ func (a *Agent) AgentSvc(nc *nats.Conn) {
 	checkInSWTicker := time.NewTicker(time.Duration(conf.SW) * time.Second)
 	checkInWMITicker := time.NewTicker(time.Duration(conf.WMI) * time.Second)
 	syncMeshTicker := time.NewTicker(time.Duration(conf.SyncMesh) * time.Second)
+	extraTicker := a.extraTicker()
+	extraC := tickerChan(extraTicker)
+
+	var syncMeshRunning atomic.Bool
 
 	for {
 		select {
@@ -129,9 +139,25 @@ func (a *Agent) AgentSvc(nc *nats.Conn) {
 		case <-checkInWMITicker.C:
 			a.NatsMessage(nc, "agent-wmi")
 		case <-syncMeshTicker.C:
-			a.SyncMeshNodeID()
+			if syncMeshRunning.CompareAndSwap(false, true) {
+				go func() {
+					defer syncMeshRunning.Store(false)
+					a.SyncMeshNodeID(false)
+				}()
+			} else {
+				a.Logger.Debugln("syncMeshTicker SyncMeshNodeID already running, skipping tick")
+			}
+		case <-extraC:
+			a.runExtra()
 		}
 	}
+}
+
+func tickerChan(t *time.Ticker) <-chan time.Time {
+	if t == nil {
+		return nil
+	}
+	return t.C
 }
 
 func (a *Agent) AgentStartup() {

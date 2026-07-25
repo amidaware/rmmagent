@@ -32,6 +32,7 @@ var (
 	procReadEventLogW           = modadvapi32.NewProc("ReadEventLogW")
 	procCreateEnvironmentBlock  = userenv.NewProc("CreateEnvironmentBlock")
 	procDestroyEnvironmentBlock = userenv.NewProc("DestroyEnvironmentBlock")
+	procCreateProcessAsUserW    = modadvapi32.NewProc("CreateProcessAsUserW")
 )
 
 // https://docs.microsoft.com/en-us/windows/win32/api/winnt/ns-winnt-eventlogrecord

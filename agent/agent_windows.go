@@ -224,7 +224,7 @@ func (a *Agent) RunScript(code string, shell string, args []string, timeout int,
 	usingEnvVars := len(envVars) > 0
 	cmd := exec.Command(exe, cmdArgs...)
 	if runasuser {
-		token, err = wintoken.GetInteractiveToken(wintoken.TokenImpersonation)
+		token, err = getUserToken()
 		if err == nil {
 			defer token.Close()
 			cmd.SysProcAttr = &syscall.SysProcAttr{Token: syscall.Token(token.Token()), HideWindow: true}
@@ -374,7 +374,7 @@ func CMDShell(shell string, cmdArgs []string, command string, timeout int, detac
 	}
 
 	if runasuser {
-		token, err := wintoken.GetInteractiveToken(wintoken.TokenImpersonation)
+		token, err := getUserToken()
 		if err != nil {
 			return [2]string{"", CleanString(err.Error())}, err
 		}
@@ -908,11 +908,13 @@ Out:
 }
 
 func (a *Agent) GetPython(force bool) {
-	if trmm.FileExists(a.PyBin) && !force {
+	exists := trmm.FileExists(a.PyBin)
+
+	if exists && !force {
 		return
 	}
 
-	if force {
+	if !exists || force {
 		os.RemoveAll(a.PyBaseDir)
 	}
 
@@ -1256,7 +1258,8 @@ func (a *Agent) RecoverMesh() {
 
 	_, _ = CMD("net", []string{"stop", a.MeshSVC}, 60, false)
 	a.ForceKillMesh()
-	a.SyncMeshNodeID()
+	a.ReinstallMesh()
+	a.SyncMeshNodeID(true)
 }
 
 func (a *Agent) getMeshNodeID() (string, error) {

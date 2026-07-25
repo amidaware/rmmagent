@@ -32,10 +32,11 @@ import (
 	"github.com/go-resty/resty/v2"
 	"github.com/jaypipes/ghw"
 	"github.com/kardianos/service"
+	nats "github.com/nats-io/nats.go"
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/disk"
 	psHost "github.com/shirou/gopsutil/v3/host"
-	nats "github.com/nats-io/nats.go"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	trmm "github.com/wh1te909/trmm-shared"
 	"golang.org/x/text/cases"
@@ -393,7 +394,6 @@ func (a *Agent) AgentUninstall(code string) {
 
 func (a *Agent) NixMeshNodeID() string {
 	var meshNodeID string
-	meshSuccess := false
 	a.Logger.Debugln("Getting mesh node id")
 
 	if !trmm.FileExists(a.MeshSystemEXE) {
@@ -406,21 +406,27 @@ func (a *Agent) NixMeshNodeID() string {
 	opts.Shell = a.MeshSystemEXE
 	opts.Command = "-nodeid"
 
-	for !meshSuccess {
+	const maxAttempts = 10
+
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
 		out := a.CmdV2(opts)
 		meshNodeID = out.Stdout
-		a.Logger.Debugln("Stdout:", out.Stdout)
-		a.Logger.Debugln("Stderr:", out.Stderr)
-		if meshNodeID == "" {
-			time.Sleep(1 * time.Second)
-			continue
-		} else if strings.Contains(strings.ToLower(meshNodeID), "graphical version") || strings.Contains(strings.ToLower(meshNodeID), "zenity") {
-			time.Sleep(1 * time.Second)
-			continue
+		a.Logger.Debugln("NixMeshNodeID() Stdout:", out.Stdout)
+		a.Logger.Debugln("NixMeshNodeID() Stderr:", out.Stderr)
+
+		notReady := meshNodeID == "" || strings.Contains(strings.ToLower(meshNodeID), "graphical version") || strings.Contains(strings.ToLower(meshNodeID), "zenity")
+
+		if !notReady {
+			return meshNodeID
 		}
-		meshSuccess = true
+
+		a.Logger.Debugf("Meshnodeid not ready, attempt %d/%d", attempt, maxAttempts)
+		if attempt < maxAttempts {
+			time.Sleep(1 * time.Second)
+		}
 	}
-	return meshNodeID
+	a.Logger.Debugln("Failed to get meshnodeid after max attempts")
+	return "error getting meshnodeid"
 }
 
 func (a *Agent) getMeshNodeID() (string, error) {
@@ -440,7 +446,7 @@ func (a *Agent) RecoverMesh() {
 		opts.Command = def
 	}
 	a.CmdV2(opts)
-	a.SyncMeshNodeID()
+	a.SyncMeshNodeID(true)
 }
 
 func (a *Agent) GetWMIInfo() map[string]interface{} {
@@ -990,6 +996,26 @@ func RenameRegistryValue(path, oldName, newName string) (string, error) {
 
 func ModifyRegistryValue(path string, name string, valType string, data interface{}) (map[string]interface{}, error) {
 	return nil, errors.New("modifying registry values is only supported on Windows")
+}
+
+func StartTerminalSessionWindows(agentID string, programDir string, sessionID string, shell string, runAsUser bool, nc *nats.Conn, logger *logrus.Logger) error {
+	return errors.New("failed to start terminal session on windows")
+}
+
+func SendTerminalError(agentID, sessionID, message string, nc *nats.Conn) {
+	// no-op on non-windows builds
+}
+
+func ResizeTerminalSessionWindows(sessionID string, rows, cols int) error {
+	return errors.New("failed to resize terminal session on windows")
+}
+
+func KillTerminalSessionWindows(sessionID string) error {
+	return errors.New("failed to kill terminal session on windows")
+}
+
+func FeedTerminalInputWindows(sessionID string, input string) error {
+	return errors.New("failed to feed input terminal session on windows")
 }
 
 func CMD(exe string, args []string, timeout int, detached bool) (output [2]string, e error) {
