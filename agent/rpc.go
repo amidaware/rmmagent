@@ -916,7 +916,11 @@ func (a *Agent) RunRPC() {
 			}(payload)
 		}
 	})
-	nc.Flush()
+
+	if err := nc.Flush(); err != nil {
+		a.Logger.Errorf("nats: subscribing to %s failed: %v (status %s)",
+			a.NatsServer, err, nc.Status())
+	}
 
 	if err := nc.LastError(); err != nil {
 		a.Logger.Errorln(err)

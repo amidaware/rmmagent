@@ -72,7 +72,10 @@ func (a *Agent) NatsMessage(nc *nats.Conn, mode string) {
 
 	a.Logger.Debugln(mode, payload)
 	ret.Encode(payload)
-	nc.PublishRequest(a.AgentID, mode, resp)
+
+	if err := nc.PublishRequest(a.AgentID, mode, resp); err != nil {
+		a.Logger.Errorf("nats publish %s failed: %v (status %s)", mode, err, nc.Status())
+	}
 }
 
 func (a *Agent) DoNatsCheckIn() {
@@ -83,9 +86,19 @@ func (a *Agent) DoNatsCheckIn() {
 		return
 	}
 
+	if !nc.IsConnected() {
+		a.Logger.Errorf("nats: not connected to %s (status %s), checkin data will be dropped",
+			a.NatsServer, nc.Status())
+	}
+
 	for _, s := range natsCheckin {
 		time.Sleep(time.Duration(randRange(100, 400)) * time.Millisecond)
 		a.NatsMessage(nc, s)
+	}
+
+	if err := nc.FlushTimeout(5 * time.Second); err != nil {
+		a.Logger.Errorf("nats: flushing checkin to %s failed, data was not delivered: %v",
+			a.NatsServer, err)
 	}
 	nc.Close()
 }

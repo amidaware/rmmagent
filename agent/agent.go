@@ -597,8 +597,15 @@ func (a *Agent) setupNatsOptions() []nats.Option {
 		}
 	}
 
+	opts = append(opts, nats.ConnectHandler(func(nc *nats.Conn) {
+		a.Logger.Debugln("NATS connected to", nc.ConnectedUrl())
+	}))
 	opts = append(opts, nats.DisconnectErrHandler(func(nc *nats.Conn, err error) {
-		a.Logger.Debugln("NATS disconnected:", err)
+		if err != nil {
+			a.Logger.Errorf("NATS disconnected from %s: %v", a.NatsServer, err)
+		} else {
+			a.Logger.Debugln("NATS disconnected")
+		}
 		a.Logger.Debugf("%+v\n", nc.Statistics)
 	}))
 	opts = append(opts, nats.ReconnectHandler(func(nc *nats.Conn) {
