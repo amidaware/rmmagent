@@ -56,7 +56,12 @@ func main() {
 	proxy := flag.String("proxy", "", "Use a http proxy")
 	insecure := flag.Bool("insecure", false, "Insecure for testing only")
 	natsport := flag.String("natsport", "", "nats standard port")
+	installPrefix := flag.String("install-prefix", os.Getenv("INSTALL_PREFIX"), "Unix install path prefix. Defaults to $INSTALL_PREFIX")
 	flag.Parse()
+
+	if *installPrefix != "" {
+		agent.SetInstallPrefix(*installPrefix)
+	}
 
 	if *ver {
 		agent.ShowVersionInfo(version)
