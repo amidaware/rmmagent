@@ -12,7 +12,6 @@ https://license.tacticalrmm.com
 package agent
 
 import (
-	"crypto/tls"
 	"fmt"
 	"io"
 	"net/url"
@@ -51,6 +50,8 @@ type Installer struct {
 	Insecure         bool
 	NatsStandardPort string
 	TmpDir           string
+	ClientCert       string
+	ClientKey        string
 }
 
 func (a *Agent) Install(i *Installer) {
@@ -89,6 +90,21 @@ func (a *Agent) Install(i *Installer) {
 	baseURL := u.Scheme + "://" + u.Host
 	a.Logger.Debugln("Base URL:", baseURL)
 
+	// the mTLS client cert is needed for the very first request, so it has to
+	// be validated before anything is sent to the rmm
+	if len(i.ClientCert) > 0 || len(i.ClientKey) > 0 {
+		if len(i.ClientCert) == 0 || len(i.ClientKey) == 0 {
+			a.installerMsg("Both -client-cert and -client-key are required for mTLS", "error", i.Silent)
+		}
+		for _, f := range []string{i.ClientCert, i.ClientKey} {
+			if !trmm.FileExists(f) {
+				a.installerMsg(fmt.Sprintf("%s does not exist", f), "error", i.Silent)
+			}
+		}
+	}
+
+	tlsConf := buildTLSConfig(i.ClientCert, i.ClientKey, i.Insecure, a.Logger)
+
 	iClient := resty.New()
 	iClient.SetCloseConnection(true)
 	iClient.SetTimeout(15 * time.Second)
@@ -101,12 +117,8 @@ func (a *Agent) Install(i *Installer) {
 		iClient.SetProxy(i.Proxy)
 	}
 
-	insecureConf := &tls.Config{
-		InsecureSkipVerify: true,
-	}
-
-	if i.Insecure {
-		iClient.SetTLSClientConfig(insecureConf)
+	if tlsConf != nil {
+		iClient.SetTLSClientConfig(tlsConf)
 	}
 
 	creds, cerr := iClient.R().Get(fmt.Sprintf("%s/api/v3/installer/", baseURL))
@@ -133,6 +145,11 @@ func (a *Agent) Install(i *Installer) {
 	// set rest knox headers
 	rClient.SetHeaders(i.Headers)
 
+	// must be set before SetRootCertificate, it replaces the whole tls config
+	if tlsConf != nil {
+		rClient.SetTLSClientConfig(tlsConf)
+	}
+
 	// set local cert if applicable
 	if len(i.Cert) > 0 {
 		if !trmm.FileExists(i.Cert) {
@@ -143,10 +160,6 @@ func (a *Agent) Install(i *Installer) {
 
 	if len(i.Proxy) > 0 {
 		rClient.SetProxy(i.Proxy)
-	}
-
-	if i.Insecure {
-		rClient.SetTLSClientConfig(insecureConf)
 	}
 
 	var installerMeshSystemEXE string
@@ -246,7 +259,7 @@ func (a *Agent) Install(i *Installer) {
 	a.Logger.Debugln("Agent token:", agentToken)
 	a.Logger.Debugln("Agent PK:", agentPK)
 
-	createAgentConfig(baseURL, a.AgentID, i.SaltMaster, agentToken, strconv.Itoa(agentPK), i.Cert, i.Proxy, i.MeshDir, i.NatsStandardPort, i.Insecure, i.TmpDir)
+	createAgentConfig(baseURL, a.AgentID, i.SaltMaster, agentToken, strconv.Itoa(agentPK), i.Cert, i.ClientCert, i.ClientKey, i.Proxy, i.MeshDir, i.NatsStandardPort, i.Insecure, i.TmpDir)
 	time.Sleep(1 * time.Second)
 	// refresh our agent with new values
 	a = New(a.Logger, a.Version)

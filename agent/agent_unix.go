@@ -16,7 +16,6 @@ package agent
 
 import (
 	"bufio"
-	"crypto/tls"
 	"errors"
 	"fmt"
 	"os"
@@ -160,6 +159,8 @@ func NewAgentConfig() *rmm.AgentConfig {
 		AgentPK:          agentpk,
 		PK:               pk,
 		Cert:             viper.GetString("cert"),
+		ClientCert:       viper.GetString("clientcert"),
+		ClientKey:        viper.GetString("clientkey"),
 		Proxy:            viper.GetString("proxy"),
 		CustomMeshDir:    viper.GetString("meshdir"),
 		NatsProxyPath:    viper.GetString("natsproxypath"),
@@ -321,11 +322,8 @@ func (a *Agent) AgentUpdate(url, inno, version string) error {
 	if len(a.Proxy) > 0 {
 		rClient.SetProxy(a.Proxy)
 	}
-	if a.Insecure {
-		insecureConf := &tls.Config{
-			InsecureSkipVerify: true,
-		}
-		rClient.SetTLSClientConfig(insecureConf)
+	if tlsConf := a.clientTLSConfig(); tlsConf != nil {
+		rClient.SetTLSClientConfig(tlsConf)
 	}
 
 	r, err := rClient.R().SetOutput(f.Name()).Get(url)
@@ -722,6 +720,9 @@ func (a *Agent) InstallNushell(force bool) {
 	if len(a.Proxy) > 0 {
 		rClient.SetProxy(a.Proxy)
 	}
+	if tlsConf := a.clientTLSConfig(); tlsConf != nil {
+		rClient.SetTLSClientConfig(tlsConf)
+	}
 
 	r, err := rClient.R().SetOutput(tmpAssetName).Get(url)
 	if err != nil {
@@ -858,6 +859,9 @@ func (a *Agent) InstallDeno(force bool) {
 	rClient.SetRetryMaxWaitTime(15 * time.Minute)
 	if len(a.Proxy) > 0 {
 		rClient.SetProxy(a.Proxy)
+	}
+	if tlsConf := a.clientTLSConfig(); tlsConf != nil {
+		rClient.SetTLSClientConfig(tlsConf)
 	}
 
 	r, err := rClient.R().SetOutput(tmpAssetName).Get(url)
