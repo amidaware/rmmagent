@@ -1,3 +1,14 @@
+/*
+Copyright 2026 Amidaware Inc.
+
+Licensed under the Tactical RMM License Version 1.0 (the “License”).
+You may only use the Licensed Software in accordance with the License.
+A copy of the License is available at:
+
+https://license.tacticalrmm.com
+
+*/
+
 package agent
 
 import (
@@ -844,4 +855,5 @@ func (a *Agent) SweepOrphanedArchives() {
 		a.Logger.Debugf("file_transfer startup: removed %d orphaned archive temp file(s)", removed)
 	}
 	a.sweepOrphanedUploadPartials(time.Now())
+	a.sweepOrphanedExtractPartials()
 }

@@ -1254,6 +1254,38 @@ func (a *Agent) RunRPC() {
 				}
 				msg.Respond(resp)
 			}(payload)
+
+		case "files_extract_prepare":
+			go func(p *NatsMsg) {
+				defer a.recoverFilesRPC("files_extract_prepare", msg)
+				var resp []byte
+				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
+
+				result, err := a.PrepareFilesExtract(p)
+				if err != nil {
+					a.Logger.Debugln("files_extract_prepare:", err)
+					_ = ret.Encode(map[string]interface{}{"error": err.Error()})
+				} else {
+					_ = ret.Encode(result)
+				}
+				msg.Respond(resp)
+			}(payload)
+
+		case "files_extract_cancel":
+			go func(p *NatsMsg) {
+				defer a.recoverFilesRPC("files_extract_cancel", msg)
+				var resp []byte
+				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
+
+				result, err := a.CancelFilesExtract(p)
+				if err != nil {
+					a.Logger.Debugln("files_extract_cancel:", err)
+					_ = ret.Encode(map[string]interface{}{"error": err.Error()})
+				} else {
+					_ = ret.Encode(result)
+				}
+				msg.Respond(resp)
+			}(payload)
 		}
 	})
 
