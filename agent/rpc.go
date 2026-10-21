@@ -865,27 +865,11 @@ func (a *Agent) RunRPC() {
 			}(payload)
 
 		case "terminal_input":
-			go func(p *NatsMsg) {
-				sessionID := p.Data["session_id"]
-				if sessionID == "" {
-					a.Logger.Errorln("terminal_input: missing session_id")
-					return
-				}
-				data := p.Data["data"]
-				if data == "" {
-					return
-				}
-				switch runtime.GOOS {
-				case "windows":
-					if err := FeedTerminalInputWindows(sessionID, data); err != nil {
-						a.Logger.Errorln("terminal_input: FeedTerminalInputWindows:", err)
-					}
-				default:
-					if err := a.FeedTerminalInput(sessionID, data); err != nil {
-						a.Logger.Errorln("terminal_input: FeedTerminalInput:", err)
-					}
-				}
-			}(payload)
+			if sessionID := payload.Data["session_id"]; sessionID == "" {
+				a.Logger.Errorln("terminal_input: missing session_id")
+			} else if data := payload.Data["data"]; data != "" {
+				QueueTerminalInput(a, sessionID, data)
+			}
 
 		case "terminal_resize":
 			go func(p *NatsMsg) {
