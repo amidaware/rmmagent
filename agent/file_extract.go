@@ -180,6 +180,11 @@ func extractEntryModTime(f *zip.File) time.Time {
 		if id == 0x5455 || id == 0x000a {
 			return mod
 		}
+		// Info-ZIP Unix fields (macOS ditto/Finder writes 0x5855) also carry
+		// the real time, which archive/zip uses.
+		if (id == 0x5855 || id == 0x000d) && size >= 8 {
+			return mod
+		}
 		if 4+size > len(extra) {
 			break
 		}
