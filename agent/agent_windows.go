@@ -15,7 +15,6 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
@@ -64,6 +63,8 @@ func NewAgentConfig() *rmm.AgentConfig {
 	agentpk, _, _ := k.GetStringValue("AgentPK")
 	pk, _ := strconv.Atoi(agentpk)
 	cert, _, _ := k.GetStringValue("Cert")
+	clientCert, _, _ := k.GetStringValue("ClientCert")
+	clientKey, _, _ := k.GetStringValue("ClientKey")
 	proxy, _, _ := k.GetStringValue("Proxy")
 	customMeshDir, _, _ := k.GetStringValue("MeshDir")
 	winTmpDir, _, _ := k.GetStringValue("WinTmpDir")
@@ -83,6 +84,8 @@ func NewAgentConfig() *rmm.AgentConfig {
 		AgentPK:            agentpk,
 		PK:                 pk,
 		Cert:               cert,
+		ClientCert:         clientCert,
+		ClientKey:          clientKey,
 		Proxy:              proxy,
 		CustomMeshDir:      customMeshDir,
 		WinTmpDir:          winTmpDir,
@@ -745,11 +748,8 @@ func (a *Agent) AgentUpdate(url, inno, version string) error {
 	if len(a.Proxy) > 0 {
 		rClient.SetProxy(a.Proxy)
 	}
-	if a.Insecure {
-		insecureConf := &tls.Config{
-			InsecureSkipVerify: true,
-		}
-		rClient.SetTLSClientConfig(insecureConf)
+	if tlsConf := a.clientTLSConfig(); tlsConf != nil {
+		rClient.SetTLSClientConfig(tlsConf)
 	}
 	r, err := rClient.R().SetOutput(updater).Get(url)
 	if err != nil {
@@ -1092,6 +1092,9 @@ func (a *Agent) InstallNushell(force bool) {
 	if len(a.Proxy) > 0 {
 		rClient.SetProxy(a.Proxy)
 	}
+	if tlsConf := a.clientTLSConfig(); tlsConf != nil {
+		rClient.SetTLSClientConfig(tlsConf)
+	}
 
 	r, err := rClient.R().SetOutput(tmpAssetName).Get(url)
 	if err != nil {
@@ -1216,6 +1219,9 @@ func (a *Agent) InstallDeno(force bool) {
 	rClient.SetRetryMaxWaitTime(15 * time.Minute)
 	if len(a.Proxy) > 0 {
 		rClient.SetProxy(a.Proxy)
+	}
+	if tlsConf := a.clientTLSConfig(); tlsConf != nil {
+		rClient.SetTLSClientConfig(tlsConf)
 	}
 
 	r, err := rClient.R().SetOutput(tmpAssetName).Get(url)

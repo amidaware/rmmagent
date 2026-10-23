@@ -52,6 +52,8 @@ func main() {
 	tmpDir := flag.String("tmpdir", "", "Path to custom temp dir")
 	meshNodeID := flag.String("meshnodeid", "", "Mesh Node ID")
 	cert := flag.String("cert", "", "Path to domain CA .pem")
+	clientCert := flag.String("client-cert", "", "Path to mTLS client certificate .pem")
+	clientKey := flag.String("client-key", "", "Path to mTLS client key .pem")
 	silent := flag.Bool("silent", false, "Do not popup any message boxes during installation")
 	proxy := flag.String("proxy", "", "Use a http proxy")
 	insecure := flag.Bool("insecure", false, "Insecure for testing only")
@@ -159,6 +161,8 @@ func main() {
 			Token:            *token,
 			LocalMesh:        *localMesh,
 			Cert:             *cert,
+			ClientCert:       *clientCert,
+			ClientKey:        *clientKey,
 			Proxy:            *proxy,
 			Timeout:          *timeout,
 			Silent:           *silent,

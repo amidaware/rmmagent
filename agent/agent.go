@@ -14,7 +14,6 @@ package agent
 import (
 	"bytes"
 	"context"
-	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -56,6 +55,8 @@ type Agent struct {
 	Token                  string
 	AgentPK                int
 	Cert                   string
+	ClientCert             string
+	ClientKey              string
 	ProgramDir             string
 	EXE                    string
 	SystemDrive            string
@@ -185,11 +186,8 @@ func New(logger *logrus.Logger, version string) *Agent {
 	restyC.SetHeaders(headers)
 	restyC.SetTimeout(15 * time.Second)
 	restyC.SetDebug(logger.IsLevelEnabled(logrus.DebugLevel))
-	if insecure {
-		insecureConf := &tls.Config{
-			InsecureSkipVerify: true,
-		}
-		restyC.SetTLSClientConfig(insecureConf)
+	if tlsConf := buildTLSConfig(ac.ClientCert, ac.ClientKey, insecure, logger); tlsConf != nil {
+		restyC.SetTLSClientConfig(tlsConf)
 	}
 
 	if len(ac.Proxy) > 0 {
@@ -273,6 +271,8 @@ func New(logger *logrus.Logger, version string) *Agent {
 		Token:                  ac.Token,
 		AgentPK:                ac.PK,
 		Cert:                   ac.Cert,
+		ClientCert:             ac.ClientCert,
+		ClientKey:              ac.ClientKey,
 		ProgramDir:             pd,
 		EXE:                    exe,
 		SystemDrive:            sd,
@@ -616,11 +616,8 @@ func (a *Agent) setupNatsOptions() []nats.Option {
 		a.Logger.Errorln("NATS error:", err)
 		a.Logger.Errorf("%+v\n", sub)
 	}))
-	if a.Insecure {
-		insecureConf := &tls.Config{
-			InsecureSkipVerify: true,
-		}
-		opts = append(opts, nats.Secure(insecureConf))
+	if tlsConf := a.clientTLSConfig(); tlsConf != nil {
+		opts = append(opts, nats.Secure(tlsConf))
 	}
 	return opts
 }

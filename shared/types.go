@@ -40,6 +40,8 @@ type AgentConfig struct {
 	AgentPK            string
 	PK                 int
 	Cert               string
+	ClientCert         string
+	ClientKey          string
 	Proxy              string
 	CustomMeshDir      string
 	WinTmpDir          string
