@@ -141,6 +141,7 @@ func (a *Agent) osString() string {
 func NewAgentConfig() *rmm.AgentConfig {
 	viper.SetConfigName("tacticalagent")
 	viper.SetConfigType("json")
+	viper.AddConfigPath(filepath.Dir(etcConfig))
 	viper.AddConfigPath("/etc/")
 	viper.AddConfigPath(".")
 	err := viper.ReadInConfig()
