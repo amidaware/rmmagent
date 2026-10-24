@@ -124,6 +124,7 @@ func (a *Agent) AgentSvc(nc *nats.Conn) {
 	// Reclaim temp archive zip's orphaned by a previous run (crash mid-build/transfer).
 	go a.SweepOrphanedArchives()
 	var syncMeshRunning atomic.Bool
+	var fileTransferReaperRunning atomic.Bool
 
 	for {
 		select {
@@ -151,7 +152,14 @@ func (a *Agent) AgentSvc(nc *nats.Conn) {
 				a.Logger.Debugln("syncMeshTicker SyncMeshNodeID already running, skipping tick")
 			}
 		case <-fileTransferReaperTicker.C:
-			a.ReapStaleFileTransferSessions()
+			if fileTransferReaperRunning.CompareAndSwap(false, true) {
+				go func() {
+					defer fileTransferReaperRunning.Store(false)
+					a.ReapStaleFileTransferSessions()
+				}()
+			} else {
+				a.Logger.Debugln("fileTransferReaperTicker ReapStaleFileTransferSessions already running, skipping tick")
+			}
 		case <-extraC:
 			a.runExtra()
 		}
