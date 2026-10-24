@@ -1018,27 +1018,27 @@ func FeedTerminalInputWindows(sessionID string, input string) error {
 }
 
 func ListDirectoryWindows(a *Agent, rawPath string, page, pageSize int, nameFilter string) (map[string]interface{}, error) {
-	return nil, errors.New("directory listing is only supported on Windows")
+	return nil, errors.New("ListDirectoryWindows called on a non-Windows build")
 }
 
 func FileExistsWindows(rawDir string, names []string) (map[string]interface{}, error) {
-	return nil, errors.New("file exists is only supported on Windows")
+	return nil, errors.New("FileExistsWindows called on a non-Windows build")
 }
 
 func FilePropertiesWindows(rawPath string, limits folderSummaryLimits) (map[string]interface{}, error) {
-	return nil, errors.New("file properties is only supported on Windows")
+	return nil, errors.New("FilePropertiesWindows called on a non-Windows build")
 }
 
 func FileMkdirWindows(rawParentPath, rawName string) (map[string]interface{}, error) {
-	return nil, errors.New("file mkdir is only supported on Windows")
+	return nil, errors.New("FileMkdirWindows called on a non-Windows build")
 }
 
 func FileRenameWindows(rawPath, rawNewName string) (map[string]interface{}, error) {
-	return nil, errors.New("file rename is only supported on Windows")
+	return nil, errors.New("FileRenameWindows called on a non-Windows build")
 }
 
 func FileDeleteWindows(_ *Agent, _ []string) (map[string]interface{}, error) {
-	return nil, errors.New("file delete is only supported on Windows")
+	return nil, errors.New("FileDeleteWindows called on a non-Windows build")
 }
 
 func defaultWindowsFileBrowserPathCandidates() []string {
