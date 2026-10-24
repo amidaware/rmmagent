@@ -34,7 +34,7 @@ import (
 	ps "github.com/elastic/go-sysinfo"
 	"github.com/go-ping/ping"
 	"github.com/go-resty/resty/v2"
-	"github.com/shirou/gopsutil/v3/process"
+	"github.com/shirou/gopsutil/v4/process"
 )
 
 type PingResponse struct {

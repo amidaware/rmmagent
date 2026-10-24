@@ -39,7 +39,7 @@ import (
 	"github.com/gonutz/w32/v2"
 	"github.com/kardianos/service"
 	nats "github.com/nats-io/nats.go"
-	"github.com/shirou/gopsutil/v3/disk"
+	"github.com/shirou/gopsutil/v4/disk"
 	"github.com/ugorji/go/codec"
 	wapf "github.com/wh1te909/go-win64api"
 	trmm "github.com/wh1te909/trmm-shared"

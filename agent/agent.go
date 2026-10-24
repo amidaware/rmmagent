@@ -42,7 +42,7 @@ import (
 	"github.com/go-resty/resty/v2"
 	"github.com/kardianos/service"
 	nats "github.com/nats-io/nats.go"
-	"github.com/shirou/gopsutil/v3/cpu"
+	"github.com/shirou/gopsutil/v4/cpu"
 	"github.com/sirupsen/logrus"
 	"github.com/ugorji/go/codec"
 	trmm "github.com/wh1te909/trmm-shared"

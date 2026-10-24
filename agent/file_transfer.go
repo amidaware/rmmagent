@@ -33,7 +33,7 @@ import (
 	"time"
 
 	"github.com/go-resty/resty/v2"
-	"github.com/shirou/gopsutil/v3/disk"
+	"github.com/shirou/gopsutil/v4/disk"
 )
 
 const (
