@@ -12,6 +12,7 @@ https://license.tacticalrmm.com
 package agent
 
 import (
+	"os"
 	"syscall"
 	"unsafe"
 
@@ -161,4 +162,94 @@ func EnvironmentBlockToSlice(envBlock *uint16) []string {
 	}
 
 	return envs
+}
+
+func openFileNoFollow(path string, flag int, perm os.FileMode) (*os.File, error) {
+	pathPtr, err := windows.UTF16PtrFromString(path)
+	if err != nil {
+		return nil, err
+	}
+
+	access := uint32(windows.GENERIC_READ | windows.GENERIC_WRITE)
+	share := uint32(windows.FILE_SHARE_READ | windows.FILE_SHARE_WRITE | windows.FILE_SHARE_DELETE)
+
+	var createmode uint32
+	switch {
+	case flag&(os.O_CREATE|os.O_EXCL) == (os.O_CREATE | os.O_EXCL):
+		createmode = windows.CREATE_NEW
+	case flag&os.O_CREATE != 0 && flag&os.O_TRUNC != 0:
+		createmode = windows.CREATE_ALWAYS
+	case flag&os.O_CREATE != 0:
+		createmode = windows.OPEN_ALWAYS
+	default:
+		createmode = windows.OPEN_EXISTING
+	}
+
+	attrs := uint32(windows.FILE_ATTRIBUTE_NORMAL | windows.FILE_FLAG_OPEN_REPARSE_POINT)
+	h, err := windows.CreateFile(
+		pathPtr,
+		access,
+		share,
+		nil,
+		createmode,
+		attrs,
+		0,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return os.NewFile(uintptr(h), path), nil
+}
+
+const privateFileSDDL = "D:P(A;;FA;;;SY)(A;;FA;;;BA)"
+
+func createPrivateFileNoFollow(path string) (*os.File, error) {
+	pathPtr, err := windows.UTF16PtrFromString(path)
+	if err != nil {
+		return nil, err
+	}
+	sd, err := windows.SecurityDescriptorFromString(privateFileSDDL)
+	if err != nil {
+		return nil, err
+	}
+	sa := windows.SecurityAttributes{
+		Length:             uint32(unsafe.Sizeof(windows.SecurityAttributes{})),
+		SecurityDescriptor: sd,
+	}
+	h, err := windows.CreateFile(
+		pathPtr,
+		windows.GENERIC_READ|windows.GENERIC_WRITE,
+		uint32(windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE|windows.FILE_SHARE_DELETE),
+		&sa,
+		windows.CREATE_NEW,
+		windows.FILE_ATTRIBUTE_NORMAL|windows.FILE_FLAG_OPEN_REPARSE_POINT,
+		0,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return os.NewFile(uintptr(h), path), nil
+}
+
+func hasExtraHardLinks(_ *os.File) bool { return false }
+
+func openExistingFileSharedRead(path string) (*os.File, error) {
+	pathPtr, err := windows.UTF16PtrFromString(path)
+	if err != nil {
+		return nil, err
+	}
+
+	h, err := windows.CreateFile(
+		pathPtr,
+		windows.GENERIC_READ,
+		uint32(windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE|windows.FILE_SHARE_DELETE),
+		nil,
+		windows.OPEN_EXISTING,
+		windows.FILE_ATTRIBUTE_NORMAL,
+		0,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return os.NewFile(uintptr(h), path), nil
 }

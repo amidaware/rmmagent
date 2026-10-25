@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"sync"
@@ -53,6 +54,23 @@ var (
 	getWinUpdateLocker     uint32
 	installWinUpdateLocker uint32
 )
+
+func (a *Agent) recoverFilesRPC(op string, msg *nats.Msg) {
+	r := recover()
+	if r == nil {
+		return
+	}
+	if a != nil && a.Logger != nil {
+		a.Logger.Errorf("%s: panic: %v\n%s", op, r, debug.Stack())
+	}
+	if msg == nil {
+		return
+	}
+	var resp []byte
+	ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
+	_ = ret.Encode(map[string]interface{}{"error": fmt.Sprintf("internal error in %s", op)})
+	_ = msg.Respond(resp)
+}
 
 func (a *Agent) RunRPC() {
 	a.Logger.Infoln("Agent service started")
@@ -847,27 +865,11 @@ func (a *Agent) RunRPC() {
 			}(payload)
 
 		case "terminal_input":
-			go func(p *NatsMsg) {
-				sessionID := p.Data["session_id"]
-				if sessionID == "" {
-					a.Logger.Errorln("terminal_input: missing session_id")
-					return
-				}
-				data := p.Data["data"]
-				if data == "" {
-					return
-				}
-				switch runtime.GOOS {
-				case "windows":
-					if err := FeedTerminalInputWindows(sessionID, data); err != nil {
-						a.Logger.Errorln("terminal_input: FeedTerminalInputWindows:", err)
-					}
-				default:
-					if err := a.FeedTerminalInput(sessionID, data); err != nil {
-						a.Logger.Errorln("terminal_input: FeedTerminalInput:", err)
-					}
-				}
-			}(payload)
+			if sessionID := payload.Data["session_id"]; sessionID == "" {
+				a.Logger.Errorln("terminal_input: missing session_id")
+			} else if data := payload.Data["data"]; data != "" {
+				QueueTerminalInput(a, sessionID, data)
+			}
 
 		case "terminal_resize":
 			go func(p *NatsMsg) {
@@ -914,9 +916,367 @@ func (a *Agent) RunRPC() {
 					}
 				}
 			}(payload)
+
+		case "files_list":
+			go func(p *NatsMsg) {
+				defer a.recoverFilesRPC("files_list", msg)
+				var resp []byte
+				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
+				path := strings.TrimSpace(p.Data["path"])
+				page, pageSize := parseFileBrowserPageParams(p.Data)
+				nameFilter := parseFileBrowserNameFilter(p.Data)
+
+				var result map[string]interface{}
+				var err error
+				switch runtime.GOOS {
+				case "windows":
+					result, err = ListDirectoryWindows(a, path, page, pageSize, nameFilter)
+				default:
+					result, err = a.ListDirectory(path, page, pageSize, nameFilter)
+				}
+				if err != nil {
+					a.Logger.Debugln("files_list:", err)
+					_ = ret.Encode(map[string]interface{}{"error": err.Error()})
+					msg.Respond(resp)
+					return
+				}
+
+				_ = ret.Encode(result)
+				msg.Respond(resp)
+			}(payload)
+
+		case "files_exists":
+			go func(p *NatsMsg) {
+				defer a.recoverFilesRPC("files_exists", msg)
+				var resp []byte
+				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
+				names, err := parsePayloadNamesJSON(p.Data)
+				if err != nil {
+					a.Logger.Debugln("files_exists:", err)
+					_ = ret.Encode(map[string]interface{}{"error": err.Error()})
+					msg.Respond(resp)
+					return
+				}
+
+				var result map[string]interface{}
+				switch runtime.GOOS {
+				case "windows":
+					result, err = FileExistsWindows(strings.TrimSpace(p.Data["path"]), names)
+				default:
+					result, err = a.FileExists(strings.TrimSpace(p.Data["path"]), names)
+				}
+				if err != nil {
+					a.Logger.Debugln("files_exists:", err)
+					_ = ret.Encode(map[string]interface{}{"error": err.Error()})
+					msg.Respond(resp)
+					return
+				}
+				_ = ret.Encode(result)
+				msg.Respond(resp)
+			}(payload)
+
+		case "files_properties":
+			go func(p *NatsMsg) {
+				defer a.recoverFilesRPC("files_properties", msg)
+				var resp []byte
+				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
+
+				path := strings.TrimSpace(p.Data["path"])
+				if path == "" {
+					a.Logger.Debugln("files_properties: missing path")
+					_ = ret.Encode(map[string]interface{}{"error": "missing path"})
+					msg.Respond(resp)
+					return
+				}
+
+				limits := parseFolderSummaryLimits(p.Data)
+				var result map[string]interface{}
+				var err error
+				switch runtime.GOOS {
+				case "windows":
+					result, err = FilePropertiesWindows(path, limits)
+				default:
+					result, err = a.FileProperties(path, limits)
+				}
+				if err != nil {
+					a.Logger.Debugln("files_properties:", err)
+					_ = ret.Encode(map[string]interface{}{"error": err.Error()})
+					msg.Respond(resp)
+					return
+				}
+
+				_ = ret.Encode(result)
+				msg.Respond(resp)
+			}(payload)
+
+		case "files_mkdir":
+			go func(p *NatsMsg) {
+				defer a.recoverFilesRPC("files_mkdir", msg)
+				var resp []byte
+				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
+
+				path := strings.TrimSpace(p.Data["path"])
+				name := strings.TrimSpace(p.Data["name"])
+				if path == "" {
+					a.Logger.Debugln("files_mkdir: missing path")
+					_ = ret.Encode(map[string]interface{}{"error": "missing path"})
+					msg.Respond(resp)
+					return
+				}
+				if name == "" {
+					a.Logger.Debugln("files_mkdir: missing name")
+					_ = ret.Encode(map[string]interface{}{"error": "missing name"})
+					msg.Respond(resp)
+					return
+				}
+
+				var result map[string]interface{}
+				var err error
+				switch runtime.GOOS {
+				case "windows":
+					result, err = FileMkdirWindows(path, name)
+				default:
+					result, err = a.FileMkdir(path, name)
+				}
+				if err != nil {
+					a.Logger.Debugln("files_mkdir:", err)
+					_ = ret.Encode(map[string]interface{}{"error": err.Error()})
+					msg.Respond(resp)
+					return
+				}
+
+				_ = ret.Encode(result)
+				msg.Respond(resp)
+			}(payload)
+
+		case "files_rename":
+			go func(p *NatsMsg) {
+				defer a.recoverFilesRPC("files_rename", msg)
+				var resp []byte
+				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
+
+				path := strings.TrimSpace(p.Data["path"])
+				newName := strings.TrimSpace(p.Data["new_name"])
+				if path == "" {
+					a.Logger.Debugln("files_rename: missing path")
+					_ = ret.Encode(map[string]interface{}{"error": "missing path"})
+					msg.Respond(resp)
+					return
+				}
+				if newName == "" {
+					a.Logger.Debugln("files_rename: missing new_name")
+					_ = ret.Encode(map[string]interface{}{"error": "missing new_name"})
+					msg.Respond(resp)
+					return
+				}
+
+				var result map[string]interface{}
+				var err error
+				switch runtime.GOOS {
+				case "windows":
+					result, err = FileRenameWindows(path, newName)
+				default:
+					result, err = a.FileRename(path, newName)
+				}
+				if err != nil {
+					a.Logger.Debugln("files_rename:", err)
+					_ = ret.Encode(map[string]interface{}{"error": err.Error()})
+					msg.Respond(resp)
+					return
+				}
+
+				_ = ret.Encode(result)
+				msg.Respond(resp)
+			}(payload)
+
+		case "files_delete":
+			go func(p *NatsMsg) {
+				defer a.recoverFilesRPC("files_delete", msg)
+				var resp []byte
+				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
+
+				paths, err := parseDeletePaths(p.Data["paths"])
+				if err != nil {
+					a.Logger.Debugln("files_delete:", err)
+					_ = ret.Encode(map[string]interface{}{"error": err.Error()})
+					msg.Respond(resp)
+					return
+				}
+
+				var result map[string]interface{}
+				switch runtime.GOOS {
+				case "windows":
+					result, err = FileDeleteWindows(a, paths)
+				default:
+					result, err = a.FileDelete(paths)
+				}
+				if err != nil {
+					a.Logger.Debugln("files_delete:", err)
+					_ = ret.Encode(map[string]interface{}{"error": err.Error()})
+					msg.Respond(resp)
+					return
+				}
+
+				_ = ret.Encode(result)
+				msg.Respond(resp)
+			}(payload)
+
+		case "files_upload_prepare":
+			go func(p *NatsMsg) {
+				defer a.recoverFilesRPC("files_upload_prepare", msg)
+				var resp []byte
+				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
+
+				result, err := a.PrepareFilesUpload(p)
+				if err != nil {
+					a.Logger.Debugln("files_upload_prepare:", err)
+					_ = ret.Encode(map[string]interface{}{"error": err.Error()})
+				} else {
+					_ = ret.Encode(result)
+				}
+				msg.Respond(resp)
+			}(payload)
+
+		case "files_upload_chunk_available":
+			go func(p *NatsMsg) {
+				defer a.recoverFilesRPC("files_upload_chunk_available", msg)
+				var resp []byte
+				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
+
+				result, err := a.HandleUploadChunkAvailable(p)
+				if err != nil {
+					a.Logger.Debugln("files_upload_chunk_available:", err)
+					_ = ret.Encode(map[string]interface{}{"error": err.Error()})
+				} else {
+					_ = ret.Encode(result)
+				}
+				msg.Respond(resp)
+			}(payload)
+
+		case "files_upload_finalize":
+			go func(p *NatsMsg) {
+				defer a.recoverFilesRPC("files_upload_finalize", msg)
+				var resp []byte
+				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
+
+				result, err := a.FinalizeFilesUpload(p)
+				if err != nil {
+					a.Logger.Debugln("files_upload_finalize:", err)
+					_ = ret.Encode(map[string]interface{}{"error": err.Error()})
+				} else {
+					_ = ret.Encode(result)
+				}
+				msg.Respond(resp)
+			}(payload)
+
+		case "files_upload_abort":
+			go func(p *NatsMsg) {
+				defer a.recoverFilesRPC("files_upload_abort", msg)
+				var resp []byte
+				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
+
+				result, err := a.AbortFilesUpload(p)
+				if err != nil {
+					a.Logger.Debugln("files_upload_abort:", err)
+					_ = ret.Encode(map[string]interface{}{"error": err.Error()})
+				} else {
+					_ = ret.Encode(result)
+				}
+				msg.Respond(resp)
+			}(payload)
+
+		case "files_download_ack":
+			go func(p *NatsMsg) {
+				defer a.recoverFilesRPC("files_download_ack", nil)
+				a.HandleDownloadAck(p)
+			}(payload)
+
+		case "files_download_prepare":
+			go func(p *NatsMsg) {
+				defer a.recoverFilesRPC("files_download_prepare", msg)
+				var resp []byte
+				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
+
+				result, err := a.PrepareFilesDownload(p)
+				if err != nil {
+					a.Logger.Debugln("files_download_prepare:", err)
+					_ = ret.Encode(map[string]interface{}{"error": err.Error()})
+				} else {
+					_ = ret.Encode(result)
+				}
+				msg.Respond(resp)
+			}(payload)
+
+		case "files_download_finalize":
+			go func(p *NatsMsg) {
+				defer a.recoverFilesRPC("files_download_finalize", msg)
+				var resp []byte
+				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
+
+				result, err := a.FinalizeFilesDownload(p)
+				if err != nil {
+					a.Logger.Debugln("files_download_finalize:", err)
+					_ = ret.Encode(map[string]interface{}{"error": err.Error()})
+				} else {
+					_ = ret.Encode(result)
+				}
+				msg.Respond(resp)
+			}(payload)
+
+		case "files_download_archive_prepare":
+			go func(p *NatsMsg) {
+				defer a.recoverFilesRPC("files_download_archive_prepare", msg)
+				var resp []byte
+				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
+
+				result, err := a.PrepareFilesDownloadArchive(p)
+				if err != nil {
+					a.Logger.Debugln("files_download_archive_prepare:", err)
+					_ = ret.Encode(map[string]interface{}{"error": err.Error()})
+				} else {
+					_ = ret.Encode(result)
+				}
+				msg.Respond(resp)
+			}(payload)
+
+		case "files_extract_prepare":
+			go func(p *NatsMsg) {
+				defer a.recoverFilesRPC("files_extract_prepare", msg)
+				var resp []byte
+				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
+
+				result, err := a.PrepareFilesExtract(p)
+				if err != nil {
+					a.Logger.Debugln("files_extract_prepare:", err)
+					_ = ret.Encode(map[string]interface{}{"error": err.Error()})
+				} else {
+					_ = ret.Encode(result)
+				}
+				msg.Respond(resp)
+			}(payload)
+
+		case "files_extract_cancel":
+			go func(p *NatsMsg) {
+				defer a.recoverFilesRPC("files_extract_cancel", msg)
+				var resp []byte
+				ret := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
+
+				result, err := a.CancelFilesExtract(p)
+				if err != nil {
+					a.Logger.Debugln("files_extract_cancel:", err)
+					_ = ret.Encode(map[string]interface{}{"error": err.Error()})
+				} else {
+					_ = ret.Encode(result)
+				}
+				msg.Respond(resp)
+			}(payload)
 		}
 	})
-	nc.Flush()
+
+	if err := nc.Flush(); err != nil {
+		a.Logger.Errorf("nats: subscribing to %s failed: %v (status %s)",
+			a.NatsServer, err, nc.Status())
+	}
 
 	if err := nc.LastError(); err != nil {
 		a.Logger.Errorln(err)

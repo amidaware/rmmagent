@@ -12,7 +12,6 @@ require (
 	github.com/iamacarpet/go-win64api v0.0.0-20230324134531-ef6dbdd6db97
 	github.com/nats-io/nats.go v1.38.0
 	github.com/rickb777/date v1.19.1
-	github.com/shirou/gopsutil/v3 v3.23.12
 	github.com/sirupsen/logrus v1.9.3
 	github.com/ugorji/go/codec v1.2.12
 	github.com/wh1te909/go-win64api v0.0.0-20230802051600-21b24f62e846
@@ -28,10 +27,12 @@ require (
 
 require (
 	github.com/creack/pty v1.1.24
+	github.com/ebitengine/purego v0.8.2
 	github.com/fourcorelabs/wintoken v1.0.0
 	github.com/iamacarpet/go-winpty v1.0.4
 	github.com/jaypipes/ghw v0.12.0
 	github.com/kardianos/service v1.2.2
+	github.com/shirou/gopsutil/v4 v4.25.2
 	github.com/spf13/viper v1.19.0
 	golang.org/x/text v0.21.0
 )
@@ -62,7 +63,6 @@ require (
 	github.com/sagikazarmark/locafero v0.4.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
 	github.com/scjalliance/comshim v0.0.0-20190308082608-cf06d2532c4e // indirect
-	github.com/shoenig/go-m1cpu v0.2.1 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
 	github.com/spf13/afero v1.11.0 // indirect
 	github.com/spf13/cast v1.6.0 // indirect
@@ -70,7 +70,7 @@ require (
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/tklauser/go-sysconf v0.3.12 // indirect
 	github.com/tklauser/numcpus v0.6.1 // indirect
-	github.com/yusufpapurcu/wmi v1.2.3 // indirect
+	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
 	golang.org/x/crypto v0.31.0 // indirect

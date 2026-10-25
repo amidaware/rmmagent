@@ -23,7 +23,7 @@ import (
 	rmm "github.com/amidaware/rmmagent/shared"
 	ps "github.com/elastic/go-sysinfo"
 	"github.com/go-resty/resty/v2"
-	"github.com/shirou/gopsutil/v3/disk"
+	"github.com/shirou/gopsutil/v4/disk"
 )
 
 func (a *Agent) CheckRunner() {
