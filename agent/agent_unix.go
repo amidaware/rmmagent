@@ -1086,3 +1086,16 @@ func openFileNoFollow(path string, flag int, perm os.FileMode) (*os.File, error)
 func openExistingFileSharedRead(path string) (*os.File, error) {
 	return os.Open(path)
 }
+
+func createPrivateFileNoFollow(path string) (*os.File, error) {
+	return openFileNoFollow(path, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o600)
+}
+
+func hasExtraHardLinks(f *os.File) bool {
+	info, err := f.Stat()
+	if err != nil {
+		return true
+	}
+	st, ok := info.Sys().(*syscall.Stat_t)
+	return ok && st.Nlink > 1
+}

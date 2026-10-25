@@ -358,19 +358,40 @@ func createExclusiveRegularFile(path string, perm os.FileMode) (*os.File, error)
 	return f, nil
 }
 
-func createExclusiveReplaceRegularFile(path string, perm os.FileMode) (*os.File, error) {
+func removeExistingRegularFile(path string) error {
 	info, err := os.Lstat(path)
 	if err == nil {
 		if err := requireRegularFileInfo(info); err != nil {
-			return nil, fmt.Errorf("refusing to use %s: %w", path, err)
+			return fmt.Errorf("refusing to use %s: %w", path, err)
 		}
-		if err := os.Remove(path); err != nil {
-			return nil, err
-		}
+		return os.Remove(path)
 	} else if !os.IsNotExist(err) {
+		return err
+	}
+	return nil
+}
+
+func createExclusiveReplaceRegularFile(path string, perm os.FileMode) (*os.File, error) {
+	if err := removeExistingRegularFile(path); err != nil {
 		return nil, err
 	}
 	return createExclusiveRegularFile(path, perm)
+}
+
+func createExclusiveReplacePrivateFile(path string) (*os.File, error) {
+	if err := removeExistingRegularFile(path); err != nil {
+		return nil, err
+	}
+	f, err := createPrivateFileNoFollow(path)
+	if err != nil {
+		return nil, err
+	}
+	if err := verifyOpenedRegularFile(f); err != nil {
+		_ = f.Close()
+		_ = os.Remove(path)
+		return nil, err
+	}
+	return f, nil
 }
 
 func openExistingRegularFile(path string) (*os.File, error) {
@@ -388,6 +409,10 @@ func openExistingRegularFile(path string) (*os.File, error) {
 	if err := verifyOpenedRegularFile(f); err != nil {
 		_ = f.Close()
 		return nil, err
+	}
+	if hasExtraHardLinks(f) {
+		_ = f.Close()
+		return nil, fmt.Errorf("path has other hard links")
 	}
 	return f, nil
 }
@@ -521,7 +546,7 @@ func (a *Agent) recoverInterruptedReplaces() {
 		data, err := os.ReadFile(journalPath)
 		var j replaceJournal
 		if err != nil || json.Unmarshal(data, &j) != nil ||
-			j.Destination == "" || !strings.Contains(filepath.Base(j.Backup), ".trmm-replace") {
+			j.Destination == "" || !isReplaceBackupOf(j.Destination, j.Backup) {
 			_ = os.Remove(journalPath)
 			continue
 		}
@@ -709,6 +734,19 @@ func nextReplaceBackupPath(dest string) (string, error) {
 		}
 	}
 	return "", fmt.Errorf("failed to allocate replace backup path")
+}
+
+func isReplaceBackupOf(dest, backup string) bool {
+	for i := 0; i < 100; i++ {
+		suffix := ".trmm-replace"
+		if i > 0 {
+			suffix = fmt.Sprintf(".trmm-replace-%d", i)
+		}
+		if backup == siblingWithSuffix(dest, suffix) {
+			return true
+		}
+	}
+	return false
 }
 
 func hasTrailingSpaceOrPeriod(name, goos string) bool {
