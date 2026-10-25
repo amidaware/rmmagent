@@ -17,7 +17,7 @@ import (
 
 	rmm "github.com/amidaware/rmmagent/shared"
 	ps "github.com/elastic/go-sysinfo"
-	gops "github.com/shirou/gopsutil/v3/process"
+	gops "github.com/shirou/gopsutil/v4/process"
 )
 
 func (a *Agent) GetProcsRPC() []rmm.ProcessMsg {
@@ -33,7 +33,10 @@ func (a *Agent) GetProcsRPC() []rmm.ProcessMsg {
 			continue
 		}
 
-		m, _ := process.Memory()
+		name, mem, ok := procNameAndMemory(process, p)
+		if !ok {
+			continue
+		}
 		proc, gerr := gops.NewProcess(int32(p.PID))
 		if gerr != nil {
 			continue
@@ -42,9 +45,9 @@ func (a *Agent) GetProcsRPC() []rmm.ProcessMsg {
 		user, _ := proc.Username()
 
 		ret = append(ret, rmm.ProcessMsg{
-			Name:     p.Name,
+			Name:     name,
 			Pid:      p.PID,
-			MemBytes: m.Resident,
+			MemBytes: mem,
 			Username: user,
 			UID:      i,
 			CPU:      fmt.Sprintf("%.1f", cpu),

@@ -14,10 +14,12 @@ package agent
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"hash"
 	"math"
 	"math/rand"
 	"net"
@@ -40,7 +42,7 @@ import (
 	"github.com/go-resty/resty/v2"
 	"github.com/kardianos/service"
 	nats "github.com/nats-io/nats.go"
-	"github.com/shirou/gopsutil/v3/cpu"
+	"github.com/shirou/gopsutil/v4/cpu"
 	"github.com/sirupsen/logrus"
 	"github.com/ugorji/go/codec"
 	trmm "github.com/wh1te909/trmm-shared"
@@ -48,50 +50,55 @@ import (
 
 // Agent struct
 type Agent struct {
-	Hostname               string
-	Arch                   string
-	AgentID                string
-	BaseURL                string
-	ApiURL                 string
-	Token                  string
-	AgentPK                int
-	Cert                   string
-	ProgramDir             string
-	EXE                    string
-	SystemDrive            string
-	WinTmpDir              string
-	UnixTmpDir             string
-	WinRunAsUserTmpDir     string
-	MeshInstaller          string
-	MeshSystemEXE          string
-	MeshSVC                string
-	PyBin                  string
-	PyVer                  string
-	PyBaseDir              string
-	PyDir                  string
-	NuBin                  string
-	DenoBin                string
-	AgentHeader            string
-	Headers                map[string]string
-	Logger                 *logrus.Logger
-	Version                string
-	Debug                  bool
-	rClient                *resty.Client
-	Proxy                  string
-	LogTo                  string
-	LogFile                *os.File
-	Platform               string
-	GoArch                 string
-	ServiceConfig          *service.Config
-	NatsServer             string
-	NatsProxyPath          string
-	NatsProxyPort          string
-	NatsPingInterval       int
-	NatsWSCompression      bool
-	Insecure               bool
-	TerminalSessions       map[string]*TerminalSession
-	TerminalSessionsMu     sync.Mutex
-	PendingTerminalResizes map[string]PendingTerminalResize
+	Hostname                   string
+	Arch                       string
+	AgentID                    string
+	BaseURL                    string
+	ApiURL                     string
+	Token                      string
+	AgentPK                    int
+	Cert                       string
+	ProgramDir                 string
+	EXE                        string
+	SystemDrive                string
+	WinTmpDir                  string
+	UnixTmpDir                 string
+	WinRunAsUserTmpDir         string
+	MeshInstaller              string
+	MeshSystemEXE              string
+	MeshSVC                    string
+	PyBin                      string
+	PyVer                      string
+	PyBaseDir                  string
+	PyDir                      string
+	NuBin                      string
+	DenoBin                    string
+	AgentHeader                string
+	Headers                    map[string]string
+	Logger                     *logrus.Logger
+	Version                    string
+	Debug                      bool
+	rClient                    *resty.Client
+	fileTransferClient         *resty.Client
+	Proxy                      string
+	LogTo                      string
+	LogFile                    *os.File
+	Platform                   string
+	GoArch                     string
+	ServiceConfig              *service.Config
+	NatsServer                 string
+	NatsProxyPath              string
+	NatsProxyPort              string
+	NatsPingInterval           int
+	NatsWSCompression          bool
+	Insecure                   bool
+	TerminalSessions           map[string]*TerminalSession
+	TerminalSessionsMu         sync.Mutex
+	PendingTerminalResizes     map[string]PendingTerminalResize
+	FileTransferSessions       map[string]*UploadTransferSession
+	FileTransferSessionsMu     sync.Mutex
+	DownloadTransferSessions   map[string]*DownloadTransferSession
+	DownloadTransferSessionsMu sync.Mutex
 }
 
 const (
@@ -199,6 +206,15 @@ func New(logger *logrus.Logger, version string) *Agent {
 		restyC.SetRootCertificate(ac.Cert)
 	}
 
+	ftClient := newFileTransferResty(
+		ac.BaseURL,
+		headers,
+		logger.IsLevelEnabled(logrus.DebugLevel),
+		insecure,
+		ac.Proxy,
+		ac.Cert,
+	)
+
 	if len(ac.WinTmpDir) > 0 {
 		winTempDir = ac.WinTmpDir
 	}
@@ -266,46 +282,49 @@ func New(logger *logrus.Logger, version string) *Agent {
 	}
 
 	return &Agent{
-		Hostname:               hostname,
-		BaseURL:                ac.BaseURL,
-		AgentID:                ac.AgentID,
-		ApiURL:                 ac.APIURL,
-		Token:                  ac.Token,
-		AgentPK:                ac.PK,
-		Cert:                   ac.Cert,
-		ProgramDir:             pd,
-		EXE:                    exe,
-		SystemDrive:            sd,
-		WinTmpDir:              winTempDir,
-		WinRunAsUserTmpDir:     winRunAsUserTmpDir,
-		UnixTmpDir:             ac.UnixTmpDir,
-		MeshInstaller:          "meshagent.exe",
-		MeshSystemEXE:          MeshSysExe,
-		MeshSVC:                meshSvcName,
-		PyBin:                  pybin,
-		PyVer:                  pyver,
-		PyBaseDir:              pyBaseDir,
-		PyDir:                  pydir,
-		NuBin:                  nuBin,
-		DenoBin:                denoBin,
-		Headers:                headers,
-		AgentHeader:            agentHeader,
-		Logger:                 logger,
-		Version:                version,
-		Debug:                  logger.IsLevelEnabled(logrus.DebugLevel),
-		rClient:                restyC,
-		Proxy:                  ac.Proxy,
-		Platform:               runtime.GOOS,
-		GoArch:                 runtime.GOARCH,
-		ServiceConfig:          svcConf,
-		NatsServer:             natsServer,
-		NatsProxyPath:          natsProxyPath,
-		NatsProxyPort:          natsProxyPort,
-		NatsPingInterval:       natsPingInterval,
-		NatsWSCompression:      natsWsCompression,
-		Insecure:               insecure,
-		TerminalSessions:       make(map[string]*TerminalSession),
-		PendingTerminalResizes: make(map[string]PendingTerminalResize),
+		Hostname:                 hostname,
+		BaseURL:                  ac.BaseURL,
+		AgentID:                  ac.AgentID,
+		ApiURL:                   ac.APIURL,
+		Token:                    ac.Token,
+		AgentPK:                  ac.PK,
+		Cert:                     ac.Cert,
+		ProgramDir:               pd,
+		EXE:                      exe,
+		SystemDrive:              sd,
+		WinTmpDir:                winTempDir,
+		WinRunAsUserTmpDir:       winRunAsUserTmpDir,
+		UnixTmpDir:               ac.UnixTmpDir,
+		MeshInstaller:            "meshagent.exe",
+		MeshSystemEXE:            MeshSysExe,
+		MeshSVC:                  meshSvcName,
+		PyBin:                    pybin,
+		PyVer:                    pyver,
+		PyBaseDir:                pyBaseDir,
+		PyDir:                    pydir,
+		NuBin:                    nuBin,
+		DenoBin:                  denoBin,
+		Headers:                  headers,
+		AgentHeader:              agentHeader,
+		Logger:                   logger,
+		Version:                  version,
+		Debug:                    logger.IsLevelEnabled(logrus.DebugLevel),
+		rClient:                  restyC,
+		fileTransferClient:       ftClient,
+		Proxy:                    ac.Proxy,
+		Platform:                 runtime.GOOS,
+		GoArch:                   runtime.GOARCH,
+		ServiceConfig:            svcConf,
+		NatsServer:               natsServer,
+		NatsProxyPath:            natsProxyPath,
+		NatsProxyPort:            natsProxyPort,
+		NatsPingInterval:         natsPingInterval,
+		NatsWSCompression:        natsWsCompression,
+		Insecure:                 insecure,
+		TerminalSessions:         make(map[string]*TerminalSession),
+		PendingTerminalResizes:   make(map[string]PendingTerminalResize),
+		FileTransferSessions:     make(map[string]*UploadTransferSession),
+		DownloadTransferSessions: make(map[string]*DownloadTransferSession),
 	}
 }
 
@@ -1129,6 +1148,201 @@ func (a *Agent) SendTerminalError(agentID, sessionID, message string, nc *nats.C
 	enc := codec.NewEncoderBytes(&resp, new(codec.MsgpackHandle))
 	_ = enc.Encode(payload)
 	_ = nc.Publish(topic, resp)
+}
+
+func (a *Agent) PrepareFilesUpload(p *NatsMsg) (map[string]interface{}, error) {
+	sessionID, err := parsePayloadString(p.Data, "session_id")
+	if err != nil {
+		return nil, err
+	}
+
+	rawDestinationPath, err := parsePayloadString(p.Data, "destination_path")
+	if err != nil {
+		return nil, err
+	}
+
+	destinationPath, err := validateUploadDestinationPath(rawDestinationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	totalSize, err := parsePayloadInt64(p.Data, "total_size")
+	if err != nil {
+		return nil, err
+	}
+	if totalSize <= 0 {
+		return nil, fmt.Errorf("total_size must be greater than 0")
+	}
+
+	chunkSize, err := parsePayloadInt64(p.Data, "chunk_size")
+	if err != nil {
+		return nil, err
+	}
+	chunkSize, err = clampChunkSize(chunkSize)
+	if err != nil {
+		return nil, err
+	}
+
+	filename, err := parsePayloadString(p.Data, "filename")
+	if err != nil {
+		return nil, err
+	}
+	if err := validateUploadFilename(filename); err != nil {
+		return nil, err
+	}
+
+	parentDir := filepath.Dir(destinationPath)
+	parentInfo, err := os.Stat(parentDir)
+	if err != nil {
+		return nil, fmt.Errorf("parent directory does not exist")
+	}
+	if !parentInfo.IsDir() {
+		return nil, fmt.Errorf("parent directory does not exist")
+	}
+
+	conflictPolicy := parseUploadConflictPolicy(p.Data)
+	if err := enforceUploadConflictPolicySkip(destinationPath, conflictPolicy); err != nil {
+		return nil, err
+	}
+	if err := rejectUploadDestinationIfDirectory(destinationPath); err != nil {
+		return nil, err
+	}
+
+	resume, resumeOffset := parsePayloadResume(p.Data)
+	remaining := totalSize
+	if resume {
+		remaining = uploadRemainingBytes(totalSize, resumeOffset)
+	}
+	if err := ensureDiskSpace(parentDir, remaining, "to upload file"); err != nil {
+		return nil, err
+	}
+
+	partialPath := uploadPartialPath(destinationPath)
+	file, committedOffset, err := prepareUploadPartialFile(
+		partialPath, resume, resumeOffset, totalSize,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	var hasher hash.Hash
+	hashLive := true
+	hashedOffset := committedOffset
+	if !resume || committedOffset == 0 {
+		hasher = sha256.New()
+		hashedOffset = 0
+		hashLive = true
+	}
+
+	a.FileTransferSessionsMu.Lock()
+	var oldHashJob *resumeHashJob
+	if existing, ok := a.FileTransferSessions[sessionID]; ok && existing != nil {
+		if existing.File != nil {
+			_ = existing.File.Close()
+		}
+		oldHashJob = existing.hashJob
+		existing.hashJob = nil
+	}
+
+	session := &UploadTransferSession{
+		SessionID:       sessionID,
+		DestinationPath: destinationPath,
+		PartialPath:     partialPath,
+		Filename:        filename,
+		TotalSize:       totalSize,
+		ChunkSize:       chunkSize,
+		CommittedOffset: committedOffset,
+		ConflictPolicy:  conflictPolicy,
+		File:            file,
+		LastActivity:    time.Now(),
+		Hasher:          hasher,
+		HashedOffset:    hashedOffset,
+		hashLive:        hashLive,
+	}
+
+	var resumeJob *resumeHashJob
+	var resumeCtx context.Context
+	if resume && committedOffset > 0 {
+		resumeJob, resumeCtx = newResumeHashJob()
+		session.hashJob = resumeJob
+		session.hashLive = false
+		session.Hasher = nil
+		session.HashedOffset = 0
+	}
+	a.FileTransferSessions[sessionID] = session
+	a.FileTransferSessionsMu.Unlock()
+	a.writeUploadPartialJournal(sessionID, partialPath)
+	oldHashJob.stop()
+	if resumeJob != nil {
+		go a.runUploadResumeHash(resumeCtx, resumeJob, sessionID, partialPath, committedOffset)
+	}
+
+	return map[string]interface{}{
+		"status":           "ready",
+		"committed_offset": committedOffset,
+	}, nil
+}
+
+func (a *Agent) ListDirectory(rawPath string, page, pageSize int, nameFilter string) (map[string]interface{}, error) {
+	return listDirectory(a, rawPath, page, pageSize, nameFilter)
+}
+
+func (a *Agent) FileExists(rawDir string, names []string) (map[string]interface{}, error) {
+	return fileExistsNames(rawDir, names)
+}
+
+func (a *Agent) FileProperties(rawPath string, limits folderSummaryLimits) (map[string]interface{}, error) {
+	return fileProperties(rawPath, &limits)
+}
+
+func (a *Agent) FileMkdir(parentPath, name string) (map[string]interface{}, error) {
+	return fileMkdir(parentPath, name)
+}
+
+func (a *Agent) FileRename(path, newName string) (map[string]interface{}, error) {
+	return fileRename(path, newName)
+}
+
+func (a *Agent) deleteProtectedExactPaths() []string {
+	seen := make(map[string]struct{})
+	out := make([]string, 0, 3)
+	for _, raw := range []string{a.WinTmpDir, a.UnixTmpDir} {
+		raw = strings.TrimSpace(raw)
+		if raw == "" || !filepath.IsAbs(raw) {
+			continue
+		}
+		cleaned := filepath.Clean(raw)
+		key := fsIdentityKey(cleaned)
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		out = append(out, cleaned)
+	}
+	return out
+}
+
+func (a *Agent) deleteProtectedAgentPaths() []string {
+	var paths []string
+	switch runtime.GOOS {
+	case "windows":
+		paths = []string{a.ProgramDir}
+	case "darwin":
+		paths = []string{nixAgentBin, etcConfig, macPlistPath}
+	default:
+		paths = []string{etcConfig}
+	}
+	if self, err := os.Executable(); err == nil {
+		if resolved, rerr := filepath.EvalSymlinks(self); rerr == nil {
+			self = resolved
+		}
+		paths = append(paths, self)
+	}
+	return paths
+}
+
+func (a *Agent) FileDelete(paths []string) (map[string]interface{}, error) {
+	return fileDelete(paths, a.deleteProtectedExactPaths(), a.deleteProtectedAgentPaths())
 }
 
 func (a *Agent) ReinstallMesh() {

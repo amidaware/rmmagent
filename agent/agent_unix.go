@@ -33,9 +33,9 @@ import (
 	"github.com/jaypipes/ghw"
 	"github.com/kardianos/service"
 	nats "github.com/nats-io/nats.go"
-	"github.com/shirou/gopsutil/v3/cpu"
-	"github.com/shirou/gopsutil/v3/disk"
-	psHost "github.com/shirou/gopsutil/v3/host"
+	"github.com/shirou/gopsutil/v4/cpu"
+	"github.com/shirou/gopsutil/v4/disk"
+	psHost "github.com/shirou/gopsutil/v4/host"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	trmm "github.com/wh1te909/trmm-shared"
@@ -1017,6 +1017,49 @@ func FeedTerminalInputWindows(sessionID string, input string) error {
 	return errors.New("failed to feed input terminal session on windows")
 }
 
+func ListDirectoryWindows(a *Agent, rawPath string, page, pageSize int, nameFilter string) (map[string]interface{}, error) {
+	return nil, errors.New("ListDirectoryWindows called on a non-Windows build")
+}
+
+func FileExistsWindows(rawDir string, names []string) (map[string]interface{}, error) {
+	return nil, errors.New("FileExistsWindows called on a non-Windows build")
+}
+
+func FilePropertiesWindows(rawPath string, limits folderSummaryLimits) (map[string]interface{}, error) {
+	return nil, errors.New("FilePropertiesWindows called on a non-Windows build")
+}
+
+func FileMkdirWindows(rawParentPath, rawName string) (map[string]interface{}, error) {
+	return nil, errors.New("FileMkdirWindows called on a non-Windows build")
+}
+
+func FileRenameWindows(rawPath, rawNewName string) (map[string]interface{}, error) {
+	return nil, errors.New("FileRenameWindows called on a non-Windows build")
+}
+
+func FileDeleteWindows(_ *Agent, _ []string) (map[string]interface{}, error) {
+	return nil, errors.New("FileDeleteWindows called on a non-Windows build")
+}
+
+func defaultWindowsFileBrowserPathCandidates() []string {
+	return nil
+}
+
+func clearPathReadOnlyIfNeeded(_ string) bool {
+	return false
+}
+
+func fileTimes(info os.FileInfo) (modified, created, accessed string) {
+	mod := formatFileTime(info.ModTime())
+	return mod, mod, mod
+}
+
+func fileAttributeFlags(_ string, info os.FileInfo, name string) (hidden, system, readOnly bool) {
+	readOnly = info.Mode()&0200 == 0
+	hidden = strings.HasPrefix(name, ".")
+	return hidden, false, readOnly
+}
+
 func CMD(exe string, args []string, timeout int, detached bool) (output [2]string, e error) {
 	return [2]string{"", ""}, nil
 }
@@ -1028,3 +1071,31 @@ func (a *Agent) Start(_ service.Service) error { return nil }
 func (a *Agent) Stop(_ service.Service) error { return nil }
 
 func (a *Agent) InstallService() error { return nil }
+
+func openFileNoFollow(path string, flag int, perm os.FileMode) (*os.File, error) {
+	fd, err := syscall.Open(path, flag|syscall.O_NOFOLLOW|syscall.O_CLOEXEC, uint32(perm))
+	if err != nil {
+		if err == syscall.ELOOP {
+			return nil, fmt.Errorf("path is a symlink")
+		}
+		return nil, err
+	}
+	return os.NewFile(uintptr(fd), path), nil
+}
+
+func openExistingFileSharedRead(path string) (*os.File, error) {
+	return os.Open(path)
+}
+
+func createPrivateFileNoFollow(path string) (*os.File, error) {
+	return openFileNoFollow(path, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0o600)
+}
+
+func hasExtraHardLinks(f *os.File) bool {
+	info, err := f.Stat()
+	if err != nil {
+		return true
+	}
+	st, ok := info.Sys().(*syscall.Stat_t)
+	return ok && st.Nlink > 1
+}
