@@ -24,6 +24,8 @@ WizardSmallImageFile=C:\Users\Public\Documents\agent\build\onit.bmp
 UninstallDisplayIcon={app}\{#MyAppExeName}
 Compression=lzma
 SolidCompression=yes
+; don't carry uninstall entries over from older versions
+UninstallLogMode=overwrite
 WizardStyle=modern
 RestartApplications=no
 CloseApplications=no
@@ -44,11 +46,9 @@ Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChang
 [UninstallRun]
 Filename: "{app}\{#MyAppExeName}"; Parameters: "-m cleanup"; RunOnceId: "cleanuprm";
 Filename: "{cmd}"; Parameters: "/c taskkill /F /IM tacticalrmm.exe"; RunOnceId: "killtacrmm";
-Filename: "{app}\{#MESHEXE}"; Parameters: "-fulluninstall"; RunOnceId: "meshrm";
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}";
-Type: filesandordirs; Name: "{#MESHDIR}";
 
 [Code]
 function InitializeSetup(): boolean;
@@ -76,6 +76,40 @@ begin
 
   Exec('cmd.exe', '/c net start tacticalrmm', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
   Log('Start tacticalrmm: ' + IntToStr(ResultCode));
+end;
+
+// unins000.exe /VERYSILENT /KEEPMESH leaves the mesh agent installed
+function KeepMesh(): Boolean;
+var
+  i: Integer;
+begin
+  Result := False;
+  for i := 1 to ParamCount do
+    if CompareText(ParamStr(i), '/KEEPMESH') = 0 then
+      Result := True;
+end;
+
+// done here since Check in [UninstallRun]/[UninstallDelete] is evaluated at install time
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+var
+  ResultCode: Integer;
+begin
+  if KeepMesh() then
+  begin
+    if CurUninstallStep = usUninstall then
+      Log('KEEPMESH: skipping mesh uninstall');
+    exit;
+  end;
+
+  case CurUninstallStep of
+    usUninstall:
+      begin
+        Exec(ExpandConstant('{app}\{#MESHEXE}'), '-fulluninstall', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+        Log('mesh fulluninstall: ' + IntToStr(ResultCode));
+      end;
+    usPostUninstall:
+      DelTree(ExpandConstant('{#MESHDIR}'), True, True, True);
+  end;
 end;
 
 function InitializeUninstall(): Boolean;
